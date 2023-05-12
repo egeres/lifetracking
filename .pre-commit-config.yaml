@@ -1,0 +1,46 @@
+repos:
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+    - id: trailing-whitespace
+    - id: mixed-line-ending
+    - id: check-ast # Checks that the python files are valid
+    - id: check-case-conflict # Checks for case conflicts in filenames
+    - id: check-docstring-first # Checks that the docstring is the first thing in the file
+    - id: check-json
+    - id: check-toml
+    - id: check-xml
+    - id: check-yaml
+
+  - repo: https://github.com/psf/black
+    rev: 23.3.0
+    hooks:
+    - id: black
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.4.0
+    hooks:
+      - id: pyupgrade
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v2.2.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [] # Opt: list of Conv Commits types to allow like: ci,fix...
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        name: isort
+
+  - repo: local
+    hooks:
+    - id: jupyter-nb-clear-output
+      name: jupyter-nb-clear-output
+      files: \.ipynb$
+      stages: [commit]
+      language: system
+      entry: jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace
