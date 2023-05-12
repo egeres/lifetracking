@@ -82,58 +82,32 @@ class Node_int_singleincrement(Node_int):
 
 
 class Node_int_addition(Node_int):
-    def __init__(self, node1: Node_int, node2: Node_int) -> None:
-        self.node1 = node1
-        self.node2 = node2
+    def __init__(self, n0: Node_int, n1: Node_int) -> None:
+        self.n0 = n0
+        self.n1 = n1
 
-    def _operation(self, n0, n1, t=None) -> int:
+    def _operation(self, n0: int, n1: int, t=None) -> int:
         time.sleep(t or 0)
         return n0 + n1
 
     def _run_sequential(self, t=None, context=None) -> int | None:
-        # Depending on the context, the node can be already computed!
-        node_output1 = None
-        if context is not None and self.node1 in context:
-            node_output1 = context[self.node1]
-        else:
-            node_output1 = self.node1._run_sequential(t, context)
-        node_output2 = None
-        if context is not None and self.node2 in context:
-            node_output2 = context[self.node2]
-        else:
-            node_output2 = self.node2._run_sequential(t, context)
-        if context is not None:
-            context[self.node1] = node_output1
-            context[self.node2] = node_output2
+        n0_out = self._get_value_from_context_or_run(self.n0, t, context)
+        n1_out = self._get_value_from_context_or_run(self.n1, t, context)
 
         # The operation is performed
         return self._operation(
-            node_output1,
-            node_output2,
+            n0_out,
+            n1_out,
             t,
         )
 
     def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture:
-        node_output1 = None
-        if context is not None and self.node1 in context:
-            node_output1 = context[self.node1]
-        else:
-            node_output1 = self.node1._make_prefect_graph(t, context)
-        node_output2 = None
-        if context is not None and self.node2 in context:
-            node_output2 = context[self.node2]
-        else:
-            node_output2 = self.node2._make_prefect_graph(t, context)
+        n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
+        n1_out = self._get_value_from_context_or_makegraph(self.n1, t, context)
 
-        if context is not None:
-            context[self.node1] = node_output1
-            context[self.node2] = node_output2
-
-        return prefect_task(name="aaaaaaaaaaaaaaaaaaaa_" + self.__class__.__name__)(
-            self._operation
-        ).submit(
-            node_output1,
-            node_output2,
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
+            n0_out,
+            n1_out,
             t,
         )
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Iterable
 
 from prefect import flow as prefect_flow
 from prefect import task as prefect_task
@@ -67,3 +67,31 @@ class Node(ABC):
         for child in children:
             children = children | child._get_children_tree()
         return children
+
+    @staticmethod
+    def _get_value_from_context_or_run(
+        node: Node, t=None, context: dict[Node, Any] | None = None
+    ) -> Any:
+        """This is intended to be used inside _run_sequential"""
+        out = None
+        if context is not None:
+            out = context.get(node)
+        if out is None:
+            out = node._run_sequential(t, context)
+        if context is not None and out is not None:
+            context[node] = out
+        return out
+
+    @staticmethod
+    def _get_value_from_context_or_makegraph(
+        node: Node, t=None, context: dict[Node, Any] | None = None
+    ) -> Any:
+        """This is intended to be used inside _make_prefect_graph"""
+        out = None
+        if context is not None:
+            out = context.get(node)
+        if out is None:
+            out = node._make_prefect_graph(t, context)
+        if context is not None and out is not None:
+            context[node] = out
+        return out
