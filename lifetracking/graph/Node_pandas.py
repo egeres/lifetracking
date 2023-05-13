@@ -7,10 +7,10 @@ from typing import Any
 import pandas as pd
 from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
+from prefect.utilities.asyncutils import Sync
 
 from lifetracking.graph.Node import Node
 from lifetracking.graph.Time_interval import Time_interval
-from prefect.utilities.asyncutils import Sync
 
 
 class Node_pandas(Node[pd.DataFrame]):

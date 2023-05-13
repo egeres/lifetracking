@@ -8,7 +8,6 @@ from prefect.futures import PrefectFuture
 from prefect.task_runners import ConcurrentTaskRunner
 from prefect.utilities.asyncutils import Sync
 
-
 T = TypeVar("T")
 
 

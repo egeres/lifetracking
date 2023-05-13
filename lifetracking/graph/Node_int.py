@@ -10,9 +10,9 @@ from typing import Any
 
 from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
+from prefect.utilities.asyncutils import Sync
 
 from lifetracking.graph.Node import Node
-from prefect.utilities.asyncutils import Sync
 
 
 class Node_int(Node[int]):

@@ -9,3 +9,19 @@ To-do:
 - [ ] Iterate over caching approaches
 
 - [ ] Should I remove `from __future__ import annotations` and deprecate 3.8?
+
+
+setup
+
+```shell
+poetry install
+```
+
+routine upgrade
+
+```shell
+poetry update
+pre-commit autoupdate
+pre-commit run --all-files
+pytest --disable-pytest-warnings
+```

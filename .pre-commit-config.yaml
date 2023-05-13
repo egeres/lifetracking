@@ -7,10 +7,16 @@ repos:
       - id: check-ast # Checks that the python files are valid
       - id: check-case-conflict # Checks for case conflicts in filenames
       - id: check-docstring-first # Checks that the docstring is the first thing in the file
-      - id: check-json
+      # - id: check-json // Not working for Json with comments! Disabled for now
       - id: check-toml
       - id: check-xml
       - id: check-yaml
+      - id: check-builtin-literals
+      - id: check-byte-order-marker
+      - id: check-executables-have-shebangs
+      - id: end-of-file-fixer
+        types: [markdown, python]
+        files: "\\.(md|py)$"
 
   - repo: https://github.com/pycqa/isort
     rev: 5.12.0
@@ -32,7 +38,6 @@ repos:
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
-        args: [] # Opt: list of Conv Commits types to allow like: ci,fix...
 
   - repo: local
     hooks:
@@ -73,4 +78,14 @@ repos:
       - id: pydocstyle
         args:
           # http://www.pydocstyle.org/en/stable/error_codes.html
-          - --select=D3,D414,D419,D408,D409
+          - --select=D3,D414,D419,D408,D409,D200,D201,D206,D207,D208,D210,D211,D212,D214,D215
+
+  - repo: local
+    hooks:
+      - id: check-jsonc
+        name: Check JSONC
+        language: python
+        entry: python tools/jsonc_check.py
+        types: [file]
+        files: "\\.(json|jsonc)$"
+        additional_dependencies: [json5]
