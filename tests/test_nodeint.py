@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from lifetracking.graph.Node import run_multiple, run_multiple_parallel, Node
+from lifetracking.graph.Node import Node, run_multiple, run_multiple_parallel
 from lifetracking.graph.Node_int import (
     Node_int,
     Node_int_addition,
