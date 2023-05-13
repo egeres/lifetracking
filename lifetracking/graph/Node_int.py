@@ -23,6 +23,7 @@ class Node_int(Node):
 
 class Node_int_generate(Node_int):
     def __init__(self, value: int, artificial_delay: float = 0) -> None:
+        super().__init__()
         self.value = value
         self.artificial_delay = artificial_delay
 
@@ -49,6 +50,7 @@ class Node_int_generate(Node_int):
 
 class Node_int_singleincrement(Node_int):
     def __init__(self, n0: Node_int, artificial_delay: float = 0) -> None:
+        super().__init__()
         self.n0 = n0
         self.artificial_delay = artificial_delay
 
@@ -82,6 +84,7 @@ class Node_int_singleincrement(Node_int):
 
 class Node_int_addition(Node_int):
     def __init__(self, n0: Node_int, n1: Node_int, artificial_delay: float = 0) -> None:
+        super().__init__()
         self.n0 = n0
         self.n1 = n1
         self.artificial_delay = artificial_delay
