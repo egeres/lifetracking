@@ -54,3 +54,14 @@ repos:
         pass_filenames: false
         stages: [commit]
         additional_dependencies: [tomlkit]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 4.0.1
+    hooks:
+      - id: flake8
+        args:
+          - --count
+          - --max-complexity=10
+          - --max-line-length=88
+          - --statistics
+          - --ignore=F401

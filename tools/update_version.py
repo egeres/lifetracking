@@ -30,7 +30,7 @@ def main():
     if not re.match(r"^v?\d+\.\d+\.\d+$", latest_tag):
         raise Exception(
             f"Invalid Git tag: {latest_tag}."
-            + "Must be in semantic versioning format (e.g., 1.2.3)"
+            "Must be in semantic versioning format (e.g., 1.2.3)"
         )
 
     update_version_in_pyproject_toml(latest_tag)

@@ -4,7 +4,7 @@ import datetime
 
 
 class Time_interval:
-    """Used to get the time interval between two dates, in an inclusive way"""
+    """Used to get the time interval between two dates, in an inclusive way."""
 
     def __init__(
         self,
