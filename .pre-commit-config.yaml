@@ -56,12 +56,21 @@ repos:
         additional_dependencies: [tomlkit]
 
   - repo: https://github.com/pycqa/flake8
-    rev: 4.0.1
+    rev: 6.0.0
     hooks:
       - id: flake8
+        additional_dependencies: [flake8-bugbear]
         args:
           - --count
           - --max-complexity=10
           - --max-line-length=88
           - --statistics
           - --ignore=F401
+
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        args:
+          # http://www.pydocstyle.org/en/stable/error_codes.html
+          - --select=D3,D414,D419,D408,D409
