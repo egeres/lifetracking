@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from lifetracking.graph.Node import run_multiple, run_multiple_parallel, Node
 from lifetracking.graph.Node_int import (
     Node_int,
@@ -24,7 +26,7 @@ def test_run_single_prefect():
 
 
 def _generate_multi_graph() -> list[Node]:
-    artificial_delay = 5.0
+    artificial_delay = 0.0
     a = Node_int_generate(1, artificial_delay)
     b = Node_int_generate(2, artificial_delay)
     c = Node_int_addition(a, b, artificial_delay)
