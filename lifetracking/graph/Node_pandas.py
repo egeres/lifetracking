@@ -1,25 +1,20 @@
 from __future__ import annotations
+
 import datetime
 import os
+from typing import Any
 
-from abc import abstractmethod
-from typing import Any, Optional
 import pandas as pd
-
 from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
 
 from lifetracking.graph.Node import Node
 from lifetracking.graph.Time_interval import Time_interval
+from prefect.utilities.asyncutils import Sync
 
 
-class Node_pandas(Node):
-    @abstractmethod
-    def _operation(self, t=None) -> pd.DataFrame:
-        ...
-
-    def run(self, *args, **kwargs) -> pd.DataFrame | None:
-        return super().run(*args, **kwargs)
+class Node_pandas(Node[pd.DataFrame]):
+    pass
 
 
 class Reader_csvs(Node_pandas):
@@ -56,7 +51,7 @@ class Reader_csvs(Node_pandas):
 
     def _make_prefect_graph(
         self, t=None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture:
+    ) -> PrefectFuture[pd.DataFrame, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 
     def _get_children(self) -> set[Node]:
