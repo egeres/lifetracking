@@ -36,8 +36,8 @@ class Node(ABC):
     def run(
         self,
         prefect: bool = False,
-        context: dict[Node, Any] | None = None,
         t: Any = None,
+        context: dict[Node, Any] | None = None,
     ) -> Any | None:
         """Entry point to run the graph"""
 
@@ -95,3 +95,52 @@ class Node(ABC):
         if context is not None and out is not None:
             context[node] = out
         return out
+
+
+def run_multiple(
+    nodes_to_run: list[Node], t=None, prefect: bool = False
+) -> Iterable[Any]:
+    """Computes multiple nodes in sequence"""
+
+    return [node.run(prefect, t) for node in nodes_to_run]
+
+
+def run_multiple_parallel(
+    nodes_to_run: list[Node], t=None, prefect: bool = False
+) -> Iterable[Any]:
+    """Runs multiple nodes in parallel"""
+
+    if not prefect:
+        # TODO Finish this
+        # # Optimized version: Step 0, get all the common nodes IDs
+        # nodes_children = [x._get_children() for x in nodes_to_run]
+        # nodes_common = set.intersection(*nodes_children)
+
+        # # Optimized version:
+        # # Step 1, prune the common nodes that are children of other common nodes
+        # nodes_common_pruned = nodes_common
+        # to_remove = set()
+        # for node in nodes_common:
+        #     for node2 in nodes_common:
+        #         if node2 in node._get_children():
+        #             to_remove.add(node)
+        # nodes_common_pruned = nodes_common - to_remove
+
+        # nodes_common_pruned is not 100% needed, but it can be added to the context
+        # to make it avoid storing nodes outputs that we know won't be
+        # used further on? :[
+
+        # Optimized version: Step 2, run the common nodes
+        context: dict[Node, Any] = {}
+        return [node._run_sequential(t, context) for node in nodes_to_run]
+
+    else:
+        # A flow is created
+        @prefect_flow(task_runner=ConcurrentTaskRunner(), name="run_prefect_graph")
+        def flow():
+            context: dict[Node, Any] = {}
+            tasks = [node._make_prefect_graph(t, context) for node in nodes_to_run]
+            results = [task.result() for task in tasks]
+            return results
+
+        return flow()
