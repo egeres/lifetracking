@@ -2,3 +2,5 @@
 lifetracking/graph/__pycache__/
 
 lifetracking/__pycache__/
+
+tests/__pycache__/
