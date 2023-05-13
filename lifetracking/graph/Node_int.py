@@ -1,10 +1,13 @@
-"""Int nodes are mostly intended to be used for debugging and testing purposes."""
+"""Int nodes are mostly intended to be used for debugging and testing purposes.
+
+They include an argument to simulate a delay, so that the execution of the graph can be
+observed."""
 
 from __future__ import annotations
 
 import time
 from abc import abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
@@ -19,17 +22,22 @@ class Node_int(Node):
 
 
 class Node_int_generate(Node_int):
-    def __init__(self, value: int) -> None:
+    def __init__(self, value: int, artificial_delay: float = 0) -> None:
         self.value = value
+        self.artificial_delay = artificial_delay
 
     def _operation(self, t=None) -> int:
-        time.sleep(t or 0)
+        time.sleep(self.artificial_delay)
         return self.value
 
-    def _run_sequential(self, t=None, context=None) -> int | None:
+    def _run_sequential(
+        self, t=None, context: dict[Node, Any] | None = None
+    ) -> int | None:
         return self._operation(t)
 
-    def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture:
+    def _make_prefect_graph(
+        self, t=None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 
     def _get_children(self) -> set[Node]:
@@ -40,14 +48,17 @@ class Node_int_generate(Node_int):
 
 
 class Node_int_singleincrement(Node_int):
-    def __init__(self, n0: Node_int) -> None:
+    def __init__(self, n0: Node_int, artificial_delay: float = 0) -> None:
         self.n0 = n0
+        self.artificial_delay = artificial_delay
 
     def _operation(self, n0, t=None) -> int:
-        time.sleep(t or 0)
+        time.sleep(self.artificial_delay)
         return n0 + 1
 
-    def _run_sequential(self, t=None, context=None) -> int | None:
+    def _run_sequential(
+        self, t=None, context: dict[Node, Any] | None = None
+    ) -> int | None:
         # Node is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_run(self.n0, t, context)
         return self._operation(
@@ -55,7 +66,9 @@ class Node_int_singleincrement(Node_int):
             t,
         )
 
-    def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture:
+    def _make_prefect_graph(
+        self, t=None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture:
         # Node graph is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(
@@ -68,15 +81,18 @@ class Node_int_singleincrement(Node_int):
 
 
 class Node_int_addition(Node_int):
-    def __init__(self, n0: Node_int, n1: Node_int) -> None:
+    def __init__(self, n0: Node_int, n1: Node_int, artificial_delay: float = 0) -> None:
         self.n0 = n0
         self.n1 = n1
+        self.artificial_delay = artificial_delay
 
     def _operation(self, n0: int, n1: int, t=None) -> int:
-        time.sleep(t or 0)
+        time.sleep(self.artificial_delay)
         return n0 + n1
 
-    def _run_sequential(self, t=None, context=None) -> int | None:
+    def _run_sequential(
+        self, t=None, context: dict[Node, Any] | None = None
+    ) -> int | None:
         # Node is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_run(self.n0, t, context)
         n1_out = self._get_value_from_context_or_run(self.n1, t, context)
@@ -86,7 +102,9 @@ class Node_int_addition(Node_int):
             t,
         )
 
-    def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture:
+    def _make_prefect_graph(
+        self, t=None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture:
         # Node graph is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
         n1_out = self._get_value_from_context_or_makegraph(self.n1, t, context)
