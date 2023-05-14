@@ -110,7 +110,7 @@ class Parse_BLE_info(Node_segments):
         return Segments(to_return)
 
     def _run_sequential(
-        self, t=None, context: dict[Node, Any] | None = None
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> Segments | None:
         # Node is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_run(self.n0, t, context)
@@ -119,7 +119,7 @@ class Parse_BLE_info(Node_segments):
         return self._operation(n0_out, self.config, t)
 
     def _make_prefect_graph(
-        self, t=None, context: dict[Node, Any] | None = None
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[Segments, Sync] | None:
         # Node is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)

@@ -20,14 +20,14 @@ class Time_interval:
             start=(datetime.datetime.now() - datetime.timedelta(days=n)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             ),
-            end=(datetime.datetime.now()).replace(
+            end=datetime.datetime.now().replace(
                 hour=23, minute=59, second=59, microsecond=999999
             ),
         )
 
     @staticmethod
     def today():
-        return Time_interval.last_n_days(0)
+        return Time_interval.last_n_days(0)  # next_n_days(0) is also valid!
 
     @staticmethod
     def last_day() -> Time_interval:
@@ -62,18 +62,16 @@ class Time_interval:
         n = datetime.datetime.now()
         return Time_interval(start=n.replace(year=n.year - 10), end=n)
 
-    # TODO
-    # Undecided about this implementation...
-    # @staticmethod
-    # def next_n_days(n: int) -> Time_interval:
-    #     return Time_interval(
-    #         start=datetime.datetime.now().replace(
-    #             hour=0, minute=0, second=0, microsecond=0
-    #         ),
-    #         end=(
-    #             datetime.datetime.now() + datetime.timedelta(days=n)
-    #         ).replace(hour=23, minute=59, second=59),
-    #     )
+    @staticmethod
+    def next_n_days(n: int) -> Time_interval:
+        return Time_interval(
+            start=datetime.datetime.now().replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ),
+            end=(datetime.datetime.now() + datetime.timedelta(days=n)).replace(
+                hour=23, minute=59, second=59, microsecond=999999
+            ),
+        )
 
     @staticmethod
     def tomorrow():
@@ -88,3 +86,6 @@ class Time_interval:
                 hour=23, minute=59, second=59, microsecond=999999
             ),
         )
+
+    def __eq__(self, other: Time_interval) -> bool:
+        return self.start == other.start and self.end == other.end
