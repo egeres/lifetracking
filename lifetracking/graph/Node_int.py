@@ -16,7 +16,8 @@ from lifetracking.graph.Node import Node
 
 
 class Node_int(Node[int]):
-    pass
+    def __init__(self) -> None:
+        super().__init__()
 
 
 class Node_int_generate(Node_int):

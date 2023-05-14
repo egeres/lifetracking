@@ -14,7 +14,8 @@ from lifetracking.graph.Time_interval import Time_interval
 
 
 class Node_pandas(Node[pd.DataFrame]):
-    pass
+    def __init__(self) -> None:
+        super().__init__()
 
 
 class Reader_csvs(Node_pandas):

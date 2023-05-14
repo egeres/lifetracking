@@ -27,10 +27,11 @@ jobs:
           python -m pip install .
       - name: Lint with flake8
         run: |
+          # Old
           # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # F401 because for now I want to develop fast
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics --ignore=F401
+          # flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Mine
+          flake8 . --count --max-complexity=10 --max-line-length=88 --statistics --ignore=F401,W503
       - name: Test with pytest
         run: |
           # I'm not sure about disabling the tests, but it's in for now!

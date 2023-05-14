@@ -9,10 +9,14 @@ from prefect.task_runners import ConcurrentTaskRunner
 from prefect.utilities.asyncutils import Sync
 
 T = TypeVar("T")
+U = TypeVar("U")
 
 
 class Node(ABC, Generic[T]):
     """Abstract class for a node in the graph"""
+
+    def __init__(self):
+        self.last_run_info: dict[str, Any] = {}
 
     @abstractmethod
     def _get_children(self) -> set[Node]:
@@ -71,8 +75,8 @@ class Node(ABC, Generic[T]):
 
     @staticmethod
     def _get_value_from_context_or_run(
-        node: Node, t=None, context: dict[Node, Any] | None = None
-    ) -> T | None:
+        node: Node[U], t=None, context: dict[Node, Any] | None = None
+    ) -> U | None:
         """This is intended to be used inside _run_sequential"""
         out = None
         if context is not None:
@@ -85,8 +89,8 @@ class Node(ABC, Generic[T]):
 
     @staticmethod
     def _get_value_from_context_or_makegraph(
-        node: Node, t=None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[T, Sync]:
+        node: Node[U], t=None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[U, Sync]:
         """This is intended to be used inside _make_prefect_graph"""
         out = None
         if context is not None:
