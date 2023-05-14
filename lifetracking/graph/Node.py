@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Iterable, TypeVar, Union
+from typing import Any, Generic, Iterable, TypeVar
 
 from prefect import flow as prefect_flow
 from prefect.futures import PrefectFuture
@@ -13,6 +13,11 @@ T = TypeVar("T")
 
 class Node(ABC, Generic[T]):
     """Abstract class for a node in the graph"""
+
+    @abstractmethod
+    def _get_children(self) -> set[Node]:
+        """Returns a set with the children of the node"""
+        ...
 
     @abstractmethod
     def _operation(self, t=None) -> T | None:
@@ -27,11 +32,6 @@ class Node(ABC, Generic[T]):
     @abstractmethod
     def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture[T, Sync]:
         """Parses the graph to prefect"""
-        ...
-
-    @abstractmethod
-    def _get_children(self) -> set[Node]:
-        """Returns a set with the children of the node"""
         ...
 
     def run(

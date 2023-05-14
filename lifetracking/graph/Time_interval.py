@@ -62,7 +62,8 @@ class Time_interval:
         n = datetime.datetime.now()
         return Time_interval(start=n.replace(year=n.year - 10), end=n)
 
-    # Undecided about the implementation...
+    # TODO
+    # Undecided about this implementation...
     # @staticmethod
     # def next_n_days(n: int) -> Time_interval:
     #     return Time_interval(
