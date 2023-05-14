@@ -27,8 +27,8 @@ class Node_int_generate(Node_int):
         self.value = value
         self.artificial_delay = artificial_delay
 
-    def _get_children(self) -> set[Node]:
-        return set()
+    def _get_children(self) -> list[Node]:
+        return []
 
     def _operation(self, t: Time_interval | None = None) -> int:
         time.sleep(self.artificial_delay)
@@ -44,6 +44,9 @@ class Node_int_generate(Node_int):
     ) -> PrefectFuture[int, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 
+    def _hash_node(self):
+        return super()._hash_node() + hash(self.value)
+
     def __add__(self, other: Node_int) -> Node_int_addition:
         return Node_int_addition(self, other)
 
@@ -54,8 +57,8 @@ class Node_int_singleincrement(Node_int):
         self.n0 = n0
         self.artificial_delay = artificial_delay
 
-    def _get_children(self) -> set[Node]:
-        return {self.n0}
+    def _get_children(self) -> list[Node]:
+        return [self.n0]
 
     def _operation(
         self, n0: int | PrefectFuture[int, Sync], t: Time_interval | None = None
@@ -85,6 +88,9 @@ class Node_int_singleincrement(Node_int):
             t,
         )
 
+    def _hash_node(self):
+        return super()._hash_node()
+
 
 class Node_int_addition(Node_int):
     def __init__(self, n0: Node_int, n1: Node_int, artificial_delay: float = 0) -> None:
@@ -93,8 +99,8 @@ class Node_int_addition(Node_int):
         self.n1 = n1
         self.artificial_delay = artificial_delay
 
-    def _get_children(self) -> set[Node]:
-        return {self.n0, self.n1}
+    def _get_children(self) -> list[Node]:
+        return [self.n0, self.n1]
 
     def _operation(
         self,
@@ -130,3 +136,6 @@ class Node_int_addition(Node_int):
             n1_out,
             t,
         )
+
+    def _hash_node(self):
+        return super()._hash_node()

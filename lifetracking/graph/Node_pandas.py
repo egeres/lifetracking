@@ -55,5 +55,8 @@ class Reader_csvs(Node_pandas):
     ) -> PrefectFuture[pd.DataFrame, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 
-    def _get_children(self) -> set[Node]:
-        return set()
+    def _get_children(self) -> list[Node]:
+        return []
+
+    def _hash_node(self):
+        return super()._hash_node() + hash(self.path_dir)

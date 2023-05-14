@@ -19,8 +19,12 @@ class Node(ABC, Generic[T]):
     def __init__(self):
         self.last_run_info: dict[str, Any] = {}
 
+    @property
+    def children(self) -> list[Node]:
+        return self._get_children()
+
     @abstractmethod
-    def _get_children(self) -> set[Node]:
+    def _get_children(self) -> list[Node]:
         """Returns a set with the children of the node"""
         ...
 
@@ -79,7 +83,7 @@ class Node(ABC, Generic[T]):
 
     def _get_children_tree(self) -> set[Node]:
         """Returns a set with the children of the node"""
-        children = self._get_children()
+        children = set(self._get_children())
         for child in children:
             children = children | child._get_children_tree()
         return children
@@ -111,6 +115,19 @@ class Node(ABC, Generic[T]):
         if context is not None and out is not None:
             context[node] = out
         return out
+
+    @abstractmethod
+    def _hash_node(self) -> int:
+        """Returns a custom hash of the node which should take into account
+        configurations etc..."""
+        return hash(self.__class__.__name__)
+
+    def hash_tree(self):
+        """Hashes the tree of nodes"""
+
+        hashes = [x.hash_tree() for x in self.children]
+        summed = sum(hashes)
+        return hash(summed + self._hash_node())
 
 
 def run_multiple(

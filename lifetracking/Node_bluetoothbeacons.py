@@ -127,3 +127,8 @@ class Parse_BLE_info(Node_segments):
             self.config,
             t,
         )
+
+    def _hash_node(self):
+        return super()._hash_node() + hash(
+            json.dumps(self.config.config, sort_keys=True)
+        )
