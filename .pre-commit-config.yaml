@@ -70,7 +70,7 @@ repos:
           - --max-complexity=10
           - --max-line-length=88
           - --statistics
-          - --ignore=F401
+          - --ignore=F401,W503
 
   - repo: https://github.com/pycqa/pydocstyle
     rev: 6.3.0
