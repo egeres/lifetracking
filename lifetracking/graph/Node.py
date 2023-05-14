@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
 from typing import Any, Generic, Iterable, TypeVar
 
@@ -49,11 +50,21 @@ class Node(ABC, Generic[T]):
         assert context is None or isinstance(context, dict)
         assert isinstance(prefect, bool)
 
+        # Prepare stuff
+        self.last_run_info = {}
+        t0 = time.time()
+
         # Actual run
+        to_return: T | None = None
         if prefect:
-            return self._run_prefect_graph(t)
+            to_return = self._run_prefect_graph(t)
         else:
-            return self._run_sequential(t, context)
+            to_return = self._run_sequential(t, context)
+
+        # Post-run stuff
+        self.last_run_info["time"] = time.time() - t0
+        # self.last_run_info["steps_executed"] = #TODO
+        return to_return
 
     def _run_prefect_graph(self, t=None) -> T | None:
         """Run the graph using prefect concurrently"""
