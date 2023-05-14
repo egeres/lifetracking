@@ -46,12 +46,12 @@ class Reader_csvs(Node_pandas):
         return pd.concat(to_return, axis=0)
 
     def _run_sequential(
-        self, t=None, context: dict[Node, Any] | None = None
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> pd.DataFrame | None:
         return self._operation(t)
 
     def _make_prefect_graph(
-        self, t=None, context: dict[Node, Any] | None = None
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[pd.DataFrame, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 

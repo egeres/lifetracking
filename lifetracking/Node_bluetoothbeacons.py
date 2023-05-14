@@ -56,7 +56,7 @@ class Parse_BLE_info(Node_segments):
         self,
         n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
         config: Config | None = None,
-        t=None,
+        t: Time_interval | None = None,
     ) -> Segments:
         assert n0 is not None
         assert config is not None
@@ -84,10 +84,7 @@ class Parse_BLE_info(Node_segments):
                 timestamp = row["timestamp"]
                 value = row[column_name]
 
-                if pd.isna(value):
-                    continue
-
-                if value < min_distance:
+                if not pd.isna(value) and value < min_distance:
                     if not in_segment:
                         in_segment = True
                         start_time = timestamp

@@ -13,6 +13,7 @@ from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 
 from lifetracking.graph.Node import Node
+from lifetracking.graph.Time_interval import Time_interval
 
 
 class Node_int(Node[int]):
@@ -29,17 +30,17 @@ class Node_int_generate(Node_int):
     def _get_children(self) -> set[Node]:
         return set()
 
-    def _operation(self, t=None) -> int:
+    def _operation(self, t: Time_interval | None = None) -> int:
         time.sleep(self.artificial_delay)
         return self.value
 
     def _run_sequential(
-        self, t=None, context: dict[Node, Any] | None = None
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> int | None:
         return self._operation(t)
 
     def _make_prefect_graph(
-        self, t=None, context: dict[Node, Any] | None = None
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[int, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 
@@ -56,12 +57,14 @@ class Node_int_singleincrement(Node_int):
     def _get_children(self) -> set[Node]:
         return {self.n0}
 
-    def _operation(self, n0: int | PrefectFuture[int, Sync], t=None) -> int:
+    def _operation(
+        self, n0: int | PrefectFuture[int, Sync], t: Time_interval | None = None
+    ) -> int:
         time.sleep(self.artificial_delay)
         return n0 + 1  # type: ignore
 
     def _run_sequential(
-        self, t=None, context: dict[Node, Any] | None = None
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> int | None:
         # Node is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_run(self.n0, t, context)
@@ -73,7 +76,7 @@ class Node_int_singleincrement(Node_int):
         )
 
     def _make_prefect_graph(
-        self, t=None, context: dict[Node, Any] | None = None
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[int, Sync]:
         # Node graph is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
@@ -97,13 +100,13 @@ class Node_int_addition(Node_int):
         self,
         n0: int | PrefectFuture[int, Sync],
         n1: int | PrefectFuture[int, Sync],
-        t=None,
+        t: Time_interval | None = None,
     ) -> int:
         time.sleep(self.artificial_delay)
         return n0 + n1  # type: ignore
 
     def _run_sequential(
-        self, t=None, context: dict[Node, Any] | None = None
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> int | None:
         # Node is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_run(self.n0, t, context)
@@ -117,7 +120,7 @@ class Node_int_addition(Node_int):
         )
 
     def _make_prefect_graph(
-        self, t=None, context: dict[Node, Any] | None = None
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[int, Sync]:
         # Node graph is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)

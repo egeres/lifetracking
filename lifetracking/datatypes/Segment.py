@@ -56,3 +56,9 @@ class Segments:
 
         with open(os.path.join(path_filename), "w") as f:
             json.dump(to_export, f, indent=4, default=str)
+
+    def min(self) -> datetime.datetime:
+        return min(seg.start for seg in self.content)
+
+    def max(self) -> datetime.datetime:
+        return max(seg.end for seg in self.content)
