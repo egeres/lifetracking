@@ -1,36 +1,42 @@
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
-from typing import Any, Iterable
+from typing import Any, Generic, Iterable, TypeVar
 
 from prefect import flow as prefect_flow
-from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
 from prefect.task_runners import ConcurrentTaskRunner
-from rich import print
+from prefect.utilities.asyncutils import Sync
+
+T = TypeVar("T")
+U = TypeVar("U")
 
 
-class Node(ABC):
+class Node(ABC, Generic[T]):
     """Abstract class for a node in the graph"""
 
-    @abstractmethod
-    def _operation(self, t=None) -> Any | None:
-        """The main operation of the node"""
-        ...
-
-    @abstractmethod
-    def _run_sequential(self, t=None, context=None) -> Any | None:
-        """Runs the graph sequentially"""
-        ...
-
-    @abstractmethod
-    def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture:
-        """Parses the graph to prefect"""
-        ...
+    def __init__(self):
+        self.last_run_info: dict[str, Any] = {}
 
     @abstractmethod
     def _get_children(self) -> set[Node]:
         """Returns a set with the children of the node"""
+        ...
+
+    @abstractmethod
+    def _operation(self, t=None) -> T | None:
+        """The main operation of the node"""
+        ...
+
+    @abstractmethod
+    def _run_sequential(self, t=None, context=None) -> T | None:
+        """Runs the graph sequentially"""
+        ...
+
+    @abstractmethod
+    def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture[T, Sync]:
+        """Parses the graph to prefect"""
         ...
 
     def run(
@@ -38,19 +44,29 @@ class Node(ABC):
         prefect: bool = False,
         t: Any = None,
         context: dict[Node, Any] | None = None,
-    ) -> Any | None:
+    ) -> T | None:
         """Entry point to run the graph"""
 
         assert context is None or isinstance(context, dict)
         assert isinstance(prefect, bool)
 
-        # Actual run
-        if prefect:
-            return self._run_prefect_graph(t)
-        else:
-            return self._run_sequential(t, context)
+        # Prepare stuff
+        self.last_run_info = {}
+        t0 = time.time()
 
-    def _run_prefect_graph(self, t=None) -> Any | None:
+        # Actual run
+        to_return: T | None = None
+        if prefect:
+            to_return = self._run_prefect_graph(t)
+        else:
+            to_return = self._run_sequential(t, context)
+
+        # Post-run stuff
+        self.last_run_info["time"] = time.time() - t0
+        # self.last_run_info["steps_executed"] = #TODO
+        return to_return
+
+    def _run_prefect_graph(self, t=None) -> T | None:
         """Run the graph using prefect concurrently"""
 
         # A flow is created
@@ -70,8 +86,8 @@ class Node(ABC):
 
     @staticmethod
     def _get_value_from_context_or_run(
-        node: Node, t=None, context: dict[Node, Any] | None = None
-    ) -> Any:
+        node: Node[U], t=None, context: dict[Node, Any] | None = None
+    ) -> U | None:
         """This is intended to be used inside _run_sequential"""
         out = None
         if context is not None:
@@ -84,8 +100,8 @@ class Node(ABC):
 
     @staticmethod
     def _get_value_from_context_or_makegraph(
-        node: Node, t=None, context: dict[Node, Any] | None = None
-    ) -> Any:
+        node: Node[U], t=None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[U, Sync]:
         """This is intended to be used inside _make_prefect_graph"""
         out = None
         if context is not None:
@@ -107,7 +123,7 @@ def run_multiple(
 
 def run_multiple_parallel(
     nodes_to_run: list[Node], t=None, prefect: bool = False
-) -> Iterable[Any]:
+) -> Iterable[Any | None]:
     """Runs multiple nodes in parallel"""
 
     if not prefect:
