@@ -1,4 +1,8 @@
 
+
+![Tests](https://github.com/egeres/lifetracking/actions/workflows/python-package.yml/badge.svg)
+
+
 To-do:
 
 - [x] Pre-commit hooks
