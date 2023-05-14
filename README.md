@@ -15,13 +15,13 @@ To-do:
 - [ ] Should I remove `from __future__ import annotations` and deprecate 3.8?
 
 
-setup
+Setup:
 
 ```shell
 poetry install
 ```
 
-routine upgrade
+Update:
 
 ```shell
 poetry update
