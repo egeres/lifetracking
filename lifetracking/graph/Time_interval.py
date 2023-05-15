@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+from typing import Iterable
 
 
 class Time_interval:
@@ -13,6 +14,15 @@ class Time_interval:
     ):
         self.start: datetime.datetime = start
         self.end: datetime.datetime = end
+
+    def iterate_over_days(self) -> Iterable[Time_interval]:
+        current = self.start
+        while current <= self.end:
+            yield Time_interval(
+                current.replace(hour=0, minute=0, second=0, microsecond=0),
+                current.replace(hour=23, minute=59, second=59, microsecond=999999),
+            )
+            current += datetime.timedelta(days=1)
 
     @staticmethod
     def last_n_days(n: int) -> Time_interval:
