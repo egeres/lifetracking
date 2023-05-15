@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import datetime
+from enum import Enum, auto
 from typing import Iterable
 
 
+class Time_resolution(Enum):
+    HOUR = auto()
+    DAY = auto()
+
+
 class Time_interval:
-    """Used to get the time interval between two dates, in an inclusive way."""
+    """Used to get the time interval between two dates (inclusively)."""
 
     def __init__(
         self,
@@ -15,14 +21,31 @@ class Time_interval:
         self.start: datetime.datetime = start
         self.end: datetime.datetime = end
 
-    def iterate_over_days(self) -> Iterable[Time_interval]:
+    def iterate_over_interval(
+        self, resolution: Time_resolution = Time_resolution.DAY
+    ) -> Iterable[Time_interval]:
+        """Iterates over the interval according to the resolution (inclusively)."""
         current = self.start
-        while current <= self.end:
-            yield Time_interval(
-                current.replace(hour=0, minute=0, second=0, microsecond=0),
-                current.replace(hour=23, minute=59, second=59, microsecond=999999),
-            )
-            current += datetime.timedelta(days=1)
+
+        if resolution == Time_resolution.DAY:
+            while current <= self.end:
+                yield Time_interval(
+                    current.replace(hour=0, minute=0, second=0, microsecond=0),
+                    current.replace(hour=23, minute=59, second=59, microsecond=999999),
+                )
+                current += datetime.timedelta(days=1)
+
+        elif resolution == Time_resolution.HOUR:
+            while current <= self.end:
+                # yield current
+                yield Time_interval(
+                    current.replace(minute=0, second=0, microsecond=0),
+                    current.replace(minute=59, second=59, microsecond=999999),
+                )
+                current += datetime.timedelta(hours=1)
+
+        else:
+            raise ValueError(f"Unsupported time resolution: {resolution}")
 
     @staticmethod
     def last_n_days(n: int) -> Time_interval:
