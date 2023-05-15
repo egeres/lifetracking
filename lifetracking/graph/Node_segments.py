@@ -19,13 +19,16 @@ class Node_segments(Node[Segments]):
 class Node_segments_generate(Node_segments):
     def __init__(self, value: Segments) -> None:
         super().__init__()
-        self.value = value
+        self.value: Segments = value
 
     def _get_children(self) -> list[Node]:
         return []
 
     def _operation(self, t: Time_interval | None = None) -> Segments:
-        return self.value
+        if t is None:
+            return self.value
+        else:
+            return self.value[t]
 
     def _hash_node(self):
         return super()._hash_node() + hash(self.value)

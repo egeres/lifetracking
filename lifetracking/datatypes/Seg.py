@@ -23,3 +23,6 @@ class Seg:
                 f"<{self.start.strftime('%Y-%m-%d %H:%M')}"
                 + f",{self.end.strftime('%Y-%m-%d %H:%M')}, {self.value}>"
             )
+
+    def __lt__(self, other: Seg) -> bool:
+        return self.start < other.start

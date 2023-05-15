@@ -65,3 +65,6 @@ class Segments:
 
     def max(self) -> datetime.datetime:
         return max(seg.end for seg in self.content)
+
+    def __add__(self, other: Segments) -> Segments:
+        return Segments(sorted(other.content + self.content))
