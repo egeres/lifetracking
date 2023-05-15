@@ -16,10 +16,10 @@ class Seg:
         if self.value is None:
             return (
                 f"<{self.start.strftime('%Y-%m-%d %H:%M')}"
-                + f"|{self.end.strftime('%Y-%m-%d %H:%M')}>"
+                + f",{self.end.strftime('%Y-%m-%d %H:%M')}>"
             )
         else:
             return (  # Thank god these line up 😌
                 f"<{self.start.strftime('%Y-%m-%d %H:%M')}"
-                + f"|{self.end.strftime('%Y-%m-%d %H:%M')}, {self.value}>"
+                + f",{self.end.strftime('%Y-%m-%d %H:%M')}, {self.value}>"
             )

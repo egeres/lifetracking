@@ -25,6 +25,9 @@ class Segments:
             ]
         )
 
+    def __len__(self) -> int:
+        return len(self.content)
+
     def export_to_longcalendar(
         self, path_filename: str, hour_offset: float = 0, opacity: float = 1.0
     ) -> None:
