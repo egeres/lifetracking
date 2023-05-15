@@ -5,25 +5,25 @@ import json
 import os
 from typing import Any
 
-
-class Seg:
-    def __init__(
-        self, start: datetime.datetime, end: datetime.datetime, value: Any | None = None
-    ):
-        self.start = start
-        self.end = end
-        self.value = value
-
-    def __repr__(self) -> str:
-        if self.value is None:
-            return f"[{self.start}|{self.end}]"
-        else:
-            return f"[{self.start}|{self.end}, {self.value}]"
+from lifetracking.datatypes.Seg import Seg
+from lifetracking.graph.Time_interval import Time_interval
 
 
 class Segments:
     def __init__(self, content: list[Seg]) -> None:
+        assert all(
+            seg.start <= seg.end for seg in content
+        ), "Segments must be ordered in time"
         self.content = content
+
+    def __getitem__(self, index: Time_interval) -> Segments:
+        return Segments(
+            [
+                seg
+                for seg in self.content
+                if index.start <= seg.start and seg.end <= index.end
+            ]
+        )
 
     def export_to_longcalendar(
         self, path_filename: str, hour_offset: float = 0, opacity: float = 1.0

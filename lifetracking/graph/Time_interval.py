@@ -4,6 +4,8 @@ import datetime
 from enum import Enum, auto
 from typing import Iterable
 
+from lifetracking.datatypes.Seg import Seg
+
 
 class Time_resolution(Enum):
     HOUR = auto()
@@ -20,6 +22,9 @@ class Time_interval:
     ):
         self.start: datetime.datetime = start
         self.end: datetime.datetime = end
+
+    def to_seg(self) -> Seg:
+        return Seg(self.start, self.end)
 
     def iterate_over_interval(
         self, resolution: Time_resolution = Time_resolution.DAY
@@ -63,6 +68,28 @@ class Time_interval:
         return Time_interval.last_n_days(0)  # next_n_days(0) is also valid!
 
     @staticmethod
+    def tomorrow():
+        return Time_interval(
+            start=(datetime.datetime.now() + datetime.timedelta(days=1)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ),
+            end=(datetime.datetime.now() + datetime.timedelta(days=1)).replace(
+                hour=23, minute=59, second=59, microsecond=999999
+            ),
+        )
+
+    @staticmethod
+    def yesterday():
+        return Time_interval(
+            start=(datetime.datetime.now() - datetime.timedelta(days=1)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ),
+            end=(datetime.datetime.now() - datetime.timedelta(days=1)).replace(
+                hour=23, minute=59, second=59, microsecond=999999
+            ),
+        )
+
+    @staticmethod
     def last_day() -> Time_interval:
         return Time_interval.last_n_days(1)
 
@@ -102,20 +129,6 @@ class Time_interval:
                 hour=0, minute=0, second=0, microsecond=0
             ),
             end=(datetime.datetime.now() + datetime.timedelta(days=n)).replace(
-                hour=23, minute=59, second=59, microsecond=999999
-            ),
-        )
-
-    @staticmethod
-    def tomorrow():
-        return Time_interval(
-            start=(datetime.datetime.now() + datetime.timedelta(days=1)).replace(
-                hour=0,
-                minute=0,
-                second=0,
-                microsecond=0,
-            ),
-            end=(datetime.datetime.now() + datetime.timedelta(days=1)).replace(
                 hour=23, minute=59, second=59, microsecond=999999
             ),
         )
