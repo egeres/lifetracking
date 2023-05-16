@@ -10,3 +10,5 @@ lifetracking/datatypes/__pycache__/
 sketches/
 
 .hypothesis/
+
+.coverage

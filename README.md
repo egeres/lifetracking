@@ -14,4 +14,6 @@ poetry update
 pre-commit autoupdate
 pre-commit run --all-files
 pytest --disable-pytest-warnings
+coverage run -m pytest --disable-pytest-warnings
+coverage report -m
 ```

@@ -43,6 +43,9 @@ Doubts
 - [ ] Should I include pydantic for `Segments` init?
 - [ ] Also, always asserts for stuff like `def __getitem__(self, index: Time_interval) -> Segments:`, or pydantic or... when should I be strict with the parameter parsing?
 - [ ] Should I do `from hashlib import md5` instead of `import hashlib;hashlib.md5()` ?
+- [ ] Should I add https://github.com/dbrgn/coverage-badge?
+- [ ] Publish on pipy?
+- [ ] How to add custom color scheme to TODO extension VSCode
 
 
 

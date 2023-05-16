@@ -21,6 +21,7 @@ def test_time_iterator_days():
     assert len(a) == 8
 
 
+# TODO add st.choice for st.sampled_from(Time_resolution)
 @given(st.integers(min_value=0, max_value=10_000))
 def test_time_iterator_days_procedural(n):
     a = list(Time_interval.last_n_days(n).iterate_over_interval(Time_resolution.DAY))
