@@ -29,6 +29,10 @@ class Time_interval:
     def __sub__(self, other: datetime.timedelta) -> Time_interval:
         return Time_interval(self.start - other, self.end - other)
 
+    def __contains__(self, another: datetime.datetime) -> bool:
+        assert isinstance(another, datetime.datetime)
+        return self.start <= another <= self.end
+
     def to_seg(self) -> Seg:
         return Seg(self.start, self.end)
 

@@ -71,7 +71,7 @@ class Parse_BLE_info(Node_segments):
 
         df: pd.DataFrame = n0  # type: ignore
         df.replace(9999.0, np.nan, inplace=True)
-        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed")
 
         to_return = []
         for column_name in list(df.columns):

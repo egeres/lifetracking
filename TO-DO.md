@@ -10,13 +10,17 @@ Feats
   - [x] First implementation
   - [ ] `cache_info` has granularity (meaning, a `data` field per day/time-unit)
   - [ ] Graph or value is gathered from context in case it exists, kinda like `_get_value_from_context_or_run` or `_get_value_from_context_or_makegraph`
-  - [ ] Add tests
-  - [ ] Configurable cache folder
+  - [ ] Add tests to cache system 😣
+  - [ ] Configurable cache folder (maybe useful if user wants sharable caches?)
 
 - [ ] Stats module to see what info is available...?
+  - [ ] Info available
+  - [ ] How much broken information per datasource?
+
 - [ ] Internal pandas for Segments/Seg
   - [ ] First draft
 
+- [ ] Run has `skip_cache` argument
 
 
 
@@ -24,12 +28,15 @@ Refactor
 
 - [ ] Does `class Config:` really make sense?
 - [ ] Current `prefect_task(name=self.__class__.__name__)` causes name conflicts, can we add a dynamic hash or anything of the sort?
+- [ ] Rename `Node_anki.py` to `Reader_anki.py`? Like, bruh, we know it's gonna be nodes n such
 
 
 
 Tests
 
-- [ ] Automatic tests for all the nodes
+- [ ] Increase coverage in `Seg`
+
+- [ ] Automatic tests for all the nodes?
   - [ ] All children are lists
   - [ ] All nodes have valid _hash functions that are distinct from themselves?
   - [ ] All the public (and maybe private) members of Node instances have typing on their arguments...?
