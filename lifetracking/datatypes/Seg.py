@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
 from typing import Any
 
 
@@ -32,3 +33,12 @@ class Seg:
 
     def __sub__(self, other: datetime.timedelta) -> Seg:
         return Seg(self.start - other, self.end - other)
+
+    def _hashstr(self) -> str:
+        # TODO this needs some work... 🥵
+        a = (
+            self.start.strftime("%Y-%m-%d %H:%M"),
+            self.end.strftime("%Y-%m-%d %H:%M"),
+            self.value,
+        )
+        return hashlib.md5(str(a).encode()).hexdigest()

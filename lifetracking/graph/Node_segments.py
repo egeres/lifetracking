@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from prefect import task as prefect_task
@@ -30,8 +31,10 @@ class Node_segments_generate(Node_segments):
         else:
             return self.value[t]
 
-    def _hash_node(self):
-        return super()._hash_node() + hash(self.value)
+    def _hashstr(self):
+        return hashlib.md5(
+            (super()._hashstr() + self.value._hashstr()).encode()
+        ).hexdigest()
 
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None

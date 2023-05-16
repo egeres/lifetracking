@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
 import json
 import os
+from functools import reduce
 from typing import Any
 
 from lifetracking.datatypes.Seg import Seg
@@ -15,6 +17,14 @@ class Segments:
             seg.start <= seg.end for seg in content
         ), "Segments must be ordered in time"
         self.content = content
+
+    def _hashstr(self) -> str:
+        assert all(
+            seg.start <= seg.end for seg in self.content
+        ), "Segments must be ordered in time"
+        hshed_content = [seg._hashstr() for seg in self.content]
+        reduced = reduce(lambda x, y: x + y, hshed_content)
+        return hashlib.md5(reduced.encode()).hexdigest()
 
     def __getitem__(self, index: Time_interval) -> Segments:
         return Segments(

@@ -35,8 +35,8 @@ class Node_cache(Node[T]):
     def _get_children(self) -> list[Node]:
         return [self.n0]
 
-    def _hash_node(self):
-        return super()._hash_node()
+    def _hashstr(self) -> str:
+        return super()._hashstr()
 
     def _operation(
         self, n0: T | PrefectFuture[T, Sync], t: Time_interval | None = None

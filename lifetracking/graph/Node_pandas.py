@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
 import os
 from typing import Any
 
@@ -22,6 +23,14 @@ class Reader_csvs(Node_pandas):
     def __init__(self, path_dir: str) -> None:
         super().__init__()
         self.path_dir = path_dir
+
+    def _get_children(self) -> list[Node]:
+        return []
+
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (super()._hashstr() + str(self.path_dir)).encode()
+        ).hexdigest()
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         to_return: list = []
@@ -54,9 +63,3 @@ class Reader_csvs(Node_pandas):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[pd.DataFrame, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
-
-    def _get_children(self) -> list[Node]:
-        return []
-
-    def _hash_node(self):
-        return super()._hash_node() + hash(self.path_dir)

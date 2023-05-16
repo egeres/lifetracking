@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import time
 from abc import ABC, abstractmethod
+from functools import reduce
 from typing import Any, Generic, Iterable, TypeVar
 
 from prefect import flow as prefect_flow
@@ -117,17 +119,18 @@ class Node(ABC, Generic[T]):
         return out
 
     @abstractmethod
-    def _hash_node(self) -> int:
+    def _hashstr(self) -> str:
         """Returns a custom hash of the node which should take into account
         configurations etc..."""
-        return hash(self.__class__.__name__)
+        return hashlib.md5(self.__class__.__name__.encode()).hexdigest()
 
-    def hash_tree(self):
+    def hash_tree(self, debug: bool = False) -> str:
         """Hashes the tree of nodes"""
-
-        hashes = [x.hash_tree() for x in self.children]
-        summed = sum(hashes)
-        return hash(summed + self._hash_node())
+        hashes = [x.hash_tree(debug) for x in self.children]
+        summed = reduce(lambda x, y: x + y, hashes)
+        if debug:
+            print(summed, self._hashstr())
+        return hashlib.md5((summed + self._hashstr()).encode()).hexdigest()
 
 
 def run_multiple(

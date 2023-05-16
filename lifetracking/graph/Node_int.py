@@ -5,6 +5,7 @@ observed."""
 
 from __future__ import annotations
 
+import hashlib
 import time
 from typing import Any
 
@@ -44,8 +45,8 @@ class Node_int_generate(Node_int):
     ) -> PrefectFuture[int, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 
-    def _hash_node(self):
-        return super()._hash_node() + hash(self.value)
+    def _hashstr(self) -> str:
+        return hashlib.md5((super()._hashstr() + str(self.value)).encode()).hexdigest()
 
     def __add__(self, other: Node_int) -> Node_int_addition:
         return Node_int_addition(self, other)
@@ -59,6 +60,9 @@ class Node_int_singleincrement(Node_int):
 
     def _get_children(self) -> list[Node]:
         return [self.n0]
+
+    def _hashstr(self):
+        return super()._hashstr()
 
     def _operation(
         self, n0: int | PrefectFuture[int, Sync], t: Time_interval | None = None
@@ -87,9 +91,6 @@ class Node_int_singleincrement(Node_int):
             n0_out,
             t,
         )
-
-    def _hash_node(self):
-        return super()._hash_node()
 
 
 class Node_int_addition(Node_int):
@@ -137,5 +138,5 @@ class Node_int_addition(Node_int):
             t,
         )
 
-    def _hash_node(self):
-        return super()._hash_node()
+    def _hashstr(self):
+        return super()._hashstr()

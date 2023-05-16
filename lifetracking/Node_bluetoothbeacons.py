@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
 import json
 from typing import Any
 
@@ -40,6 +41,13 @@ class Parse_BLE_info(Node_segments):
 
     def _get_children(self) -> set[Node]:
         return {self.n0}
+
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (
+                super()._hashstr() + str(json.dumps(self.config.config, sort_keys=True))
+            ).encode()
+        ).hexdigest()
 
     def _operation_skip_Certain_columns(
         self, column_name: str, config: Config, df: pd.DataFrame
@@ -126,9 +134,4 @@ class Parse_BLE_info(Node_segments):
             n0_out,
             self.config,
             t,
-        )
-
-    def _hash_node(self):
-        return super()._hash_node() + hash(
-            json.dumps(self.config.config, sort_keys=True)
         )
