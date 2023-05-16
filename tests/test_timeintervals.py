@@ -1,3 +1,6 @@
+from hypothesis import given
+from hypothesis import strategies as st
+
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
 
 
@@ -8,7 +11,7 @@ def test_lastnext_n_something():
     assert a == b == c
 
 
-def test_time_iterator():
+def test_time_iterator_days():
     # Day resolution
     a = list(Time_interval.today().iterate_over_interval())
     assert len(a) == 1
@@ -17,6 +20,14 @@ def test_time_iterator():
     a = list(Time_interval.last_week().iterate_over_interval())
     assert len(a) == 8
 
+
+@given(st.integers(min_value=0, max_value=10_000))
+def test_time_iterator_days_procedural(n):
+    a = list(Time_interval.last_n_days(n).iterate_over_interval(Time_resolution.DAY))
+    assert len(a) == n + 1  # including today
+
+
+def test_time_iterator_hour():
     # Hour resolution
     n = 0
     a = list(

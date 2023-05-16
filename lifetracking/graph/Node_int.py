@@ -138,5 +138,5 @@ class Node_int_addition(Node_int):
             t,
         )
 
-    def _hashstr(self):
+    def _hashstr(self) -> str:
         return super()._hashstr()

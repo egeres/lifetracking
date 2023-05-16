@@ -9,8 +9,14 @@ Feats
 - [ ] Add cache system
   - [x] First implementation
   - [ ] `cache_info` has granularity (meaning, a `data` field per day/time-unit)
+  - [ ] Graph or value is gathered from context in case it exists, kinda like `_get_value_from_context_or_run` or `_get_value_from_context_or_makegraph`
+  - [ ] Add tests
+  - [ ] Configurable cache folder
 
 - [ ] Stats module to see what info is available...?
+- [ ] Internal pandas for Segments/Seg
+  - [ ] First draft
+
 
 
 
