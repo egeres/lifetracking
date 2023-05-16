@@ -127,7 +127,7 @@ class Node(ABC, Generic[T]):
     def hash_tree(self, debug: bool = False) -> str:
         """Hashes the tree of nodes"""
         hashes = [x.hash_tree(debug) for x in self.children]
-        summed = reduce(lambda x, y: x + y, hashes)
+        summed = reduce(lambda x, y: x + y, hashes, "")
         if debug:
             print(summed, self._hashstr())
         return hashlib.md5((summed + self._hashstr()).encode()).hexdigest()

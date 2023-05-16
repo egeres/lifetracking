@@ -5,7 +5,6 @@ import hashlib
 import json
 import os
 from functools import reduce
-from typing import Any
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.graph.Time_interval import Time_interval
@@ -23,7 +22,7 @@ class Segments:
             seg.start <= seg.end for seg in self.content
         ), "Segments must be ordered in time"
         hshed_content = [seg._hashstr() for seg in self.content]
-        reduced = reduce(lambda x, y: x + y, hshed_content)
+        reduced = reduce(lambda x, y: x + y, hshed_content, "")
         return hashlib.md5(reduced.encode()).hexdigest()
 
     def __getitem__(self, index: Time_interval) -> Segments:
