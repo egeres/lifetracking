@@ -26,3 +26,9 @@ class Seg:
 
     def __lt__(self, other: Seg) -> bool:
         return self.start < other.start
+
+    def __add__(self, other: datetime.timedelta) -> Seg:
+        return Seg(self.start + other, self.end + other)
+
+    def __sub__(self, other: datetime.timedelta) -> Seg:
+        return Seg(self.start - other, self.end - other)

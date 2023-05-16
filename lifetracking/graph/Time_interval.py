@@ -23,6 +23,12 @@ class Time_interval:
         self.start: datetime.datetime = start
         self.end: datetime.datetime = end
 
+    def __add__(self, other: datetime.timedelta) -> Time_interval:
+        return Time_interval(self.start + other, self.end + other)
+
+    def __sub__(self, other: datetime.timedelta) -> Time_interval:
+        return Time_interval(self.start - other, self.end - other)
+
     def to_seg(self) -> Seg:
         return Seg(self.start, self.end)
 
