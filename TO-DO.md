@@ -34,12 +34,18 @@ Refactor
 
 Tests
 
-- [ ] Increase coverage in `Seg`
+- [x] Increase coverage in `Seg`
 
 - [ ] Automatic tests for all the nodes?
   - [ ] All children are lists
   - [ ] All nodes have valid _hash functions that are distinct from themselves?
   - [ ] All the public (and maybe private) members of Node instances have typing on their arguments...?
+
+
+
+Workflow
+
+- [ ] Try https://github.com/nektos/act
 
 
 
