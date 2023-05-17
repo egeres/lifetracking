@@ -1,6 +1,6 @@
 import datetime
 
-from hypothesis import given, reproduce_failure
+from hypothesis import given, reproduce_failure, settings
 from hypothesis import strategies as st
 
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
@@ -25,6 +25,7 @@ def test_time_iterator_days():
 
 # TODO add st.choice for st.sampled_from(Time_resolution)
 @given(st.integers(min_value=0, max_value=10_000))
+@settings(deadline=None)  # To avoid hypothesis.errors.Flaky
 def test_time_iterator_days_procedural(n):
     now = datetime.datetime(2023, 5, 17)
     a = list(
