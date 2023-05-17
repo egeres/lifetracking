@@ -63,7 +63,9 @@ class Time_interval:
             raise ValueError(f"Unsupported time resolution: {resolution}")
 
     @staticmethod
-    def last_n_days(n: int) -> Time_interval:
+    def last_n_days(n: int, now: datetime.datetime | None = None) -> Time_interval:
+        if now is None:
+            now = datetime.datetime.now()
         return Time_interval(
             start=(datetime.datetime.now() - datetime.timedelta(days=n)).replace(
                 hour=0, minute=0, second=0, microsecond=0
