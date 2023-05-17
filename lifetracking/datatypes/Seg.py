@@ -29,10 +29,25 @@ class Seg:
         return self.start < other.start
 
     def __add__(self, other: datetime.timedelta) -> Seg:
+        if not isinstance(other, datetime.timedelta):
+            raise TypeError(
+                f"unsupported operand type(s) for +: '{type(self)}' and '{type(other)}'"
+            )
         return Seg(self.start + other, self.end + other)
 
     def __sub__(self, other: datetime.timedelta) -> Seg:
+        if not isinstance(other, datetime.timedelta):
+            raise TypeError(
+                f"unsupported operand type(s) for +: '{type(self)}' and '{type(other)}'"
+            )
         return Seg(self.start - other, self.end - other)
+
+    def __eq__(self, other: Seg) -> bool:
+        return (
+            self.start == other.start
+            and self.end == other.end
+            and self.value == other.value
+        )
 
     def _hashstr(self) -> str:
         # TODO this needs some work... 🥵

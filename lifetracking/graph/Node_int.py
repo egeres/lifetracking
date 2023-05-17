@@ -31,6 +31,9 @@ class Node_int_generate(Node_int):
     def _get_children(self) -> list[Node]:
         return []
 
+    def _hashstr(self) -> str:
+        return hashlib.md5((super()._hashstr() + str(self.value)).encode()).hexdigest()
+
     def _operation(self, t: Time_interval | None = None) -> int:
         time.sleep(self.artificial_delay)
         return self.value
@@ -44,9 +47,6 @@ class Node_int_generate(Node_int):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[int, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
-
-    def _hashstr(self) -> str:
-        return hashlib.md5((super()._hashstr() + str(self.value)).encode()).hexdigest()
 
     def __add__(self, other: Node_int) -> Node_int_addition:
         return Node_int_addition(self, other)
@@ -103,6 +103,9 @@ class Node_int_addition(Node_int):
     def _get_children(self) -> list[Node]:
         return [self.n0, self.n1]
 
+    def _hashstr(self) -> str:
+        return super()._hashstr()
+
     def _operation(
         self,
         n0: int | PrefectFuture[int, Sync],
@@ -137,6 +140,3 @@ class Node_int_addition(Node_int):
             n1_out,
             t,
         )
-
-    def _hashstr(self) -> str:
-        return super()._hashstr()

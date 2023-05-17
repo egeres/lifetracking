@@ -21,6 +21,8 @@ class Node_pandas(Node[pd.DataFrame]):
 
 class Reader_csvs(Node_pandas):
     def __init__(self, path_dir: str) -> None:
+        if not os.path.isdir(path_dir):
+            raise ValueError(f"{path_dir} is not a directory")
         super().__init__()
         self.path_dir = path_dir
 
