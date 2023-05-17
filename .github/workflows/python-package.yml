@@ -44,9 +44,9 @@ jobs:
           # stop the build if there are Python syntax errors or undefined names
           # flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           # Mine
-          flake8 . --count --max-complexity=10 --max-line-length=88 --statistics --ignore=F401,W503
+          poetry run flake8 . --count --max-complexity=10 --max-line-length=88 --statistics --ignore=F401,W503
 
       - name: Test with pytest
         run: |
           # I'm not sure about disabling the tests, but it's in for now!
-          pytest --disable-pytest-warnings
+          poetry run pytest --disable-pytest-warnings
