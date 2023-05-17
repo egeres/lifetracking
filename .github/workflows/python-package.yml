@@ -16,15 +16,26 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install flake8 pytest
-          python -m pip install .
+          python -m pip install poetry
+          poetry install --dev
+
+      - name: Check with black
+        run: |
+          poetry run black --check .
+
+      - name: Check with isort
+        run: |
+          poetry run isort --check-only .
+
       - name: Lint with flake8
         run: |
           # Old
@@ -32,6 +43,7 @@ jobs:
           # flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           # Mine
           flake8 . --count --max-complexity=10 --max-line-length=88 --statistics --ignore=F401,W503
+
       - name: Test with pytest
         run: |
           # I'm not sure about disabling the tests, but it's in for now!
