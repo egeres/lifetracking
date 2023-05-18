@@ -5,22 +5,23 @@ import hashlib
 import os
 from typing import Any
 
+import ankipandas
 import pandas as pd
 from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 
 from lifetracking.graph.Node import Node
+from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Time_interval import Time_interval
 
 
-class Node_pandas(Node[pd.DataFrame]):
-    def __init__(self) -> None:
-        super().__init__()
+class Parse_anki(Node_pandas):
+    path_dir_datasource: str = rf"C:/Users/{os.getlogin()}/AppData/Roaming/Anki2"
 
-
-class Reader_csvs(Node_pandas):
-    def __init__(self, path_dir: str) -> None:
+    def __init__(self, path_dir: str | None = None) -> None:
+        if path_dir is None:
+            path_dir = self.path_dir_datasource
         if not os.path.isdir(path_dir):
             raise ValueError(f"{path_dir} is not a directory")
         super().__init__()
@@ -34,30 +35,17 @@ class Reader_csvs(Node_pandas):
             (super()._hashstr() + str(self.path_dir)).encode()
         ).hexdigest()
 
-    def _available(self) -> bool:
-        return os.path.isdir(self.path_dir)
-
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        to_return: list = []
-        for filename in os.listdir(self.path_dir):
-            if filename.endswith(".csv"):
-                filename_date = datetime.datetime.strptime(
-                    filename.split("_")[-1], "%Y-%m-%d.csv"
-                )
-                if t is not None and not (t.start <= filename_date <= t.end):
-                    continue
-                try:
-                    to_return.append(
-                        pd.read_csv(
-                            os.path.join(
-                                self.path_dir,
-                                filename,
-                            )
-                        )
-                    )
-                except pd.errors.ParserError:
-                    print(f"Error reading {filename}")
-        return pd.concat(to_return, axis=0)
+        # We load the collection
+        col = ankipandas.Collection(rf"{self.path_dir}\User 1\collection.anki2")
+        revisions = col.revs.copy()
+
+        # We parse the revisions column
+        revisions["timestamp"] = revisions["cid"] / 1e3
+        revisions["timestamp"] = revisions["timestamp"].apply(
+            lambda x: datetime.datetime.fromtimestamp(x)
+        )
+        return revisions
 
     def _run_sequential(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None

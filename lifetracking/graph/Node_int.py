@@ -1,10 +1,11 @@
-"""Int nodes are mostly intended to be used for debugging and testing purposes.
+"""Node_int's are mostly intended to be used for debugging and testing purposes.
 
 They include an argument to simulate a delay, so that the execution of the graph can be
 observed."""
 
 from __future__ import annotations
 
+import hashlib
 import time
 from typing import Any
 
@@ -27,8 +28,14 @@ class Node_int_generate(Node_int):
         self.value = value
         self.artificial_delay = artificial_delay
 
-    def _get_children(self) -> set[Node]:
-        return set()
+    def _get_children(self) -> list[Node]:
+        return []
+
+    def _hashstr(self) -> str:
+        return hashlib.md5((super()._hashstr() + str(self.value)).encode()).hexdigest()
+
+    def _available(self) -> bool:
+        return True
 
     def _operation(self, t: Time_interval | None = None) -> int:
         time.sleep(self.artificial_delay)
@@ -48,14 +55,24 @@ class Node_int_generate(Node_int):
         return Node_int_addition(self, other)
 
 
+class Node_int_generate_unavailable(Node_int_generate):
+    """Intended to be used for testing purposes, it's always unavailable"""
+
+    def _available(self) -> bool:
+        return False
+
+
 class Node_int_singleincrement(Node_int):
     def __init__(self, n0: Node_int, artificial_delay: float = 0) -> None:
         super().__init__()
         self.n0 = n0
         self.artificial_delay = artificial_delay
 
-    def _get_children(self) -> set[Node]:
-        return {self.n0}
+    def _get_children(self) -> list[Node]:
+        return [self.n0]
+
+    def _hashstr(self):
+        return super()._hashstr()
 
     def _operation(
         self, n0: int | PrefectFuture[int, Sync], t: Time_interval | None = None
@@ -93,8 +110,11 @@ class Node_int_addition(Node_int):
         self.n1 = n1
         self.artificial_delay = artificial_delay
 
-    def _get_children(self) -> set[Node]:
-        return {self.n0, self.n1}
+    def _get_children(self) -> list[Node]:
+        return [self.n0, self.n1]
+
+    def _hashstr(self) -> str:
+        return super()._hashstr()
 
     def _operation(
         self,

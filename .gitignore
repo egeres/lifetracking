@@ -6,3 +6,9 @@ lifetracking/__pycache__/
 tests/__pycache__/
 
 lifetracking/datatypes/__pycache__/
+
+sketches/
+
+.hypothesis/
+
+.coverage

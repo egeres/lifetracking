@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
 import json
 from typing import Any
 
@@ -41,6 +42,13 @@ class Parse_BLE_info(Node_segments):
     def _get_children(self) -> set[Node]:
         return {self.n0}
 
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (
+                super()._hashstr() + str(json.dumps(self.config.config, sort_keys=True))
+            ).encode()
+        ).hexdigest()
+
     def _operation_skip_Certain_columns(
         self, column_name: str, config: Config, df: pd.DataFrame
     ) -> bool:
@@ -63,7 +71,7 @@ class Parse_BLE_info(Node_segments):
 
         df: pd.DataFrame = n0  # type: ignore
         df.replace(9999.0, np.nan, inplace=True)
-        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed")
 
         to_return = []
         for column_name in list(df.columns):

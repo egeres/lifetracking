@@ -1,29 +1,41 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
 import json
 import os
-from typing import Any
+from functools import reduce
 
-
-class Seg:
-    def __init__(
-        self, start: datetime.datetime, end: datetime.datetime, value: Any | None = None
-    ):
-        self.start = start
-        self.end = end
-        self.value = value
-
-    def __repr__(self) -> str:
-        if self.value is None:
-            return f"[{self.start}|{self.end}]"
-        else:
-            return f"[{self.start}|{self.end}, {self.value}]"
+from lifetracking.datatypes.Seg import Seg
+from lifetracking.graph.Time_interval import Time_interval
 
 
 class Segments:
     def __init__(self, content: list[Seg]) -> None:
+        assert all(
+            seg.start <= seg.end for seg in content
+        ), "Segments must be ordered in time"
         self.content = content
+
+    def _hashstr(self) -> str:
+        assert all(
+            seg.start <= seg.end for seg in self.content
+        ), "Segments must be ordered in time"
+        hshed_content = [seg._hashstr() for seg in self.content]
+        reduced = reduce(lambda x, y: x + y, hshed_content, "")
+        return hashlib.md5(reduced.encode()).hexdigest()
+
+    def __getitem__(self, index: Time_interval) -> Segments:
+        return Segments(
+            [
+                seg
+                for seg in self.content
+                if index.start <= seg.start and seg.end <= index.end
+            ]
+        )
+
+    def __len__(self) -> int:
+        return len(self.content)
 
     def export_to_longcalendar(
         self, path_filename: str, hour_offset: float = 0, opacity: float = 1.0
@@ -52,7 +64,7 @@ class Segments:
                 seg["opacity"] = opacity
 
         if not os.path.exists(os.path.split(path_filename)[0]):
-            os.makedirs(path_filename)
+            os.makedirs(os.path.split(path_filename)[0])
 
         with open(os.path.join(path_filename), "w") as f:
             json.dump(to_export, f, indent=4, default=str)
@@ -62,3 +74,6 @@ class Segments:
 
     def max(self) -> datetime.datetime:
         return max(seg.end for seg in self.content)
+
+    def __add__(self, other: Segments) -> Segments:
+        return Segments(sorted(other.content + self.content))
