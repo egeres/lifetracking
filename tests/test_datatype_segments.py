@@ -4,7 +4,7 @@ import os
 import tempfile
 
 import pytest
-from hypothesis import given
+from hypothesis import given, reproduce_failure, settings
 from hypothesis import strategies as st
 
 from lifetracking.datatypes.Segment import Segments
@@ -67,6 +67,7 @@ def test_segments_minmax_add():
 
 
 @given(st.floats(min_value=0.0, max_value=1.0))
+@settings(deadline=None)  # To avoid hypothesis.errors.Flaky
 def test_export_data_to_lc(opacity: float):
     a = Segments(
         [
