@@ -1,4 +1,4 @@
-"""Int nodes are mostly intended to be used for debugging and testing purposes.
+"""Node_int's are mostly intended to be used for debugging and testing purposes.
 
 They include an argument to simulate a delay, so that the execution of the graph can be
 observed."""
@@ -34,6 +34,9 @@ class Node_int_generate(Node_int):
     def _hashstr(self) -> str:
         return hashlib.md5((super()._hashstr() + str(self.value)).encode()).hexdigest()
 
+    def _available(self) -> bool:
+        return True
+
     def _operation(self, t: Time_interval | None = None) -> int:
         time.sleep(self.artificial_delay)
         return self.value
@@ -50,6 +53,13 @@ class Node_int_generate(Node_int):
 
     def __add__(self, other: Node_int) -> Node_int_addition:
         return Node_int_addition(self, other)
+
+
+class Node_int_generate_unavailable(Node_int_generate):
+    """Intended to be used for testing purposes, it's always unavailable"""
+
+    def _available(self) -> bool:
+        return False
 
 
 class Node_int_singleincrement(Node_int):

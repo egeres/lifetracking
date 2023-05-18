@@ -34,6 +34,9 @@ class Reader_csvs(Node_pandas):
             (super()._hashstr() + str(self.path_dir)).encode()
         ).hexdigest()
 
+    def _available(self) -> bool:
+        return os.path.isdir(self.path_dir)
+
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         to_return: list = []
         for filename in os.listdir(self.path_dir):

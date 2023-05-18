@@ -56,9 +56,3 @@ class Parse_anki(Node_pandas):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[pd.DataFrame, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
-
-
-if __name__ == "__main__":
-    a = Parse_anki()
-    o = a.run()
-    p = 0

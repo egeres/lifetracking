@@ -25,10 +25,25 @@ class Node(ABC, Generic[T]):
     def children(self) -> list[Node]:
         return self._get_children()
 
+    @property
+    def available(self) -> bool:
+        return self._available()
+
     @abstractmethod
     def _get_children(self) -> list[Node]:
         """Returns a set with the children of the node"""
         ...
+
+    @abstractmethod
+    def _hashstr(self) -> str:
+        """Returns a custom hash of the node which should take into account
+        configurations etc..."""
+        return hashlib.md5(self.__class__.__name__.encode()).hexdigest()
+
+    # @abstractmethod
+    def _available(self) -> bool:
+        """Returns whether the node is available to be run"""
+        return self._children_are_available()
 
     @abstractmethod
     def _operation(self, t=None) -> T | None:
@@ -118,17 +133,15 @@ class Node(ABC, Generic[T]):
             context[node] = out
         return out
 
-    @abstractmethod
-    def _hashstr(self) -> str:
-        """Returns a custom hash of the node which should take into account
-        configurations etc..."""
-        return hashlib.md5(self.__class__.__name__.encode()).hexdigest()
-
     def hash_tree(self, debug: bool = False) -> str:
         """Hashes the tree of nodes"""
         hashes = [x.hash_tree(debug) for x in self.children]
         summed = reduce(lambda x, y: x + y, hashes, "")
         return hashlib.md5((summed + self._hashstr()).encode()).hexdigest()
+
+    def _children_are_available(self) -> bool:
+        """Returns whether all the children are available"""
+        return all([x._available() for x in self.children])
 
 
 def run_multiple(

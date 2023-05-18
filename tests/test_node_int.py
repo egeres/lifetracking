@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
 from lifetracking.graph.Node import Node, run_multiple, run_multiple_parallel
 from lifetracking.graph.Node_int import (
     Node_int,
@@ -9,14 +12,17 @@ from lifetracking.graph.Node_int import (
 )
 
 
-def test_run_single_simple():
-    a = Node_int_generate(1)
-    b = Node_int_generate(2)
+@given(st.integers(), st.integers())
+def test_run_single_simple(a_val, b_val):
+    a = Node_int_generate(a_val)
+    b = Node_int_generate(b_val)
     c = a + Node_int_singleincrement(b)
     o = c.run()
-    assert o == 4
+    assert o == a_val + b_val + 1
 
 
+# Currently I'm not interested in testing the prefect integration with hypothesis
+# because it's too slow
 def test_run_single_prefect():
     a = Node_int_generate(1)
     b = Node_int_generate(2)

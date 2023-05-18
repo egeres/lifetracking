@@ -25,16 +25,19 @@ class Node_segments_generate(Node_segments):
     def _get_children(self) -> list[Node]:
         return []
 
+    def _hashstr(self):
+        return hashlib.md5(
+            (super()._hashstr() + self.value._hashstr()).encode()
+        ).hexdigest()
+
+    def _available(self) -> bool:
+        return True
+
     def _operation(self, t: Time_interval | None = None) -> Segments:
         if t is None:
             return self.value
         else:
             return self.value[t]
-
-    def _hashstr(self):
-        return hashlib.md5(
-            (super()._hashstr() + self.value._hashstr()).encode()
-        ).hexdigest()
 
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
