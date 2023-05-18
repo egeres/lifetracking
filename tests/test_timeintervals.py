@@ -1,3 +1,4 @@
+import copy
 import datetime
 
 from hypothesis import given, reproduce_failure, settings
@@ -6,11 +7,37 @@ from hypothesis import strategies as st
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
 
 
+def test_normalize_ends():
+    now = datetime.datetime(2013, 1, 1, 12, 4, 23, 378654)
+    a = Time_interval(
+        now,
+        now
+        + datetime.timedelta(
+            hours=1, minutes=1, seconds=1, microseconds=1, milliseconds=1
+        ),
+    )
+    a_normalized = copy.copy(a).normalize_ends()
+    assert a_normalized.start != a.start
+    assert a_normalized.end != a.end
+
+    a_normalized = a.normalize_ends()
+    assert a_normalized.start == a.start
+    assert a_normalized.end == a.end
+
+
 def test_lastnext_n_something():
     a = Time_interval.today()
     b = Time_interval.last_n_days(0)
     c = Time_interval.next_n_days(0)
     assert a == b == c
+
+    a = Time_interval.today()
+    assert a.start.microsecond == 0
+    assert a.end.microsecond == 999_999
+
+    a = Time_interval.last_decade()
+    assert a.start.microsecond == 0
+    assert a.end.microsecond == 999_999
 
 
 def test_time_iterator_days():

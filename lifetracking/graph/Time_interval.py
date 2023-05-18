@@ -4,6 +4,8 @@ import datetime
 from enum import Enum, auto
 from typing import Iterable
 
+from typing_extensions import Self
+
 from lifetracking.datatypes.Seg import Seg
 
 
@@ -23,6 +25,9 @@ class Time_interval:
         self.start: datetime.datetime = start
         self.end: datetime.datetime = end
 
+    def __eq__(self, other: Time_interval) -> bool:
+        return self.start == other.start and self.end == other.end
+
     def __add__(self, other: datetime.timedelta) -> Time_interval:
         return Time_interval(self.start + other, self.end + other)
 
@@ -32,6 +37,11 @@ class Time_interval:
     def __contains__(self, another: datetime.datetime) -> bool:
         assert isinstance(another, datetime.datetime)
         return self.start <= another <= self.end
+
+    def normalize_ends(self) -> Self:
+        self.start = self.start.replace(hour=0, minute=0, second=0, microsecond=0)
+        self.end = self.end.replace(hour=23, minute=59, second=59, microsecond=999999)
+        return self
 
     def to_seg(self) -> Seg:
         return Seg(self.start, self.end)
@@ -123,16 +133,13 @@ class Time_interval:
 
     @staticmethod
     def last_year():
-        year_days = 365
-        # We take into account if it's a leap year c:
-        if datetime.datetime.now().year % 4 == 0:
-            year_days = 366
-        return Time_interval.last_n_days(year_days)
+        n = datetime.datetime.now()
+        return Time_interval(start=n.replace(year=n.year - 1), end=n).normalize_ends()
 
     @staticmethod
     def last_decade():
         n = datetime.datetime.now()
-        return Time_interval(start=n.replace(year=n.year - 10), end=n)
+        return Time_interval(start=n.replace(year=n.year - 10), end=n).normalize_ends()
 
     @staticmethod
     def next_n_days(n: int) -> Time_interval:
@@ -144,6 +151,3 @@ class Time_interval:
                 hour=23, minute=59, second=59, microsecond=999999
             ),
         )
-
-    def __eq__(self, other: Time_interval) -> bool:
-        return self.start == other.start and self.end == other.end
