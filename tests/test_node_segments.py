@@ -9,7 +9,7 @@ from lifetracking.graph.Time_interval import Time_interval
 
 
 @given(st.integers(min_value=2, max_value=100_000))
-def test_segments_getter(n: int):
+def test_node_segments_getitem_len(n: int):
     a = Node_segments_generate(
         Segments(
             [

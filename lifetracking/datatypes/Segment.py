@@ -64,7 +64,7 @@ class Segments:
                 seg["opacity"] = opacity
 
         if not os.path.exists(os.path.split(path_filename)[0]):
-            os.makedirs(path_filename)
+            os.makedirs(os.path.split(path_filename)[0])
 
         with open(os.path.join(path_filename), "w") as f:
             json.dump(to_export, f, indent=4, default=str)
