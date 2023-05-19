@@ -934,14 +934,14 @@ socks = ["socksio (>=1.0.0,<2.0.0)"]
 
 [[package]]
 name = "httpx"
-version = "0.24.0"
+version = "0.24.1"
 description = "The next generation HTTP client."
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "httpx-0.24.0-py3-none-any.whl", hash = "sha256:447556b50c1921c351ea54b4fe79d91b724ed2b027462ab9a329465d147d5a4e"},
-    {file = "httpx-0.24.0.tar.gz", hash = "sha256:507d676fc3e26110d41df7d35ebd8b3b8585052450f4097401c9be59d928c63e"},
+    {file = "httpx-0.24.1-py3-none-any.whl", hash = "sha256:06781eb9ac53cde990577af654bd990a4949de37a28bdb4a230d434f3a30b9bd"},
+    {file = "httpx-0.24.1.tar.gz", hash = "sha256:5853a43053df830c20f8110c5e69fe44d035d850b2dfe795e196f00fdb774bdd"},
 ]
 
 [package.dependencies]
@@ -1651,14 +1651,14 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "prefect"
-version = "2.10.9"
+version = "2.10.10"
 description = "Workflow orchestration and management."
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "prefect-2.10.9-py3-none-any.whl", hash = "sha256:01093f9f10fec16576d7fc5833b168c9e98936f4461037cf22d122798ff01531"},
-    {file = "prefect-2.10.9.tar.gz", hash = "sha256:0e783af3e6b88eb9bdf1695052c2f0fd2b6d80d9b43274bed8645fbb2fedac7e"},
+    {file = "prefect-2.10.10-py3-none-any.whl", hash = "sha256:95ac36ded34dfcd53ded5c42d76425a90ed403543319d47674d736cccb3021ff"},
+    {file = "prefect-2.10.10.tar.gz", hash = "sha256:45f51fb0e56a18c6b182d1b14877b11eb5ded73939f5ada4630afab8315eb394"},
 ]
 
 [package.dependencies]
