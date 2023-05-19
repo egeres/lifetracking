@@ -78,8 +78,6 @@ class Parse_BLE_info(Node_segments):
             if self._operation_skip_Certain_columns(column_name, config, df):
                 continue
 
-            print("Processing", column_name)
-
             # Pre-data
             name, min_distance = config.config[column_name]
             time_to_wait_before_next = datetime.timedelta(minutes=3.0)
