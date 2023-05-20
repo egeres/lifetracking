@@ -195,6 +195,76 @@ class Node_cache(Node[T]):
 
         return o
 
+    def _load_cache(
+        self,
+        t,
+        context,
+        n0,
+        path_dir_cache,
+        hash_node: str,
+        prefect: bool = False,
+    ):
+        to_return = []
+
+        # Cache data loading
+        path_fil_cache = os.path.join(path_dir_cache, "cache.json")
+        with open(path_fil_cache) as f:
+            cache_info = json.load(f)
+        t_cache = Time_interval(
+            datetime.datetime.fromisoformat(cache_info["start"]),
+            datetime.datetime.fromisoformat(cache_info["end"]),
+        )
+        t = t_cache if t is None else t
+
+        # Okkkkkkkk slice time
+        slices_to_get, slices_to_compute = t.get_overlap_innerouter(t_cache)
+
+        # First, slices to get
+        # TODO: This is a for used with 0, 1 or 2 elements... maybe we can optimize it?
+        for t_sub in slices_to_get:
+            for t_sub_sub in t_sub.iterate_over_interval(self.resolution):
+                if self.resolution == Time_resolution.DAY:
+                    # TODO: Rename this bs
+                    aaaaa = (
+                        t_sub_sub.start.replace(
+                            hour=0, minute=0, second=0, microsecond=0
+                        )
+                        .isoformat()
+                        .split("T")[0]
+                    )
+                    filename_slice = os.path.join(
+                        path_dir_cache,
+                        f"{aaaaa}.pickle",
+                    )
+                    # If the file does not exist, we recompute
+                    if not os.path.exists(filename_slice):
+                        # TODO: Recompute
+                        continue
+                    # If the file has old data, we recompute
+                    if False:
+                        # TODO: Recompute
+                        pass
+                    with open(filename_slice, "rb") as f:
+                        data_slice = pickle.load(f)
+                    to_return.extend(data_slice)
+                else:
+                    raise NotImplementedError
+
+        # Then, slices to compute
+        # TODO: This is a for used with 0, 1 or 2 elements... maybe we can optimize it?
+        for t_sub in slices_to_compute:
+            for t_sub_sub in t_sub.iterate_over_interval(self.resolution):
+                if not prefect:
+                    o = n0._run_sequential(t_sub_sub, context)
+                else:
+                    raise NotImplementedError
+                if o is None:
+                    continue
+                    # return None
+                to_return.extend(o.content)
+
+        return reduce(lambda x, y: x + y, to_return)
+
     def _cache(
         self, n0: Node, t: Time_interval | None = None, context=None, prefect=False
     ):
@@ -206,7 +276,7 @@ class Node_cache(Node[T]):
 
         # Cache validation
         path_fil_cache = os.path.join(path_dir_cache, "cache.json")
-        cache_is_valid = self._validate_cache(path_fil_cache, hash_node)
+        cache_is_valid = self._validate_cache(path_fil_cache, hash_node, t)
 
         # We make a cache
         if not cache_is_valid:
@@ -219,39 +289,16 @@ class Node_cache(Node[T]):
                 prefect,
             )
 
-        # We have a valid cache
-        # with open(path_fil_cache) as f:
-        #     cache_info = json.load(f)
-
-        # We retrieve a cache
-        gathered_data = []
-        for i in t.iterate_over_interval(self.resolution):
-            # We assess the name of the file by the time res
-            if self.resolution == Time_resolution.DAY:
-                day_name = i.start.strftime("%Y-%m-%d")
-            else:
-                raise NotImplementedError  # ¯\_(ツ)_/¯
-
-            # Filename
-            path_fil_cache_slice = os.path.join(path_dir_cache, f"{day_name}.pickle")
-
-            # Cache exists 🤤
-            if os.path.exists(path_fil_cache_slice) and cache_is_valid:
-                with open(path_fil_cache_slice, "rb") as f:
-                    data = pickle.load(f)
-                    gathered_data.append(data)
-
-            # Cache does not exist 🥺
-            else:
-                if not prefect:
-                    data = n0._run_sequential(i, context)
-                else:
-                    data = n0._make_prefect_graph(i, context).result()
-                gathered_data.append(data)
-                with open(path_fil_cache_slice, "wb") as f:
-                    pickle.dump(data, f)
-
-        return reduce(lambda x, y: x + y, gathered_data)
+        # We load what we can from a currently existing cache
+        else:
+            return self._load_cache(
+                t,
+                context,
+                self.n0,
+                path_dir_cache,
+                hash_node,
+                prefect,
+            )
 
     def _run_sequential(self, t=None, context=None) -> T | None:
         return self._cache(self.n0, t, context)
