@@ -166,7 +166,7 @@ class Node_cache(Node[T]):
                     current_day = aa.start.replace(
                         hour=0, minute=0, second=0, microsecond=0
                     ).isoformat()
-                    data_to_save = []
+                    data_to_save = [aa]
                     current_data = {
                         "creation_time": aa.start.replace(
                             hour=0, minute=0, second=0, microsecond=0

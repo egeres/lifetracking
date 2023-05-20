@@ -24,7 +24,7 @@ def test_node_cache_save_tisnone():
                 a - datetime.timedelta(hours=0.0),
                 a - datetime.timedelta(hours=0.5),
                 a - datetime.timedelta(hours=1.3),
-                a - datetime.timedelta(hours=150.0),
+                a - datetime.timedelta(hours=950.0),
             ],
         )
         c = Node_segments_generate(b)
@@ -71,6 +71,7 @@ def test_node_cache_save_tisnone():
             assert data["type"] == "full"
 
         # Validation for the pickle files
+        all_data_count = 0
         path_fil_pickle = [
             os.path.join(path_dir_specific_cache, x)
             for x in os.listdir(path_dir_specific_cache)
@@ -80,3 +81,15 @@ def test_node_cache_save_tisnone():
             data = pickle.load(f)
             assert isinstance(data, Segments)
             assert len(data) < len(b)
+            all_data_count += len(data)
+        path_fil_pickle = [
+            os.path.join(path_dir_specific_cache, x)
+            for x in os.listdir(path_dir_specific_cache)
+            if x.endswith(".pickle")
+        ][1]
+        with open(path_fil_pickle, "rb") as f:
+            data = pickle.load(f)
+            assert isinstance(data, Segments)
+            assert len(data) < len(b)
+            all_data_count += len(data)
+        assert all_data_count == len(b)
