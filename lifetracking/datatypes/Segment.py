@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from functools import reduce
+from typing import overload
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.graph.Time_interval import Time_interval
@@ -21,14 +22,17 @@ class Segments:
         self.content: list[Seg] = sorted(content, key=lambda x: x.start)
 
     def _hashstr(self) -> str:
-        assert all(
-            seg.start <= seg.end for seg in self.content
-        ), "Segments must be ordered in time"
-        hshed_content = [seg._hashstr() for seg in self.content]
-        reduced = reduce(lambda x, y: x + y, hshed_content, "")
-        return hashlib.md5(reduced.encode()).hexdigest()
+        return hashlib.md5(self.__class__.__name__.encode()).hexdigest()
 
-    def __getitem__(self, index: Time_interval | int) -> Segments:
+    @overload
+    def __getitem__(self, index: int) -> Seg:
+        ...
+
+    @overload
+    def __getitem__(self, index: Time_interval) -> Segments:
+        ...
+
+    def __getitem__(self, index: Time_interval | int) -> Segments | Seg:
         if isinstance(index, int):
             return self.content[index]
         elif isinstance(index, Time_interval):

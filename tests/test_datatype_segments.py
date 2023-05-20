@@ -12,8 +12,20 @@ from lifetracking.graph.Node_segments import Node_segments_generate
 from lifetracking.graph.Time_interval import Time_interval
 
 
+def test_segments_getitem_int():
+    a = Time_interval.today().to_seg()
+    b = Segments(
+        [
+            a,
+            Time_interval.last_week().to_seg(),
+            # Time_interval.last_n_days(n).to_seg(),
+        ]
+    )
+    assert b[-1] == a
+
+
 @given(st.integers(min_value=2, max_value=100_000))
-def test_segments_getitem_len(n: int):
+def test_segments_getitem_timeslice(n: int):
     a = Segments(
         [
             Time_interval.today().to_seg(),
