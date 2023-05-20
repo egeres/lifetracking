@@ -2,7 +2,7 @@ import datetime
 from typing import Any
 
 import pytest
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis.strategies import (
     booleans,
     complex_numbers,
@@ -108,6 +108,7 @@ def test_seg_eq():
         complex_numbers(),
     )
 )
+@settings(deadline=None)  # To avoid hypothesis.errors.Flaky
 def test_seg_hashstr(object_of_datatype: Any):
     a = Seg(
         datetime.datetime(2021, 1, 1),

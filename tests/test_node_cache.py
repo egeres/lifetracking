@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import json
 import os
+import pickle
 import tempfile
 
 from lifetracking.datatypes.Segment import Segments
@@ -11,7 +12,7 @@ from lifetracking.graph.Node_segments import Node_segments_generate
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
 
 
-def test_node_cache():
+def test_node_cache_save_tisnone():
     with tempfile.TemporaryDirectory() as path_dir_caches:
         # Hehe, a date
         a = Time_interval.today()
@@ -69,5 +70,13 @@ def test_node_cache():
             assert data["resolution"] == Time_resolution.DAY.value
             assert data["type"] == "full"
 
-        # TODO Not implemented yet!! (run which uses the cache)
-        # o = d.run(t=None)
+        # Validation for the pickle files
+        path_fil_pickle = [
+            os.path.join(path_dir_specific_cache, x)
+            for x in os.listdir(path_dir_specific_cache)
+            if x.endswith(".pickle")
+        ][0]
+        with open(path_fil_pickle, "rb") as f:
+            data = pickle.load(f)
+            assert isinstance(data, Segments)
+            assert len(data) < len(b)

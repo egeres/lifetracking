@@ -17,6 +17,7 @@ def test_get_overlap_innerouter():
     f = Time_interval(a.start - timedelta(hours=999), a.end - timedelta(hours=999))
     g = Time_interval(a.start + timedelta(hours=999), a.end + timedelta(hours=999))
 
+    assert a.get_overlap_innerouter(a) == ([a], [])
     assert a.get_overlap_innerouter(b) == ([b], [])
     assert a.get_overlap_innerouter(c) == (
         [Time_interval(a.start, c.end)],

@@ -12,10 +12,13 @@ from lifetracking.graph.Time_interval import Time_interval
 
 class Segments:
     def __init__(self, content: list[Seg]) -> None:
+        assert all(isinstance(seg, Seg) for seg in content)
         assert all(
             seg.start <= seg.end for seg in content
         ), "Segments must be ordered in time"
-        self.content = content
+
+        # self.content = content # TODO, sort shouldn't actually be neccesary :[
+        self.content = sorted(content, key=lambda x: x.start)
 
     def _hashstr(self) -> str:
         assert all(

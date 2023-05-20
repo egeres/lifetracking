@@ -54,21 +54,33 @@ class Node_cache(Node[T]):
         self,
         path_fil_cache,
         hash_node,
+        t,
     ) -> bool:
         if not os.path.exists(path_fil_cache):
             return False
         try:
             with open(path_fil_cache) as f:
                 cache_info = json.load(f)
+
+                # Is the right resolution
                 if Time_resolution(cache_info["resolution"]) != self.resolution:
                     return False
+
+                # Is the right hash
                 if cache_info["hash_node"] != hash_node:
                     return False
+
+                # Hasn't expired
                 if (
                     datetime.datetime.now()
                     - datetime.datetime.fromisoformat(cache_info["date_creation"])
                 ).days > self.days_to_expire:
                     return False
+
+                # Cache is a slice, but they ask for the full data
+                if cache_info["type"] == "slice" and t is None:
+                    return True
+
         except Exception:
             return False
 
@@ -115,55 +127,66 @@ class Node_cache(Node[T]):
         }
         if self.resolution == Time_resolution.DAY:
             data_to_save = []
+            current_day: str = None  # type: ignore
             current_data: dict[str, Any] = {
                 "creation_time": None,
                 "data_count": None,
             }
             for na, aa in enumerate(o.content):
                 if na == 0:
-                    current_data["creation_time"] = aa.start.replace(
+                    current_day = aa.start.replace(
                         hour=0, minute=0, second=0, microsecond=0
                     ).isoformat()
+                    current_data["creation_time"] = datetime.datetime.now().isoformat()
                     current_data["data_count"] = 1
-                    data_to_save.append(current_data)
+                    data_to_save.append(aa)
                     continue
 
                 if (
                     aa.start.replace(
                         hour=0, minute=0, second=0, microsecond=0
                     ).isoformat()
-                    == current_data["creation_time"]
+                    == current_day
                 ):
                     current_data["data_count"] += 1
-                    data_to_save.append(current_data)
+                    data_to_save.append(aa)
                     continue
                 else:
-                    # We save the previously accumulated data
+                    # Saving data in pickle
                     filename_slice = os.path.join(
-                        path_dir_cache,
-                        f"{current_data['creation_time'].split('T')[0]}.pickle",
+                        path_dir_cache, f"{current_day.split('T')[0]}.pickle"
                     )
                     with open(filename_slice, "wb") as f:
-                        pickle.dump(data_to_save, f)
+                        # pickle.dump(data_to_save, f)
+                        pickle.dump(type(o)(data_to_save), f)
+                    # Saving metadata
                     cache_metadata[current_data["creation_time"]] = current_data
 
-                    # We reset
+                    # We reset stuff
+                    current_day = aa.start.replace(
+                        hour=0, minute=0, second=0, microsecond=0
+                    ).isoformat()
+                    data_to_save = []
                     current_data = {
                         "creation_time": aa.start.replace(
                             hour=0, minute=0, second=0, microsecond=0
                         ).isoformat(),
                         "data_count": 1,
                     }
-                    data_to_save.append(current_data)
-                    continue
+
+            # "After for"
             if len(data_to_save) != 0:
+                # Saving data in pickle
                 filename_slice = os.path.join(
-                    path_dir_cache,
-                    f"{current_data['creation_time'].split('T')[0]}.pickle",
+                    path_dir_cache, f"{current_day.split('T')[0]}.pickle"
                 )
                 with open(filename_slice, "wb") as f:
-                    pickle.dump(data_to_save, f)
+                    # pickle.dump(data_to_save, f)
+                    pickle.dump(type(o)(data_to_save), f)
+                # Saving metadata
                 cache_metadata[current_data["creation_time"]] = current_data
+
+            # Saving the metadata
             cache_info["data"] = cache_metadata
             with open(path_fil_cache, "w") as f:
                 json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
