@@ -18,7 +18,7 @@ class Segments:
         ), "Segments must be ordered in time"
 
         # self.content = content # TODO, sort shouldn't actually be neccesary :[
-        self.content = sorted(content, key=lambda x: x.start)
+        self.content: list[Seg] = sorted(content, key=lambda x: x.start)
 
     def _hashstr(self) -> str:
         assert all(
@@ -28,14 +28,19 @@ class Segments:
         reduced = reduce(lambda x, y: x + y, hshed_content, "")
         return hashlib.md5(reduced.encode()).hexdigest()
 
-    def __getitem__(self, index: Time_interval) -> Segments:
-        return Segments(
-            [
-                seg
-                for seg in self.content
-                if index.start <= seg.start and seg.end <= index.end
-            ]
-        )
+    def __getitem__(self, index: Time_interval | int) -> Segments:
+        if isinstance(index, int):
+            return self.content[index]
+        elif isinstance(index, Time_interval):
+            return Segments(
+                [
+                    seg
+                    for seg in self.content
+                    if index.start <= seg.start and seg.end <= index.end
+                ]
+            )
+        else:
+            raise TypeError("index must be Time_interval or int")
 
     def __len__(self) -> int:
         return len(self.content)
