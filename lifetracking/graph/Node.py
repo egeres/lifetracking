@@ -133,9 +133,9 @@ class Node(ABC, Generic[T]):
             context[node] = out
         return out
 
-    def hash_tree(self, debug: bool = False) -> str:
+    def hash_tree(self) -> str:
         """Hashes the tree of nodes"""
-        hashes = [x.hash_tree(debug) for x in self.children]
+        hashes = [x.hash_tree() for x in self.children]
         summed = reduce(lambda x, y: x + y, hashes, "")
         return hashlib.md5((summed + self._hashstr()).encode()).hexdigest()
 

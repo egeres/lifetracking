@@ -176,7 +176,7 @@ class Node_cache(Node[T]):
         self, n0: Node, t: Time_interval | None = None, context=None, prefect=False
     ):
         # Cache folder management
-        hash_node = self.hash_tree(True)
+        hash_node = self.hash_tree()
         path_dir_cache = os.path.join(self.path_dir_caches, hash_node)
         if not os.path.isdir(path_dir_cache):
             os.makedirs(path_dir_cache)

@@ -22,6 +22,7 @@ class Time_interval:
         start: datetime.datetime,
         end: datetime.datetime,
     ):
+        assert start <= end
         self.start: datetime.datetime = start
         self.end: datetime.datetime = end
 
@@ -37,6 +38,50 @@ class Time_interval:
     def __contains__(self, another: datetime.datetime) -> bool:
         assert isinstance(another, datetime.datetime)
         return self.start <= another <= self.end
+
+    def get_overlap_innerouter(
+        self, another: Time_interval
+    ) -> tuple[list[Time_interval], list[Time_interval]]:
+        """Given another time interval (B), it returns a tuple of two lists of
+        overlaps expressed in time intervals against the instance (A). The first
+        list contains the overlap of B against A, the second list, the
+        non-overlapping part of B against A.
+
+        [Overlapping, Non-overlapping]"""
+
+        # If "another" interval is within self interval
+        if another.start >= self.start and another.end <= self.end:
+            return [another], []
+
+        # "another" has 0 overlap
+        elif another.end <= self.start:
+            return [], [another]
+
+        # "another" has 0 overlap
+        elif another.start >= self.end:
+            return [], [another]
+
+        # If "another" interval is completely covering self interval
+        elif another.start <= self.start and another.end >= self.end:
+            return [self], [
+                Time_interval(another.start, self.start),
+                Time_interval(self.end, another.end),
+            ]
+
+        # Partial overlap on the left
+        elif another.start <= self.start and another.end <= self.end:
+            return [Time_interval(self.start, another.end)], [
+                Time_interval(another.end, self.end)
+            ]
+
+        # Partial overlap on the right
+        elif another.start >= self.start and another.end >= self.end:
+            return [Time_interval(another.start, self.end)], [
+                Time_interval(self.start, another.start)
+            ]
+
+        else:
+            raise ValueError("Unhandled case ??")
 
     def normalize_ends(self) -> Self:
         self.start = self.start.replace(hour=0, minute=0, second=0, microsecond=0)

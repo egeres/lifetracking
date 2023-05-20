@@ -1,10 +1,37 @@
 import copy
 import datetime
+from datetime import timedelta
 
 from hypothesis import given, reproduce_failure, settings
 from hypothesis import strategies as st
 
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
+
+
+def test_get_overlap_innerouter():
+    a = Time_interval.today()
+    b = Time_interval(a.start + timedelta(hours=4), a.end - timedelta(hours=4))
+    c = Time_interval(a.start - timedelta(hours=8), a.end)
+    d = Time_interval(a.start, a.end + timedelta(hours=8))
+    e = Time_interval(a.start - timedelta(hours=8), a.end + timedelta(hours=8))
+    f = Time_interval(a.start - timedelta(hours=999), a.end - timedelta(hours=999))
+    g = Time_interval(a.start + timedelta(hours=999), a.end + timedelta(hours=999))
+
+    assert a.get_overlap_innerouter(b) == ([b], [])
+    assert a.get_overlap_innerouter(c) == (
+        [Time_interval(a.start, c.end)],
+        [Time_interval(c.start, a.start), Time_interval(c.end, a.end)],
+    )
+    assert a.get_overlap_innerouter(d) == (
+        [Time_interval(d.start, a.end)],
+        [Time_interval(a.start, d.start), Time_interval(a.end, d.end)],
+    )
+    assert a.get_overlap_innerouter(e) == (
+        [a],
+        [Time_interval(e.start, a.start), Time_interval(a.end, e.end)],
+    )
+    assert a.get_overlap_innerouter(f) == ([], [f])
+    assert a.get_overlap_innerouter(g) == ([], [g])
 
 
 def test_normalize_ends():
