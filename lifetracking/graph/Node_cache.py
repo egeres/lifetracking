@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import datetime
 import json
 import os
@@ -88,10 +89,10 @@ class Node_cache(Node[T]):
 
     def _save_cache(
         self,
-        t,
-        context,
-        n0,
-        path_dir_cache,
+        t: Time_interval | None,
+        context: dict,
+        n0: Node,
+        path_dir_cache: str,
         hash_node: str,
         prefect: bool = False,
     ):
@@ -197,10 +198,10 @@ class Node_cache(Node[T]):
 
     def _load_cache(
         self,
-        t,
-        context,
-        n0,
-        path_dir_cache,
+        t: Time_interval | None,
+        context: dict,
+        n0: Node,
+        path_dir_cache: str,
         hash_node: str,
         prefect: bool = False,
     ):
@@ -222,7 +223,16 @@ class Node_cache(Node[T]):
         # First, slices to get
         # TODO: This is a for used with 0, 1 or 2 elements... maybe we can optimize it?
         for t_sub in slices_to_get:
-            for t_sub_sub in t_sub.iterate_over_interval(self.resolution):
+            # Truncate the time interval to the day
+            t_sub_truncated = copy.copy(t_sub)
+            t_sub_truncated.start = t_sub_truncated.start.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            t_sub_truncated.end = t_sub_truncated.end.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+
+            for t_sub_sub in t_sub_truncated.iterate_over_interval(self.resolution):
                 if self.resolution == Time_resolution.DAY:
                     # TODO: Rename this bs
                     aaaaa = (
@@ -238,30 +248,44 @@ class Node_cache(Node[T]):
                     )
                     # If the file does not exist, we recompute
                     if not os.path.exists(filename_slice):
-                        # TODO: Recompute
+                        # TODO: Recompute & save
                         continue
                     # If the file has old data, we recompute
                     if False:
-                        # TODO: Recompute
+                        # TODO: Recompute & save
                         pass
                     with open(filename_slice, "rb") as f:
-                        data_slice = pickle.load(f)
-                    to_return.extend(data_slice)
+                        # data_slice = pickle.load(f)
+                        # TODO: The t_sub feels redundantish...?
+                        data_slice = pickle.load(f)[t_sub]
+                    # to_return.extend(data_slice.content)
+                    to_return.append(data_slice)
                 else:
                     raise NotImplementedError
 
         # Then, slices to compute
         # TODO: This is a for used with 0, 1 or 2 elements... maybe we can optimize it?
         for t_sub in slices_to_compute:
-            for t_sub_sub in t_sub.iterate_over_interval(self.resolution):
+            # Truncate the time interval to the day
+            t_sub_truncated = copy.copy(t_sub)
+            t_sub_truncated.start = t_sub_truncated.start.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            t_sub_truncated.end = t_sub_truncated.end.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+
+            for t_sub_sub in t_sub_truncated.iterate_over_interval(self.resolution):
                 if not prefect:
-                    o = n0._run_sequential(t_sub_sub, context)
+                    # This redundancy is a bit dumb, I need to think about it
+                    o = n0._run_sequential(t_sub_sub, context)[t_sub]
                 else:
                     raise NotImplementedError
                 if o is None:
                     continue
                     # return None
-                to_return.extend(o.content)
+                # to_return.extend(o.content)
+                to_return.append(o)
 
         return reduce(lambda x, y: x + y, to_return)
 
@@ -305,7 +329,3 @@ class Node_cache(Node[T]):
 
     def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture[T, Sync]:
         return self._cache(self.n0, t, context, prefect=True)
-
-
-# class Node_cache_pandas(Node_cache[pd.DataFrame]):
-#     pass

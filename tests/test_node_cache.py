@@ -93,3 +93,63 @@ def test_node_cache_save_tisnone():
             assert len(data) < len(b)
             all_data_count += len(data)
         assert all_data_count == len(b)
+
+
+def test_node_cache_load_tisnone():  # Difficult!
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        # First run
+        a = Time_interval.today()
+        a.start = a.start.replace(hour=12, minute=0, second=0, microsecond=0)
+        a.end = a.end.replace(hour=13, minute=0, second=0, microsecond=0)
+        a = a.to_seg()
+        b = Segments(
+            [
+                a - datetime.timedelta(hours=0.0),
+                a - datetime.timedelta(hours=0.5),
+                a - datetime.timedelta(hours=1.3),
+                a - datetime.timedelta(hours=950.0),
+            ],
+        )
+        c = Node_segments_generate(b)
+        d = Node_cache(c, path_dir_caches=path_dir_caches)
+        _ = d.run(t=None)
+
+        # The part that we're actually interested in
+        o = d.run(t=None)  # ✨
+
+        assert o is not None
+        assert isinstance(o, Segments)
+        assert len(o) == len(b)
+        assert o.min() == b.min()
+        assert o.max() == b.max()
+
+
+def test_node_cache_load_tissomething():
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        # First run
+        a = Time_interval.today()
+        a.start = a.start.replace(hour=12, minute=0, second=0, microsecond=0)
+        a.end = a.end.replace(hour=13, minute=0, second=0, microsecond=0)
+        a = a.to_seg()
+        b = Segments(
+            [
+                a - datetime.timedelta(hours=0.0),
+                a - datetime.timedelta(hours=0.5),
+                a - datetime.timedelta(hours=1.3),
+                a - datetime.timedelta(hours=950.0),
+            ],
+        )
+        c = Node_segments_generate(b)
+        d = Node_cache(c, path_dir_caches=path_dir_caches)
+        _ = d.run(t=None)
+
+        # The part that we're actually interested in
+        a = Time_interval.today()
+        a.start -= datetime.timedelta(days=2)
+        a.end += datetime.timedelta(days=2)
+        o = d.run(t=a)  # ✨
+
+        assert o is not None
+        assert isinstance(o, Segments)
+        assert len(o) == 3
+        assert len(o[a]) == 3
