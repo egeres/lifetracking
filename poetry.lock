@@ -213,6 +213,18 @@ jupyter = ["ipython (>=7.8.0)", "tokenize-rt (>=3.2.0)"]
 uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
+name = "browser-history"
+version = "0.3.2"
+description = "A python module to extract browser history"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "browser-history-0.3.2.tar.gz", hash = "sha256:e9cb1c93cb04a51d1b650f3ef99e4d8cdd0a934b3920e7c7cad0ab5a4091709c"},
+    {file = "browser_history-0.3.2-py3-none-any.whl", hash = "sha256:6fac6ba436c70bffc7efa468bd807aafa3426035b470d7e93e05360909c24eb3"},
+]
+
+[[package]]
 name = "cachetools"
 version = "3.1.1"
 description = "Extensible memoizing collections and decorators"
@@ -2676,4 +2688,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9"
-content-hash = "7c920c52d960d59ba3313d9bd5fd32543ebb00cdb12de371991c1b397504120c"
+content-hash = "5c93b8eca406b6534836e0a3e24f73707c6d9642b2011d07e7633acfb302edeb"

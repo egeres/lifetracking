@@ -35,6 +35,9 @@ class Parse_anki(Node_pandas):
             (super()._hashstr() + str(self.path_dir)).encode()
         ).hexdigest()
 
+    def _available(self) -> bool:
+        return os.path.isdir(self.path_dir)
+
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         # We load the collection
         col = ankipandas.Collection(rf"{self.path_dir}\User 1\collection.anki2")
