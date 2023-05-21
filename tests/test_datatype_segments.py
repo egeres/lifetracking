@@ -23,6 +23,9 @@ def test_segments_getitem_int():
     )
     assert b[-1] == a
 
+    with pytest.raises(TypeError):
+        b["asdadad"]  # type: ignore
+
 
 @given(st.integers(min_value=2, max_value=100_000))
 def test_segments_getitem_timeslice(n: int):
