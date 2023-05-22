@@ -56,6 +56,7 @@ class Parse_browserhistory(Node_pandas):
         )
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+        assert t is None or isinstance(t, Time_interval)
         dfs_to_concat = []
         for i in self.browsers:
             # if we are in windows, there are some conds where we might skip

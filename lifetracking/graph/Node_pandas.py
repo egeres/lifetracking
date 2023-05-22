@@ -38,6 +38,7 @@ class Reader_csvs(Node_pandas):
         return os.path.isdir(self.path_dir)
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+        assert t is None or isinstance(t, Time_interval)
         to_return: list = []
         for filename in os.listdir(self.path_dir):
             if filename.endswith(".csv"):

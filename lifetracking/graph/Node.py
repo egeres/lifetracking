@@ -11,6 +11,8 @@ from prefect.futures import PrefectFuture
 from prefect.task_runners import ConcurrentTaskRunner
 from prefect.utilities.asyncutils import Sync
 
+from lifetracking.graph.Time_interval import Time_interval
+
 T = TypeVar("T")
 U = TypeVar("U")
 
@@ -62,14 +64,15 @@ class Node(ABC, Generic[T]):
 
     def run(
         self,
+        t: Time_interval | None = None,
         prefect: bool = False,
-        t: Any = None,
         context: dict[Node, Any] | None = None,
     ) -> T | None:
         """Entry point to run the graph"""
 
         assert context is None or isinstance(context, dict)
         assert isinstance(prefect, bool)
+        assert t is None or isinstance(t, Time_interval)
 
         # Prepare stuff
         self.last_run_info = {}
@@ -149,7 +152,7 @@ def run_multiple(
 ) -> Iterable[Any]:
     """Computes multiple nodes in sequence"""
 
-    return [node.run(prefect, t) for node in nodes_to_run]
+    return [node.run(t, prefect) for node in nodes_to_run]
 
 
 def run_multiple_parallel(

@@ -34,6 +34,7 @@ class Node_segments_generate(Node_segments):
         return True
 
     def _operation(self, t: Time_interval | None = None) -> Segments:
+        assert t is None or isinstance(t, Time_interval)
         if t is None:
             return self.value
         else:
