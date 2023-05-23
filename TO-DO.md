@@ -13,6 +13,10 @@ Nodes
   - [x] Creation
 
 - [ ] AW
+  - [x] Get all buckets
+  - [x] Get data for window case
+  - [ ] Get data for AFK case?
+
 - [ ] GPS
 - [ ] Video
 - [ ] Commits
