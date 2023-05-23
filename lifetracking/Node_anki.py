@@ -71,15 +71,15 @@ class Parse_anki_creation(Parse_anki_study):
         col = ankipandas.Collection(rf"{self.path_dir}\User 1\collection.anki2")
         cards = col.cards.copy()
         cards = cards.rename(columns={"cdeck": "deck"})
-        cards["creation_date"] = cards.index / 1e3
-        cards["creation_date"] = cards["creation_date"].apply(
+        cards["timestamp"] = cards.index / 1e3
+        cards["timestamp"] = cards["timestamp"].apply(
             lambda x: datetime.datetime.fromtimestamp(x)
         )
 
         # We filter by time interval
         if t is not None:
             return cards[
-                (cards["creation_date"] >= t.start) & (cards["creation_date"] <= t.end)
+                (cards["timestamp"] >= t.start) & (cards["timestamp"] <= t.end)
             ]
 
         return cards
