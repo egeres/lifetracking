@@ -1,4 +1,5 @@
 import hashlib
+import os
 import socket
 
 import pytest
@@ -18,7 +19,7 @@ reason = "Test is skipped due because it's very specific and dependent of \
 
 
 @pytest.mark.skipif(
-    get_computer_name_hash() != hash_pc,
+    os.environ.get("GITHUB_ACTIONS") == "true" and get_computer_name_hash() != hash_pc,
     reason=reason,
 )
 def test_node_anki_study():
@@ -33,7 +34,7 @@ def test_node_anki_study():
 
 
 @pytest.mark.skipif(
-    get_computer_name_hash() != hash_pc,
+    os.environ.get("GITHUB_ACTIONS") == "true" and get_computer_name_hash() != hash_pc,
     reason=reason,
 )
 def test_node_anki_create():
