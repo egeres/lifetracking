@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import os
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 from prefect import task as prefect_task
@@ -17,6 +17,42 @@ from lifetracking.graph.Time_interval import Time_interval
 class Node_pandas(Node[pd.DataFrame]):
     def __init__(self) -> None:
         super().__init__()
+
+
+class Node_pandas_generate(Node_pandas):
+    """Really for debugging purposes I guess"""
+
+    def __init__(self, df: pd.DataFrame) -> None:
+        assert isinstance(df, pd.DataFrame)
+        super().__init__()
+        self.df = df
+
+    def _get_children(self) -> list[Node]:
+        return []
+
+    def _hashstr(self) -> str:
+        # TODO: Decide if all static generators will be done in this way...
+        return super()._hashstr()
+
+    def _available(self) -> bool:
+        return self.df is not None
+
+    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+        assert t is None or isinstance(t, Time_interval)
+        df = self.df.copy()
+        if t is not None:
+            return df[t.start : t.end]
+        return df
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> pd.DataFrame | None:
+        return self._operation(t)
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[pd.DataFrame, Sync]:
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 
 
 class Reader_csvs(Node_pandas):
