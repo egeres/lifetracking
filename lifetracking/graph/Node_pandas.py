@@ -18,7 +18,8 @@ class Node_pandas(Node[pd.DataFrame]):
     def __init__(self) -> None:
         super().__init__()
 
-    def filter(self, f: Callable[[pd.DataFrame], pd.DataFrame]) -> Node_pandas:
+    def filter(self, f: Callable[[pd.Series], bool]) -> Node_pandas:
+        assert isinstance(f, Callable)
         return Node_pandas_filter(self, f)
 
 
@@ -59,7 +60,7 @@ class Node_pandas_generate(Node_pandas):
 
 
 class Node_pandas_filter(Node_pandas):
-    def __init__(self, n0: Node_pandas, fn_filter) -> None:
+    def __init__(self, n0: Node_pandas, fn_filter: Callable[[pd.Series], bool]) -> None:
         assert isinstance(n0, Node_pandas)
         super().__init__()
         self.n0 = n0
@@ -82,10 +83,7 @@ class Node_pandas_filter(Node_pandas):
         t: Time_interval | None = None,
     ) -> pd.DataFrame:
         assert t is None or isinstance(t, Time_interval)
-        # return self.fn_filter(self.n0[t])
-
-        # if self.fn_filter is true, then we keep those rows
-        return n0[n0.apply(self.fn_filter, axis=1)]
+        return n0[n0.apply(self.fn_filter, axis=1)]  # type: ignore
 
     def _run_sequential(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None

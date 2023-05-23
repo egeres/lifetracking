@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import hashlib
+import time
 from typing import Any
 
+import pandas as pd
 from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 
 from lifetracking.datatypes.Segment import Segments
 from lifetracking.graph.Node import Node
+from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Time_interval import Time_interval
 
 
@@ -49,3 +52,45 @@ class Node_segments_generate(Node_segments):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> Segments | None:
         return self._operation(t)
+
+
+class Node_segments_from_pdDataframe(Node_segments):
+    def __init__(self, n0: Node_pandas, config) -> None:
+        super().__init__()
+        self.n0 = n0
+        self.config = config
+
+    def _get_children(self) -> list[Node]:
+        return [self.n0]
+
+    def _hashstr(self):
+        return hashlib.md5((super()._hashstr() + str(self.config)).encode()).hexdigest()
+
+    def _operation(
+        self,
+        n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
+        t: Time_interval | None = None,
+    ) -> pd.DataFrame:
+        raise NotImplementedError
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> pd.DataFrame | None:
+        # Node is calculated if it's not in the context, then _operation is called
+        n0_out = self._get_value_from_context_or_run(self.n0, t, context)
+        if n0_out is None:
+            return None
+        return self._operation(
+            n0_out,
+            t,
+        )
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[pd.DataFrame, Sync]:
+        # Node graph is calculated if it's not in the context, then _operation is called
+        n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
+            n0_out,
+            t,
+        )
