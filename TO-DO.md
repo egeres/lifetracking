@@ -13,10 +13,6 @@ Nodes
   - [x] Creation
 
 - [ ] AW
-  - [x] Get all buckets
-  - [x] Get data for window case
-  - [ ] Get data for AFK case?
-
 - [ ] GPS
 - [ ] Video
 - [ ] Commits
@@ -39,12 +35,18 @@ Nodes
   - [ ] Pulse polar
   - [ ] Glucose?
   - [ ] Gyroscope
+- [ ] Nodes
+  - [ ] Node_pandas
+    - [ ] Filter()
+
 
 
 
 Feats
 
 - [ ] Make a milestones system
+
+- [ ] Add asserts on all the nodes with non 0 children pls
 
 - [ ] Plots
   - [ ] First design of the system on paper
@@ -72,6 +74,8 @@ Feats
 
 
 Refactor
+
+- [ ] Rename `_get_children` to just `_children`
 
 - [ ] Does `class Config:` really make sense?
 - [ ] Current `prefect_task(name=self.__class__.__name__)` causes name conflicts, can we add a dynamic hash or anything of the sort?

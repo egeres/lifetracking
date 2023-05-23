@@ -55,6 +55,54 @@ class Node_pandas_generate(Node_pandas):
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 
 
+class Node_pandas_filter(Node_pandas):
+    def __init__(self, n0: Node_pandas, fn_filter) -> None:
+        assert isinstance(n0, Node_pandas)
+        super().__init__()
+        self.n0 = n0
+        self.fn_filter = fn_filter
+
+    def _get_children(self) -> list[Node]:
+        return [self.n0]
+
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (super()._hashstr() + str(self.fn_filter)).encode()
+        ).hexdigest()
+
+    def _available(self) -> bool:
+        return self.n0.available
+
+    def _operation(
+        self,
+        n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
+        t: Time_interval | None = None,
+    ) -> pd.DataFrame:
+        assert t is None or isinstance(t, Time_interval)
+        # return self.fn_filter(self.n0[t])
+
+        # if self.fn_filter is true, then we keep those rows
+        return n0[n0.apply(self.fn_filter, axis=1)]
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> pd.DataFrame | None:
+        n0_out = self._get_value_from_context_or_run(self.n0, t, context)
+        if n0_out is None:
+            return None
+        return self._operation(n0_out, t)
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[pd.DataFrame, Sync] | None:
+        n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
+        if n0_out is None:
+            return None
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
+            n0_out, t
+        )
+
+
 class Reader_csvs(Node_pandas):
     def __init__(self, path_dir: str) -> None:
         if not os.path.isdir(path_dir):
