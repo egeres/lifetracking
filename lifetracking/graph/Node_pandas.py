@@ -18,6 +18,9 @@ class Node_pandas(Node[pd.DataFrame]):
     def __init__(self) -> None:
         super().__init__()
 
+    def filter(self, f: Callable[[pd.DataFrame], pd.DataFrame]) -> Node_pandas:
+        return Node_pandas_filter(self, f)
+
 
 class Node_pandas_generate(Node_pandas):
     """Really for debugging purposes I guess"""

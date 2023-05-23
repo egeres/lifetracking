@@ -13,6 +13,10 @@ Nodes
   - [x] Creation
 
 - [ ] AW
+  - [x] Get all buckets
+  - [x] Get data for window case
+  - [ ] Get data for AFK case?
+
 - [ ] GPS
 - [ ] Video
 - [ ] Commits
@@ -80,6 +84,7 @@ Refactor
 - [ ] Does `class Config:` really make sense?
 - [ ] Current `prefect_task(name=self.__class__.__name__)` causes name conflicts, can we add a dynamic hash or anything of the sort?
 - [ ] Rename `Node_anki.py` to `Reader_anki.py`? Like, bruh, we know it's gonna be nodes n such
+- [ ] Rename all the tests to add consistency, pls
 
 
 

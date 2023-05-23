@@ -117,6 +117,14 @@ class Time_interval:
         else:
             raise ValueError(f"Unsupported time resolution: {resolution}")
 
+    @property
+    def duration_days(self) -> float:
+        """Careful! things like .last_week() are usually longer than 7 days,
+        this is because it's not a week per se, but the last 7 days, starting
+        and ending at 00:00 and 23:59 respectively."""
+
+        return (self.end - self.start).total_seconds() / 86400
+
     @staticmethod
     def last_n_days(n: int, now: datetime.datetime | None = None) -> Time_interval:
         if now is None:

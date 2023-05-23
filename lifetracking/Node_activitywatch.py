@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import time
 from typing import Any
 
 import pandas as pd
@@ -88,7 +87,7 @@ class Parse_activitywatch(Node_pandas):
                 "timestamp": x["timestamp"],
                 "duration": x["duration"],
             }
-            | x["data"]  # 😰
+            | x["data"]  # 🙄 Ugh, dumb or genius?
             for x in out
         ]
         return pd.DataFrame(out)

@@ -21,6 +21,9 @@ class Node_int(Node[int]):
     def __init__(self) -> None:
         super().__init__()
 
+    def __add__(self, other: Node_int) -> Node_int_addition:
+        return Node_int_addition(self, other)
+
 
 class Node_int_generate(Node_int):
     def __init__(self, value: int, artificial_delay: float = 0) -> None:
@@ -50,9 +53,6 @@ class Node_int_generate(Node_int):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[int, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
-
-    def __add__(self, other: Node_int) -> Node_int_addition:
-        return Node_int_addition(self, other)
 
 
 class Node_int_generate_unavailable(Node_int_generate):

@@ -8,6 +8,27 @@ from hypothesis import strategies as st
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
 
 
+def test_contains():
+    # Is IIIIN
+    a = Time_interval.last_week()
+    now = datetime.datetime.now() - timedelta(days=1)
+    assert now in a
+
+    # Is NOT in... 🥺
+    a = Time_interval.last_week()
+    a += timedelta(days=1000)
+    assert now not in a
+    a = Time_interval.last_week()
+    a -= timedelta(days=1000)
+    assert now not in a
+
+
+def test_timeinterval():
+    a = Time_interval.last_week()
+    assert a.start < a.end
+    assert a.duration_days <= 7 + 1
+
+
 def test_get_overlap_innerouter():
     a = Time_interval.today()
     b = Time_interval(a.start + timedelta(hours=4), a.end - timedelta(hours=4))
