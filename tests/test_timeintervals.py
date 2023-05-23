@@ -2,7 +2,7 @@ import copy
 import datetime
 from datetime import timedelta
 
-from hypothesis import given, reproduce_failure, settings
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution

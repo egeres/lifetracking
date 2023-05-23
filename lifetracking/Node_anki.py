@@ -36,7 +36,7 @@ class Parse_anki_study(Node_pandas):
         ).hexdigest()
 
     def _available(self) -> bool:
-        return os.path.isdir(self.path_dir)
+        return os.path.exists(self.path_dir)
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         col = ankipandas.Collection(rf"{self.path_dir}\User 1\collection.anki2")

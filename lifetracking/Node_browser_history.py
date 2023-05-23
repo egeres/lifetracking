@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import datetime
-import hashlib
 import os
 from typing import Any
 
-import ankipandas
 import pandas as pd
 from browser_history.browsers import (
     Brave,

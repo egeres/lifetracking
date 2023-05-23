@@ -68,6 +68,7 @@ class Parse_BLE_info(Node_segments):
     ) -> Segments:
         assert n0 is not None
         assert config is not None
+        assert t is None or isinstance(t, Time_interval)
 
         df: pd.DataFrame = n0  # type: ignore
         df.replace(9999.0, np.nan, inplace=True)

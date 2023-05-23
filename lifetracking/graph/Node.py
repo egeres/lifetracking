@@ -29,6 +29,7 @@ class Node(ABC, Generic[T]):
 
     @property
     def available(self) -> bool:
+        """Is the node available? 🤔"""
         return self._available()
 
     @abstractmethod
@@ -44,12 +45,12 @@ class Node(ABC, Generic[T]):
 
     # @abstractmethod
     def _available(self) -> bool:
-        """Returns whether the node is available to be run"""
+        """Returns whether the node is available to be run or not"""
         return self._children_are_available()
 
     @abstractmethod
     def _operation(self, t=None) -> T | None:
-        """The main operation of the node"""
+        """Main operation of the node"""
         ...
 
     @abstractmethod
@@ -151,7 +152,6 @@ def run_multiple(
     nodes_to_run: list[Node], t=None, prefect: bool = False
 ) -> Iterable[Any]:
     """Computes multiple nodes in sequence"""
-
     return [node.run(t, prefect) for node in nodes_to_run]
 
 

@@ -4,7 +4,6 @@ import datetime
 import hashlib
 import json
 import os
-from functools import reduce
 from typing import overload
 
 from lifetracking.datatypes.Seg import Seg

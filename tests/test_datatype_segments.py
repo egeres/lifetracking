@@ -4,11 +4,10 @@ import os
 import tempfile
 
 import pytest
-from hypothesis import given, reproduce_failure, settings
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from lifetracking.datatypes.Segment import Segments
-from lifetracking.graph.Node_segments import Node_segments_generate
 from lifetracking.graph.Time_interval import Time_interval
 
 

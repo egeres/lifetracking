@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import datetime
 import hashlib
-import os
 import time
 from typing import Any
 
@@ -26,14 +24,13 @@ class Parse_activitywatch(Node_pandas):
         return []
 
     def _hashstr(self) -> str:
-        return hashlib.md5((super()._hashstr() + self.config).encode()).hexdigest()
+        return hashlib.md5((super()._hashstr() + self.bucket_name).encode()).hexdigest()
 
     def _available(self) -> bool:
-        # Is the server alive?
-        url_buckets: str = "http://localhost:5600/api/0/buckets"
+        """Checks if the server is alive and has the bucket"""
         try:
-            r = requests.get(url_buckets)
-            r.raise_for_status()  # Raises a HTTPError if the status is 4xx, 5xxx
+            r = requests.get("http://localhost:5600/api/0/buckets")
+            r.raise_for_status()
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             return False
         except requests.exceptions.HTTPError:
@@ -50,18 +47,10 @@ class Parse_activitywatch(Node_pandas):
     def _get_buckets(self, url_base: str = "http://localhost:5600") -> list[dict]:
         """Extracts a particular type of bucket"""
 
-        out = requests.get(
-            f"{url_base}/api/0/buckets",
-        )
-
-        if out.status_code == 200:
-            return out.json()  # Regular case
-            # content = out.json()
-            # return list(
-            #     filter(lambda x: x["client"] == "aw-watcher-window", content.values())
-            # )
-        else:
+        out = requests.get(f"{url_base}/api/0/buckets")
+        if out.status_code != 200:
             raise Exception("The connection had a problem!")
+        return out.json()
 
     def _get_data(self, bucket: dict, t: Time_interval | None = None) -> list:
         params = {}
@@ -81,6 +70,8 @@ class Parse_activitywatch(Node_pandas):
         return out.json()
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+        assert t is None or isinstance(t, Time_interval)
+
         # We get out bucket
         buckets = self._get_buckets()
         if self.bucket_name not in buckets:
@@ -90,7 +81,7 @@ class Parse_activitywatch(Node_pandas):
         # Data request
         out = self._get_data(bucket, t)
 
-        # Data formatting
+        # Formatting
         out = [
             {
                 "id": x["id"],
