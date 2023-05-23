@@ -16,7 +16,7 @@ from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Time_interval import Time_interval
 
 
-class Parse_anki(Node_pandas):
+class Parse_anki_study(Node_pandas):
     path_dir_datasource: str = rf"C:/Users/{os.getlogin()}/AppData/Roaming/Anki2"
 
     def __init__(self, path_dir: str | None = None) -> None:
@@ -39,15 +39,20 @@ class Parse_anki(Node_pandas):
         return os.path.isdir(self.path_dir)
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        # We load the collection
         col = ankipandas.Collection(rf"{self.path_dir}\User 1\collection.anki2")
         revisions = col.revs.copy()
-
-        # We parse the revisions column
+        # TODO: Add deck column
         revisions["timestamp"] = revisions["cid"] / 1e3
         revisions["timestamp"] = revisions["timestamp"].apply(
             lambda x: datetime.datetime.fromtimestamp(x)
         )
+
+        # We filter by time interval
+        if t is not None:
+            return revisions[
+                (revisions["timestamp"] >= t.start) & (revisions["timestamp"] <= t.end)
+            ]
+
         return revisions
 
     def _run_sequential(
@@ -59,3 +64,22 @@ class Parse_anki(Node_pandas):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[pd.DataFrame, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
+
+
+class Parse_anki_creation(Parse_anki_study):
+    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+        col = ankipandas.Collection(rf"{self.path_dir}\User 1\collection.anki2")
+        cards = col.cards.copy()
+        cards = cards.rename(columns={"cdeck": "deck"})
+        cards["creation_date"] = cards.index / 1e3
+        cards["creation_date"] = cards["creation_date"].apply(
+            lambda x: datetime.datetime.fromtimestamp(x)
+        )
+
+        # We filter by time interval
+        if t is not None:
+            return cards[
+                (cards["creation_date"] >= t.start) & (cards["creation_date"] <= t.end)
+            ]
+
+        return cards

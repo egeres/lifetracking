@@ -2,16 +2,55 @@
 
 
 
+Nodes
+
+
+
+- [x] Anki
+
+  - [x] Study
+
+  - [x] Creation
+
+- [ ] AW
+- [ ] GPS
+- [ ] Video
+- [ ] Commits
+- [ ] File creation
+  - [ ] Version for known dateformat in name? (for photos)
+- [x] BLE beacons
+- [x] Browser history
+- [ ] Google calendar
+- [ ] Pomodoros
+- [ ] Meditation
+- [ ] Phone calls
+- [ ] Sleep
+- [ ] Phone AW
+- [ ] Zamb
+- [ ] CO2 / humid /...
+- [ ] Parse exported telegram chat....?
+- [ ] Bio
+  - [ ] Weight
+  - [ ] Pulse miband
+  - [ ] Pulse polar
+  - [ ] Glucose?
+  - [ ] Gyroscope
+
+
 
 Feats
 
-- [ ] Add anki input node
+- [ ] Make a milestones system
+
+- [ ] Plots
+  - [ ] First design of the system on paper
+
 - [ ] Add cache system
   - [x] First implementation
   - [ ] `cache_info` has granularity (meaning, a `data` field per day/time-unit)
   - [ ] Graph or value is gathered from context in case it exists, kinda like `_get_value_from_context_or_run` or `_get_value_from_context_or_makegraph`
-  - [ ] Add tests to cache system 😣
-  - [ ] Configurable cache folder (maybe useful if user wants sharable caches?)
+  - [x] Add tests 101 to cache system 😣
+  - [x] Configurable cache folder (maybe useful if user wants sharable caches?)
 
 - [ ] Stats module to see what info is available...?
   - [ ] Info available
@@ -21,6 +60,10 @@ Feats
   - [ ] First draft
 
 - [ ] Run has `skip_cache` argument
+
+- [ ] Configure the verification token from github into girkraken?
+
+- [ ] `Segments` has `__eq__`
 
 
 
@@ -63,4 +106,8 @@ Doubts
 
 
 
+
+Forks
+
+- [ ] Maybe fork this: browser_history\generic.py, fetch_history to add support to date selection...? Or is that too overkill?
 
