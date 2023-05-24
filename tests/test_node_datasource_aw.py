@@ -9,7 +9,6 @@ from dateutil import parser
 
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.Node_activitywatch import Parse_activitywatch
-from lifetracking.Node_anki import Parse_anki_creation, Parse_anki_study
 
 
 def get_computer_name_hash():

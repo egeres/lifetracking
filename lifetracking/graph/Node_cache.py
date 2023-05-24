@@ -157,11 +157,18 @@ class Node_cache(Node[T]):
                     filename_slice = os.path.join(
                         path_dir_cache, f"{current_day.split('T')[0]}.pickle"
                     )
+                    print("Saving data in pickle", filename_slice)
                     with open(filename_slice, "wb") as f:
                         # pickle.dump(data_to_save, f)
                         pickle.dump(type(o)(data_to_save), f)
                     # Saving metadata
-                    cache_metadata[current_data["creation_time"]] = current_data
+                    # cache_metadata[current_data["creation_time"]] = current_data
+                    # cache_metadata[
+                    #     aa.start.replace(
+                    #         hour=0, minute=0, second=0, microsecond=0
+                    #     ).isoformat()
+                    # ] = current_data
+                    cache_metadata[current_day] = current_data
 
                     # We reset stuff
                     current_day = aa.start.replace(
@@ -169,9 +176,10 @@ class Node_cache(Node[T]):
                     ).isoformat()
                     data_to_save = [aa]
                     current_data = {
-                        "creation_time": aa.start.replace(
-                            hour=0, minute=0, second=0, microsecond=0
-                        ).isoformat(),
+                        # "creation_time": aa.start.replace(
+                        #     hour=0, minute=0, second=0, microsecond=0
+                        # ).isoformat(),
+                        "creation_time": datetime.datetime.now().isoformat(),
                         "data_count": 1,
                     }
 
@@ -181,11 +189,17 @@ class Node_cache(Node[T]):
                 filename_slice = os.path.join(
                     path_dir_cache, f"{current_day.split('T')[0]}.pickle"
                 )
+                print("Saving data in pickle", filename_slice)
                 with open(filename_slice, "wb") as f:
                     # pickle.dump(data_to_save, f)
                     pickle.dump(type(o)(data_to_save), f)
                 # Saving metadata
-                cache_metadata[current_data["creation_time"]] = current_data
+                # cache_metadata[current_data["creation_time"]] = current_data
+                cache_metadata[
+                    aa.start.replace(
+                        hour=0, minute=0, second=0, microsecond=0
+                    ).isoformat()
+                ] = current_data
 
             # Saving the metadata
             cache_info["data"] = cache_metadata
@@ -218,7 +232,7 @@ class Node_cache(Node[T]):
         t = t_cache if t is None else t
 
         # Okkkkkkkk slice time
-        slices_to_get, slices_to_compute = t.get_overlap_innerouter(t_cache)
+        slices_to_get, slices_to_compute = t_cache.get_overlap_innerouter(t)
 
         # First, slices to get
         # TODO: This is a for used with 0, 1 or 2 elements... maybe we can optimize it?
@@ -251,13 +265,17 @@ class Node_cache(Node[T]):
                         # TODO: Recompute & save
                         continue
                     # If the file has old data, we recompute
-                    if False:
-                        # TODO: Recompute & save
-                        pass
+                    # if False:
+                    #     # TODO: Recompute & save
+                    #     pass
                     with open(filename_slice, "rb") as f:
                         # data_slice = pickle.load(f)
                         # TODO: The t_sub feels redundantish...?
-                        data_slice = pickle.load(f)[t_sub]
+                        # data_slice = pickle.load(f)[t_sub]
+                        ddddd = pickle.load(f)
+                        # data_slice = ddddd[t_sub]
+                        data_slice = ddddd[t_sub_sub]
+
                     # to_return.extend(data_slice.content)
                     to_return.append(data_slice)
                 else:
@@ -275,6 +293,8 @@ class Node_cache(Node[T]):
                 hour=0, minute=0, second=0, microsecond=0
             )
 
+            # TODO: This actually creates a data overlap
+
             for t_sub_sub in t_sub_truncated.iterate_over_interval(self.resolution):
                 if not prefect:
                     # This redundancy is a bit dumb, I need to think about it
@@ -286,6 +306,35 @@ class Node_cache(Node[T]):
                     # return None
                 # to_return.extend(o.content)
                 to_return.append(o)
+
+                # Saving data in pickle
+                if len(o) > 0:
+                    filename_slice = os.path.join(
+                        path_dir_cache,
+                        t_sub_sub.start.replace(
+                            hour=0, minute=0, second=0, microsecond=0
+                        )
+                        .isoformat()
+                        .split("T")[0]
+                        + ".pickle",
+                    )
+                    with open(filename_slice, "wb") as f:
+                        pickle.dump(o, f)
+
+                    cache_info["data"][
+                        t_sub_sub.start.replace(
+                            hour=0, minute=0, second=0, microsecond=0
+                        ).isoformat()
+                    ] = {
+                        "creation_time": datetime.datetime.now().isoformat(),
+                        "data_count": len(o),
+                    }
+
+            # Saving the metadata
+            # cache_info["start"] = # TODO: Finish this
+            # cache_info["end"] = # TODO: Finish this
+            with open(path_fil_cache, "w") as f:
+                json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
 
         return reduce(lambda x, y: x + y, to_return)
 
