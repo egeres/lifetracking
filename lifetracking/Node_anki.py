@@ -17,7 +17,9 @@ from lifetracking.graph.Time_interval import Time_interval
 
 
 class Parse_anki_study(Node_pandas):
-    path_dir_datasource: str = rf"C:/Users/{os.getlogin()}/AppData/Roaming/Anki2"
+    path_dir_datasource: str = os.path.join(
+        os.path.expanduser("~"), "AppData", "Roaming", "Anki2"
+    )
 
     def __init__(self, path_dir: str | None = None) -> None:
         if path_dir is None:
@@ -39,7 +41,9 @@ class Parse_anki_study(Node_pandas):
         return os.path.exists(self.path_dir)
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        col = ankipandas.Collection(rf"{self.path_dir}\User 1\collection.anki2")
+        col = ankipandas.Collection(
+            os.path.join(self.path_dir, "User 1", "collection.anki2")
+        )
         revisions = col.revs.copy()
         # TODO: Add deck column
         revisions["timestamp"] = revisions["cid"] / 1e3
@@ -68,7 +72,9 @@ class Parse_anki_study(Node_pandas):
 
 class Parse_anki_creation(Parse_anki_study):
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        col = ankipandas.Collection(rf"{self.path_dir}\User 1\collection.anki2")
+        col = ankipandas.Collection(
+            os.path.join(self.path_dir, "User 1", "collection.anki2")
+        )
         cards = col.cards.copy()
         cards = cards.rename(columns={"cdeck": "deck"})
         cards["timestamp"] = cards.index / 1e3
