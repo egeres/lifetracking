@@ -225,40 +225,18 @@ class Node_cache(Node[T]):
 
         return o
 
-    def _load_cache(
+    def _slices_to_get_rename_this(
         self,
-        t: Time_interval | None,
-        context: dict,
-        n0: Node,
+        input_slices: list[Time_interval],
         path_dir_cache: str,
-        hash_node: str,
-        prefect: bool = False,
     ):
-        # TODO: Refactor, almost too complex
         to_return = []
-
-        # Cache data loading
-        path_fil_cache = os.path.join(path_dir_cache, "cache.json")
-        with open(path_fil_cache) as f:
-            cache_info = json.load(f)
-        t_cache = Time_interval(
-            datetime.datetime.fromisoformat(cache_info["start"]),
-            datetime.datetime.fromisoformat(cache_info["end"]),
-        )
-        t = t_cache if t is None else t
-
-        # Okkkkkkkk slice time
-        slices_to_get, slices_to_compute = t_cache.get_overlap_innerouter(t)
-
-        # First, slices to get
-        # TODO: This is a for used with 0, 1 or 2 elements... maybe we can optimize it?
-        for t_sub in slices_to_get:
+        for t_sub in input_slices:
             # TODO: This actually creates a data overlap
             t_sub_truncated = copy.copy(t_sub).truncate(self.resolution)
-
             for t_sub_sub in t_sub_truncated.iterate_over_interval(self.resolution):
                 if self.resolution == Time_resolution.DAY:
-                    # TODO: Rename this bs
+                    # TODO: Rename this bs name for the var
                     filename_slice_date = (
                         t_sub_sub.start.replace(
                             hour=0, minute=0, second=0, microsecond=0
@@ -270,28 +248,40 @@ class Node_cache(Node[T]):
                         path_dir_cache,
                         f"{filename_slice_date}.pickle",
                     )
+
                     # If the file does not exist, we recompute
                     if not os.path.exists(filename_slice):
                         # TODO: Recompute & save
                         continue
                     # If the file has old data, we recompute
-                    # if False:
-                    #     # TODO: Recompute & save
-                    #     pass
+                    if False:
+                        # TODO: Recompute & save
+                        pass
                     with open(filename_slice, "rb") as f:
                         data_slice = pickle.load(f)[t_sub_sub]
-
                     # to_return.extend(data_slice.content)
                     to_return.append(data_slice)
                 else:
                     raise NotImplementedError
+        return to_return
+
+    def _slices_to_compute_rename_this(
+        self,
+        input_slices: list[Time_interval],
+        path_dir_cache: str,
+        prefect: bool,
+        context: dict[str, Any],
+        n0: Node,
+        cache_info: dict[str, Any],
+    ):
+        path_fil_cache = os.path.join(path_dir_cache, "cache.json")
+        to_return = []
 
         # Then, slices to compute
         # TODO: This is a for used with 0, 1 or 2 elements... maybe we can optimize it?
-        for t_sub in slices_to_compute:
+        for t_sub in input_slices:
             # TODO: This actually creates a data overlap
             t_sub_truncated = copy.copy(t_sub).truncate(self.resolution)
-
             for t_sub_sub in t_sub_truncated.iterate_over_interval(self.resolution):
                 if not prefect:
                     # This redundancy is a bit dumb, I need to think about it
@@ -315,7 +305,6 @@ class Node_cache(Node[T]):
                     )
                     with open(filename_slice, "wb") as f:
                         pickle.dump(o, f)
-
                     cache_info["data"][
                         t_sub_sub.start.replace(
                             hour=0, minute=0, second=0, microsecond=0
@@ -330,5 +319,44 @@ class Node_cache(Node[T]):
             # cache_info["end"] = # TODO: Finish this
             with open(path_fil_cache, "w") as f:
                 json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
+
+        return to_return
+
+    def _load_cache(
+        self,
+        t: Time_interval | None,
+        context: dict,
+        n0: Node,
+        path_dir_cache: str,
+        hash_node: str,
+        prefect: bool = False,
+    ):
+        # TODO: Refactor, almost too complex
+        to_return = []
+
+        # Cache data loading
+        path_fil_cache = os.path.join(path_dir_cache, "cache.json")
+        with open(path_fil_cache) as f:
+            cache_info = json.load(f)
+        t_cache = Time_interval(
+            datetime.datetime.fromisoformat(cache_info["start"]),
+            datetime.datetime.fromisoformat(cache_info["end"]),
+        )
+        t = t_cache if t is None else t
+
+        # Slices gonna slice
+        slices_to_get, slices_to_compute = t_cache.get_overlap_innerouter(t)
+        to_return += self._slices_to_get_rename_this(
+            slices_to_get,
+            path_dir_cache,
+        )
+        to_return += self._slices_to_compute_rename_this(
+            slices_to_compute,
+            path_dir_cache,
+            prefect,
+            context,
+            n0,
+            cache_info,
+        )
 
         return reduce(lambda x, y: x + y, to_return)
