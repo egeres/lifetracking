@@ -27,6 +27,9 @@ reason = "Test is skipped due because it's very specific and dependent of \
     reason=reason,
 )
 def test_node_aw_0():
+    print("GH actions =", os.environ.get("GITHUB_ACTIONS"))
+    print("hash       =", get_computer_name_hash())
+
     # We dynamically get the most recent bucket
     buckets = Parse_activitywatch._get_buckets()
     buckets_list = [v for k, v in buckets.items() if "aw-watcher-window" in k]
@@ -51,3 +54,10 @@ def test_node_aw_0():
         ).total_seconds()
         / 86400
     )
+
+    prev_shape = o.shape[0]
+    b = a.filter(lambda x: x["app"] in ["firefox.exe"])
+    o = b.run(t)
+    assert o is not None
+    assert o.shape[0] > 0
+    assert o.shape[0] < prev_shape

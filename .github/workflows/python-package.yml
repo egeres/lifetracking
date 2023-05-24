@@ -13,6 +13,10 @@ jobs:
         python-version: ["3.9", "3.10", "3.11"]
 
     steps:
+      - name: Print environment variables
+        run: |
+          echo "GITHUB_ACTIONS: ${{ env.GITHUB_ACTIONS }}"
+
       - name: Checkout code
         uses: actions/checkout@v3
 
