@@ -43,7 +43,8 @@ class Parse_activitywatch(Node_pandas):
         # I guess so :[
         return True
 
-    def _get_buckets(self, url_base: str = "http://localhost:5600") -> list[dict]:
+    @staticmethod
+    def _get_buckets(url_base: str = "http://localhost:5600") -> list[dict]:
         """Extracts a particular type of bucket"""
 
         out = requests.get(f"{url_base}/api/0/buckets")
