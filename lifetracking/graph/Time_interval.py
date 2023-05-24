@@ -45,6 +45,20 @@ class Time_interval:
             + f",{self.end.strftime('%Y-%m-%d %H:%M')}>"
         )
 
+    def truncate(self, time_res: Time_resolution) -> Time_interval:
+        if time_res == Time_resolution.HOUR:
+            return Time_interval(
+                self.start.replace(minute=0, second=0, microsecond=0),
+                self.end.replace(minute=59, second=59, microsecond=999999),
+            )
+        elif time_res == Time_resolution.DAY:
+            return Time_interval(
+                self.start.replace(hour=0, minute=0, second=0, microsecond=0),
+                self.end.replace(hour=23, minute=59, second=59, microsecond=999999),
+            )
+        else:
+            raise ValueError(f"Unsupported time resolution: {time_res}")
+
     def get_overlap_innerouter(
         self, another: Time_interval
     ) -> tuple[list[Time_interval], list[Time_interval]]:

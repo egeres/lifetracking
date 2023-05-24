@@ -2,6 +2,7 @@ import copy
 import datetime
 from datetime import timedelta
 
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -21,6 +22,24 @@ def test_contains():
     a = Time_interval.last_week()
     a -= timedelta(days=1000)
     assert now not in a
+
+
+def test_timeinterval_truncate():
+    a = Time_interval(
+        datetime.datetime(2021, 1, 1, 12, 5, 23),
+        datetime.datetime(2021, 1, 1, 13, 4, 3),
+    )
+
+    b = a.truncate(Time_resolution.HOUR)
+    assert b.start == datetime.datetime(2021, 1, 1, 12, 0, 0)
+    assert b.end == datetime.datetime(2021, 1, 1, 13, 59, 59, 999999)
+
+    b = a.truncate(Time_resolution.DAY)
+    assert b.start == datetime.datetime(2021, 1, 1, 0, 0, 0)
+    assert b.end == datetime.datetime(2021, 1, 1, 23, 59, 59, 999999)
+
+    with pytest.raises(ValueError):
+        b = a.truncate(999)  # type: ignore
 
 
 def test_timeinterval():

@@ -46,10 +46,45 @@ class Node_cache(Node[T]):
         return super()._hashstr()
 
     def _operation(
-        self, n0: T | PrefectFuture[T, Sync], t: Time_interval | None = None
-    ) -> T | None:
-        # TODO further ivnestigate this (In this case is empty (?))
-        pass
+        self, n0: Node, t: Time_interval | None = None, context=None, prefect=False
+    ):
+        # Cache folder management
+        hash_node = self.hash_tree()
+        path_dir_cache = os.path.join(self.path_dir_caches, hash_node)
+        if not os.path.isdir(path_dir_cache):
+            os.makedirs(path_dir_cache)
+
+        # Cache validation
+        path_fil_cache = os.path.join(path_dir_cache, "cache.json")
+        cache_is_valid = self._validate_cache(path_fil_cache, hash_node, t)
+
+        # We make a cache
+        if not cache_is_valid:
+            return self._save_cache(
+                t,
+                context,
+                n0,
+                path_dir_cache,
+                hash_node,
+                prefect,
+            )
+
+        # We load what we can from a currently existing cache
+        else:
+            return self._load_cache(
+                t,
+                context,
+                n0,
+                path_dir_cache,
+                hash_node,
+                prefect,
+            )
+
+    def _run_sequential(self, t=None, context=None) -> T | None:
+        return self._operation(self.n0, t, context)
+
+    def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture[T, Sync]:
+        return self._operation(self.n0, t, context, prefect=True)
 
     def _validate_cache(
         self,
@@ -153,21 +188,12 @@ class Node_cache(Node[T]):
                     data_to_save.append(aa)
                     continue
                 else:
-                    # Saving data in pickle
+                    # Saving data in pickle & metadata
                     filename_slice = os.path.join(
                         path_dir_cache, f"{current_day.split('T')[0]}.pickle"
                     )
-                    print("Saving data in pickle", filename_slice)
                     with open(filename_slice, "wb") as f:
-                        # pickle.dump(data_to_save, f)
                         pickle.dump(type(o)(data_to_save), f)
-                    # Saving metadata
-                    # cache_metadata[current_data["creation_time"]] = current_data
-                    # cache_metadata[
-                    #     aa.start.replace(
-                    #         hour=0, minute=0, second=0, microsecond=0
-                    #     ).isoformat()
-                    # ] = current_data
                     cache_metadata[current_day] = current_data
 
                     # We reset stuff
@@ -176,30 +202,19 @@ class Node_cache(Node[T]):
                     ).isoformat()
                     data_to_save = [aa]
                     current_data = {
-                        # "creation_time": aa.start.replace(
-                        #     hour=0, minute=0, second=0, microsecond=0
-                        # ).isoformat(),
                         "creation_time": datetime.datetime.now().isoformat(),
                         "data_count": 1,
                     }
 
             # "After for"
             if len(data_to_save) != 0:
-                # Saving data in pickle
+                # Saving data in pickle & metadata
                 filename_slice = os.path.join(
                     path_dir_cache, f"{current_day.split('T')[0]}.pickle"
                 )
-                print("Saving data in pickle", filename_slice)
                 with open(filename_slice, "wb") as f:
-                    # pickle.dump(data_to_save, f)
                     pickle.dump(type(o)(data_to_save), f)
-                # Saving metadata
-                # cache_metadata[current_data["creation_time"]] = current_data
-                cache_metadata[
-                    aa.start.replace(
-                        hour=0, minute=0, second=0, microsecond=0
-                    ).isoformat()
-                ] = current_data
+                cache_metadata[current_day] = current_data
 
             # Saving the metadata
             cache_info["data"] = cache_metadata
@@ -238,19 +253,13 @@ class Node_cache(Node[T]):
         # First, slices to get
         # TODO: This is a for used with 0, 1 or 2 elements... maybe we can optimize it?
         for t_sub in slices_to_get:
-            # Truncate the time interval to the day
-            t_sub_truncated = copy.copy(t_sub)
-            t_sub_truncated.start = t_sub_truncated.start.replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
-            t_sub_truncated.end = t_sub_truncated.end.replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
+            # TODO: This actually creates a data overlap
+            t_sub_truncated = copy.copy(t_sub).truncate(self.resolution)
 
             for t_sub_sub in t_sub_truncated.iterate_over_interval(self.resolution):
                 if self.resolution == Time_resolution.DAY:
                     # TODO: Rename this bs
-                    aaaaa = (
+                    filename_slice_date = (
                         t_sub_sub.start.replace(
                             hour=0, minute=0, second=0, microsecond=0
                         )
@@ -259,7 +268,7 @@ class Node_cache(Node[T]):
                     )
                     filename_slice = os.path.join(
                         path_dir_cache,
-                        f"{aaaaa}.pickle",
+                        f"{filename_slice_date}.pickle",
                     )
                     # If the file does not exist, we recompute
                     if not os.path.exists(filename_slice):
@@ -270,12 +279,7 @@ class Node_cache(Node[T]):
                     #     # TODO: Recompute & save
                     #     pass
                     with open(filename_slice, "rb") as f:
-                        # data_slice = pickle.load(f)
-                        # TODO: The t_sub feels redundantish...?
-                        # data_slice = pickle.load(f)[t_sub]
-                        ddddd = pickle.load(f)
-                        # data_slice = ddddd[t_sub]
-                        data_slice = ddddd[t_sub_sub]
+                        data_slice = pickle.load(f)[t_sub_sub]
 
                     # to_return.extend(data_slice.content)
                     to_return.append(data_slice)
@@ -285,16 +289,8 @@ class Node_cache(Node[T]):
         # Then, slices to compute
         # TODO: This is a for used with 0, 1 or 2 elements... maybe we can optimize it?
         for t_sub in slices_to_compute:
-            # Truncate the time interval to the day
-            t_sub_truncated = copy.copy(t_sub)
-            t_sub_truncated.start = t_sub_truncated.start.replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
-            t_sub_truncated.end = t_sub_truncated.end.replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
-
             # TODO: This actually creates a data overlap
+            t_sub_truncated = copy.copy(t_sub).truncate(self.resolution)
 
             for t_sub_sub in t_sub_truncated.iterate_over_interval(self.resolution):
                 if not prefect:
@@ -304,8 +300,6 @@ class Node_cache(Node[T]):
                     raise NotImplementedError
                 if o is None:
                     continue
-                    # return None
-                # to_return.extend(o.content)
                 to_return.append(o)
 
                 # Saving data in pickle
@@ -338,44 +332,3 @@ class Node_cache(Node[T]):
                 json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
 
         return reduce(lambda x, y: x + y, to_return)
-
-    def _cache(
-        self, n0: Node, t: Time_interval | None = None, context=None, prefect=False
-    ):
-        # Cache folder management
-        hash_node = self.hash_tree()
-        path_dir_cache = os.path.join(self.path_dir_caches, hash_node)
-        if not os.path.isdir(path_dir_cache):
-            os.makedirs(path_dir_cache)
-
-        # Cache validation
-        path_fil_cache = os.path.join(path_dir_cache, "cache.json")
-        cache_is_valid = self._validate_cache(path_fil_cache, hash_node, t)
-
-        # We make a cache
-        if not cache_is_valid:
-            return self._save_cache(
-                t,
-                context,
-                self.n0,
-                path_dir_cache,
-                hash_node,
-                prefect,
-            )
-
-        # We load what we can from a currently existing cache
-        else:
-            return self._load_cache(
-                t,
-                context,
-                self.n0,
-                path_dir_cache,
-                hash_node,
-                prefect,
-            )
-
-    def _run_sequential(self, t=None, context=None) -> T | None:
-        return self._cache(self.n0, t, context)
-
-    def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture[T, Sync]:
-        return self._cache(self.n0, t, context, prefect=True)
