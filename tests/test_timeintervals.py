@@ -40,14 +40,8 @@ def test_get_overlap_innerouter():
 
     assert a.get_overlap_innerouter(a) == ([a], [])
     assert a.get_overlap_innerouter(b) == ([b], [])
-    assert a.get_overlap_innerouter(c) == (
-        [Time_interval(a.start, c.end)],
-        [Time_interval(c.start, a.start), Time_interval(c.end, a.end)],
-    )
-    assert a.get_overlap_innerouter(d) == (
-        [Time_interval(d.start, a.end)],
-        [Time_interval(a.start, d.start), Time_interval(a.end, d.end)],
-    )
+    assert a.get_overlap_innerouter(c) == ([a], [Time_interval(c.start, a.start)])
+    assert a.get_overlap_innerouter(d) == ([a], [Time_interval(a.end, d.end)])
     assert a.get_overlap_innerouter(e) == (
         [a],
         [Time_interval(e.start, a.start), Time_interval(a.end, e.end)],

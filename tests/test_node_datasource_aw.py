@@ -23,7 +23,9 @@ reason = "Test is skipped due because it's very specific and dependent of \
 
 
 @pytest.mark.skipif(
-    os.environ.get("CI") == "true" or get_computer_name_hash() != hash_pc,
+    os.name != "nt"
+    or os.environ.get("CI") == "true"
+    or get_computer_name_hash() != hash_pc,
     reason=reason,
 )
 def test_node_aw_0():

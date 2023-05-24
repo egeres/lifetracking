@@ -39,6 +39,12 @@ class Time_interval:
         assert isinstance(another, datetime.datetime)
         return self.start <= another <= self.end
 
+    def __repr__(self) -> str:
+        return (
+            f"<{self.start.strftime('%Y-%m-%d %H:%M')}"
+            + f",{self.end.strftime('%Y-%m-%d %H:%M')}>"
+        )
+
     def get_overlap_innerouter(
         self, another: Time_interval
     ) -> tuple[list[Time_interval], list[Time_interval]]:
@@ -61,23 +67,23 @@ class Time_interval:
         elif another.start >= self.end:
             return [], [another]
 
-        # If "another" interval is completely covering self interval
-        elif another.start <= self.start and another.end >= self.end:
+        # If "another" starts before self and ends within self
+        elif another.start < self.start and another.end <= self.end:
+            return [Time_interval(self.start, another.end)], [
+                Time_interval(another.start, self.start)
+            ]
+
+        # If "another" starts within self and ends after self
+        elif another.start >= self.start and another.end > self.end:
+            return [Time_interval(another.start, self.end)], [
+                Time_interval(self.end, another.end)
+            ]
+
+        # If "another" starts before self and ends after self
+        elif another.start < self.start and another.end > self.end:
             return [self], [
                 Time_interval(another.start, self.start),
                 Time_interval(self.end, another.end),
-            ]
-
-        # Partial overlap on the left
-        elif another.start <= self.start and another.end <= self.end:
-            return [Time_interval(self.start, another.end)], [
-                Time_interval(another.end, self.end)
-            ]
-
-        # Partial overlap on the right
-        elif another.start >= self.start and another.end >= self.end:
-            return [Time_interval(another.start, self.end)], [
-                Time_interval(self.start, another.start)
             ]
 
         else:

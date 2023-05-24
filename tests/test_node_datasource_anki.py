@@ -18,8 +18,17 @@ reason = "Test is skipped due because it's very specific and dependent of \
             in a computer make a PR!!)"
 
 
+def test_print_stuff():
+    print("GH actions =", os.environ.get("GITHUB_ACTIONS"))
+    print("CI         =", os.environ.get("CI"))
+    print("hash       =", get_computer_name_hash())
+    print("os.name    =", os.name)
+
+
 @pytest.mark.skipif(
-    os.environ.get("CI") == "true" or get_computer_name_hash() != hash_pc,
+    os.name != "nt"
+    or os.environ.get("CI") == "true"
+    or get_computer_name_hash() != hash_pc,
     reason=reason,
 )
 def test_node_anki_study():
@@ -34,7 +43,9 @@ def test_node_anki_study():
 
 
 @pytest.mark.skipif(
-    os.environ.get("CI") == "true" or get_computer_name_hash() != hash_pc,
+    os.name != "nt"
+    or os.environ.get("CI") == "true"
+    or get_computer_name_hash() != hash_pc,
     reason=reason,
 )
 def test_node_anki_create():
