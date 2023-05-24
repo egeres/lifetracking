@@ -219,6 +219,7 @@ class Node_cache(Node[T]):
         hash_node: str,
         prefect: bool = False,
     ):
+        # TODO: Refactor, almost too complex
         to_return = []
 
         # Cache data loading
