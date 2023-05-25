@@ -60,20 +60,28 @@ class Node_pandas_generate(Node_pandas):
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 
 
-class Node_pandas_filter(Node_pandas):
-    def __init__(self, n0: Node_pandas, fn_filter: Callable[[pd.Series], bool]) -> None:
+class Node_pandas_operation(Node_pandas):
+    def __init__(
+        self,
+        n0: Node_pandas,
+        operation: Callable[
+            [pd.DataFrame | PrefectFuture[pd.DataFrame, Sync]], pd.DataFrame
+        ],
+    ) -> None:
         assert isinstance(n0, Node_pandas)
         super().__init__()
         self.n0 = n0
-        self.fn_filter = fn_filter
+        self.operation = operation
 
     def _get_children(self) -> list[Node]:
         return [self.n0]
 
     def _hashstr(self) -> str:
-        return hashlib.md5(
-            (super()._hashstr() + str(self.fn_filter)).encode()
-        ).hexdigest()
+        instructions = list(dis.get_instructions(self.operation))
+        dis_output = "\n".join(
+            [f"{i.offset} {i.opname} {i.argrepr}" for i in instructions]
+        )
+        return hashlib.md5((super()._hashstr() + str(dis_output)).encode()).hexdigest()
 
     def _available(self) -> bool:
         return self.n0.available
@@ -84,7 +92,7 @@ class Node_pandas_filter(Node_pandas):
         t: Time_interval | None = None,
     ) -> pd.DataFrame:
         assert t is None or isinstance(t, Time_interval)
-        return n0[n0.apply(self.fn_filter, axis=1)]  # type: ignore
+        return self.operation(n0)
 
     def _run_sequential(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
@@ -103,6 +111,12 @@ class Node_pandas_filter(Node_pandas):
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(
             n0_out, t
         )
+
+
+class Node_pandas_filter(Node_pandas_operation):
+    def __init__(self, n0: Node_pandas, fn_filter: Callable[[pd.Series], bool]) -> None:
+        assert isinstance(n0, Node_pandas)
+        super().__init__(n0, lambda df: df[df.apply(fn_filter, axis=1)])  # type: ignore
 
 
 class Reader_csvs(Node_pandas):
