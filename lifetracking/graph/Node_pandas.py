@@ -20,8 +20,13 @@ class Node_pandas(Node[pd.DataFrame]):
         super().__init__()
 
     def filter(self, f: Callable[[pd.Series], bool]) -> Node_pandas:
-        assert isinstance(f, Callable)
         return Node_pandas_filter(self, f)
+
+    def operation(
+        self,
+        f: Callable[[pd.DataFrame | PrefectFuture[pd.DataFrame, Sync]], pd.DataFrame],
+    ) -> Node_pandas:
+        return Node_pandas_operation(self, f)
 
 
 class Node_pandas_generate(Node_pandas):
@@ -64,20 +69,21 @@ class Node_pandas_operation(Node_pandas):
     def __init__(
         self,
         n0: Node_pandas,
-        operation: Callable[
+        fn_operation: Callable[
             [pd.DataFrame | PrefectFuture[pd.DataFrame, Sync]], pd.DataFrame
         ],
     ) -> None:
+        assert callable(fn_operation), "operation_main must be callable"
         assert isinstance(n0, Node_pandas)
         super().__init__()
         self.n0 = n0
-        self.operation = operation
+        self.fn_operation = fn_operation
 
     def _get_children(self) -> list[Node]:
         return [self.n0]
 
     def _hashstr(self) -> str:
-        instructions = list(dis.get_instructions(self.operation))
+        instructions = list(dis.get_instructions(self.fn_operation))
         dis_output = "\n".join(
             [f"{i.offset} {i.opname} {i.argrepr}" for i in instructions]
         )
@@ -92,7 +98,7 @@ class Node_pandas_operation(Node_pandas):
         t: Time_interval | None = None,
     ) -> pd.DataFrame:
         assert t is None or isinstance(t, Time_interval)
-        return self.operation(n0)
+        return self.fn_operation(n0)
 
     def _run_sequential(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
@@ -115,6 +121,7 @@ class Node_pandas_operation(Node_pandas):
 
 class Node_pandas_filter(Node_pandas_operation):
     def __init__(self, n0: Node_pandas, fn_filter: Callable[[pd.Series], bool]) -> None:
+        assert callable(fn_filter), "operation_main must be callable"
         assert isinstance(n0, Node_pandas)
         super().__init__(n0, lambda df: df[df.apply(fn_filter, axis=1)])  # type: ignore
 
@@ -203,7 +210,6 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
 
             # Get through the files we care about
             for sub_file in os.listdir(path_dir):
-                print("sub_file", sub_file)
                 if not os.path.isfile(os.path.join(path_dir, sub_file)):
                     continue
                 if self.criteria_to_select_file(sub_file):
