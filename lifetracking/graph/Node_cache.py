@@ -46,7 +46,11 @@ class Node_cache(Node[T]):
         return super()._hashstr()
 
     def _operation(
-        self, n0: Node, t: Time_interval | None = None, context=None, prefect=False
+        self,
+        n0: Node,
+        t: Time_interval | None = None,
+        context: dict | None = None,
+        prefect=False,
     ):
         # Cache folder management
         hash_node = self.hash_tree()
@@ -62,10 +66,10 @@ class Node_cache(Node[T]):
         if not cache_is_valid:
             return self._save_cache(
                 t,
-                context,
                 n0,
                 path_dir_cache,
                 hash_node,
+                context,
                 prefect,
             )
 
@@ -73,10 +77,10 @@ class Node_cache(Node[T]):
         else:
             return self._load_cache(
                 t,
-                context,
                 n0,
                 path_dir_cache,
                 hash_node,
+                context,
                 prefect,
             )
 
@@ -125,10 +129,10 @@ class Node_cache(Node[T]):
     def _save_cache(
         self,
         t: Time_interval | None,
-        context: dict,
         n0: Node,
         path_dir_cache: str,
         hash_node: str,
+        context: dict | None = None,
         prefect: bool = False,
     ):
         path_fil_cache = os.path.join(path_dir_cache, "cache.json")
@@ -270,9 +274,9 @@ class Node_cache(Node[T]):
         input_slices: list[Time_interval],
         path_dir_cache: str,
         prefect: bool,
-        context: dict[str, Any],
         n0: Node,
         cache_info: dict[str, Any],
+        context: dict | None = None,
     ):
         path_fil_cache = os.path.join(path_dir_cache, "cache.json")
         to_return = []
@@ -285,7 +289,12 @@ class Node_cache(Node[T]):
             for t_sub_sub in t_sub_truncated.iterate_over_interval(self.resolution):
                 if not prefect:
                     # This redundancy is a bit dumb, I need to think about it
-                    o = n0._run_sequential(t_sub_sub, context)[t_sub]
+                    o = n0._run_sequential(t_sub_sub, context)  # [t_sub]
+                    if o is None:
+                        raise ValueError("Check this!")
+                    o = o[t_sub]
+                    # TODO: I think it should be this one, but test fail
+                    # o = o[t_sub_sub]
                 else:
                     raise NotImplementedError
                 if o is None:
@@ -325,10 +334,10 @@ class Node_cache(Node[T]):
     def _load_cache(
         self,
         t: Time_interval | None,
-        context: dict,
         n0: Node,
         path_dir_cache: str,
         hash_node: str,
+        context: dict | None = None,
         prefect: bool = False,
     ):
         # TODO: Refactor, almost too complex
@@ -354,9 +363,9 @@ class Node_cache(Node[T]):
             slices_to_compute,
             path_dir_cache,
             prefect,
-            context,
             n0,
             cache_info,
+            context,
         )
 
         return reduce(lambda x, y: x + y, to_return)

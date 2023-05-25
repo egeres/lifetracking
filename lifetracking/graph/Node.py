@@ -21,7 +21,7 @@ class Node(ABC, Generic[T]):
     """Abstract class for a node in the graph"""
 
     def __init__(self):
-        self.last_run_info: dict[str, Any] = {}
+        self.last_run_info: dict[str, Any] | None = None
 
     @property
     def children(self) -> list[Node]:
@@ -90,6 +90,20 @@ class Node(ABC, Generic[T]):
         self.last_run_info["time"] = time.time() - t0
         # self.last_run_info["steps_executed"] = #TODO
         return to_return
+
+    def print_stats(self):
+        """Prints some statistics"""
+
+        if self.last_run_info is None:
+            print("No statistics available")
+        else:
+            print("")
+            print("📊 Statistics:")
+            print("\t✨ Time: ", self.last_run_info["time"])
+            # TODO: Add run mode
+            # TODO: Add how many nodes were executed
+            # Also, how many caches were computed n stuff like that
+            print("")
 
     def _run_prefect_graph(self, t=None) -> T | None:
         """Run the graph using prefect concurrently"""
