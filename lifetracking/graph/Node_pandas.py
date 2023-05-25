@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import dis
 import hashlib
 import os
 from typing import Any, Callable
@@ -154,3 +155,50 @@ class Reader_csvs(Node_pandas):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[pd.DataFrame, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
+
+
+class Reader_csvs_datedsubfolders(Reader_csvs):
+    def __init__(
+        self,
+        path_dir: str,
+        criteria_to_select_file: Callable[[str], bool],
+    ) -> None:
+        super().__init__(path_dir)
+        self.criteria_to_select_file = criteria_to_select_file
+
+    def _hashstr(self) -> str:
+        instructions = list(dis.get_instructions(self.criteria_to_select_file))
+        dis_output = "\n".join(
+            [f"{i.offset} {i.opname} {i.argrepr}" for i in instructions]
+        )
+        return hashlib.md5(
+            (super()._hashstr() + str(self.path_dir)).encode() + dis_output.encode()
+        ).hexdigest()
+
+    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+        assert t is None or isinstance(t, Time_interval)
+        to_return: list = []
+        for dirname in os.listdir(self.path_dir):
+            # Filter the folders we are interested in
+            path_dir = os.path.join(self.path_dir, dirname)
+            if not os.path.isdir(path_dir):
+                continue
+            a = datetime.datetime.strptime(dirname, "%Y-%m-%d")
+            if t is not None and a not in t:
+                continue
+
+            # Get through the files we care about
+            for sub_file in os.listdir(path_dir):
+                print("sub_file", sub_file)
+                if not os.path.isfile(os.path.join(path_dir, sub_file)):
+                    continue
+                if self.criteria_to_select_file(sub_file):
+                    try:
+                        to_return.append(
+                            pd.read_csv(os.path.join(self.path_dir, dirname, sub_file))
+                        )
+                    except pd.errors.ParserError:
+                        print(f"Error reading {sub_file}")
+                    break
+
+        return pd.concat(to_return, axis=0)
