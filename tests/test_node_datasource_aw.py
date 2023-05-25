@@ -1,8 +1,6 @@
-import datetime
 import hashlib
 import os
 import socket
-from operator import itemgetter
 
 import pytest
 from dateutil import parser
@@ -28,20 +26,14 @@ def test_node_aw_0():
     print("GH actions =", os.environ.get("GITHUB_ACTIONS"))
     print("hash       =", get_computer_name_hash())
 
-    # We dynamically get the most recent bucket
-    buckets = Parse_activitywatch._get_buckets()
-    buckets_list = [v for k, v in buckets.items() if "aw-watcher-window" in k]
-    for item in buckets_list:
-        if "last_updated" in item:
-            item["last_updated"] = datetime.datetime.fromisoformat(
-                item["last_updated"].replace("Z", "+00:00")
-            )
-    buckets_list.sort(key=itemgetter("last_updated"), reverse=True)
-    most_recent_aw_watcher_window = buckets_list[0]
-
     # We get the data
-    t = Time_interval.last_month()
+    most_recent_aw_watcher_window = (
+        Parse_activitywatch._get_latest_bucket_that_starts_with_name(
+            "aw-watcher-window"
+        )
+    )
     a = Parse_activitywatch(most_recent_aw_watcher_window["id"])
+    t = Time_interval.last_month()
     o = a.run(t)
     assert o is not None
     assert o.shape[0] > 0

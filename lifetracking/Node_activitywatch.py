@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import datetime
 import hashlib
+from operator import itemgetter
 from typing import Any
 
 import pandas as pd
@@ -43,8 +45,20 @@ class Parse_activitywatch(Node_pandas):
         # I guess so :[
         return True
 
+    @classmethod
+    def _get_latest_bucket_that_starts_with_name(cls, name) -> dict:
+        buckets = cls._get_buckets()
+        buckets_list = [v for k, v in buckets.items() if k.startswith(name)]
+        for item in buckets_list:
+            if "last_updated" in item:
+                item["last_updated"] = datetime.datetime.fromisoformat(
+                    item["last_updated"].replace("Z", "+00:00")
+                )
+        buckets_list.sort(key=itemgetter("last_updated"), reverse=True)
+        return buckets_list[0]
+
     @staticmethod
-    def _get_buckets(url_base: str = "http://localhost:5600") -> list[dict]:
+    def _get_buckets(url_base: str = "http://localhost:5600") -> dict:
         """Extracts a particular type of bucket"""
 
         out = requests.get(f"{url_base}/api/0/buckets")
