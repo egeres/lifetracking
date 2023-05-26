@@ -6,7 +6,7 @@ authors = ["None"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.9"
+python = ">=3.9,<4"
 rich = "^13.3.5"
 pandas = "^2.0.1"
 prefect = "^2.10.9"
@@ -15,6 +15,7 @@ ffmpeg = "^1.4"
 browser-history = "^0.3.2"
 requests = "^2.31.0"
 ankipandas = "^0.3.14"
+geopandas = "^0.13.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.3.1"
@@ -26,6 +27,7 @@ json5 = "^0.9.11"
 coverage = "^7.2.5"
 hypothesis = "^6.75.3"
 flake8 = "^6.0.0"
+ipykernel = "^6.23.1"
 
 [build-system]
 requires = ["poetry-core"]
