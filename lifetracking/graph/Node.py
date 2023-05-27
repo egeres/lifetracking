@@ -91,6 +91,8 @@ class Node(ABC, Generic[T]):
         self.last_run_info["time"] = time.time() - t0
         self.last_run_info["run_mode"] = "prefect" if prefect else "sequential"
         # self.last_run_info["steps_executed"] = #TODO
+        self.last_run_info["t_in"] = t
+        # self.last_run_info["t_out"] = Time_interval(min(to_return), max(to_return))
         return to_return
 
     def print_stats(self):
@@ -103,6 +105,8 @@ class Node(ABC, Generic[T]):
             print("Stats...")
             print("\t✨ Time    : ", round(self.last_run_info["time"], 2), "sec")
             print("\t✨ Run mode: ", self.last_run_info["run_mode"])
+            print("\t✨ t in    : ", self.last_run_info["t_in"])
+            # print timespan input and output
             # TODO: Add how many nodes were executed
             # Also, how many caches were computed n stuff like that
             # Nodes that took the most?

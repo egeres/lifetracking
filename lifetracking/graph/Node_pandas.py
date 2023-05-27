@@ -89,9 +89,6 @@ class Node_pandas_operation(Node_pandas):
         )
         return hashlib.md5((super()._hashstr() + str(dis_output)).encode()).hexdigest()
 
-    def _available(self) -> bool:
-        return self.n0.available
-
     def _operation(
         self,
         n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 
@@ -102,3 +103,22 @@ def test_export_data_to_lc(opacity: float):
                 tmpdirname, "a_nice_subfolder", "another_sub_folder", "test.csv"
             )
             a.export_to_longcalendar(filename, opacity=opacity)
+
+
+def test_export_data_to_lc_multidays():
+    a = Segments(
+        [
+            Time_interval.last_n_days(1).to_seg(),
+        ]
+    )
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        filename = os.path.join(tmpdirname, "a", "b", "c", "test.json")
+        a.export_to_longcalendar(filename)
+
+        with open(filename) as f:
+            data = json.load(f)
+
+            # This is the important part of this test, the thing is, exporting
+            # data to long calendar should split segments into other
+            # sub-segments
+            assert len(data) == 2

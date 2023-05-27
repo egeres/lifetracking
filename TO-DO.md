@@ -31,6 +31,7 @@ Nodes
   - [ ] Voice identifyer?
 
 - [ ] Commits
+- [ ] Evernote?
 - [ ] File creation
   - [ ] Version for known dateformat in name? (for photos)
 - [x] BLE beacons
@@ -54,8 +55,8 @@ Nodes
   - [ ] Glucose?
   - [ ] Gyroscope
 - [ ] Nodes
-  - [ ] Node_pandas
-    - [ ] Filter()
+  - [x] Node_pandas
+    - [x] Filter()
 
 
 
@@ -72,7 +73,7 @@ Feats
 
 - [ ] Anomaly detection 101
 
-- [ ] Add asserts on all the nodes with non 0 children pls
+- [x] Add asserts on all the nodes with non 0 children pls
 
 - [ ] Plots
   - [ ] First design of the system on paper

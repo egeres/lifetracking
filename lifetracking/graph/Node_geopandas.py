@@ -125,9 +125,6 @@ class Label_geopandas(Node_geopandas):
             ).encode()
         ).hexdigest()
 
-    def _available(self) -> bool:
-        return self.n0.available
-
     def _operation(self, n0, t: Time_interval | None = None) -> gpd.GeoDataFrame:
         assert t is None or isinstance(t, Time_interval)
 

@@ -72,7 +72,7 @@ class Node_int_singleincrement(Node_int):
     def _get_children(self) -> list[Node]:
         return [self.n0]
 
-    def _hashstr(self):
+    def _hashstr(self) -> str:
         return super()._hashstr()
 
     def _operation(

@@ -25,11 +25,11 @@ class Segments:
 
     @overload
     def __getitem__(self, index: int) -> Seg:
-        ...
+        ...  # pragma: no cover
 
     @overload
     def __getitem__(self, index: Time_interval) -> Segments:
-        ...
+        ...  # pragma: no cover
 
     def __getitem__(self, index: Time_interval | int) -> Segments | Seg:
         if isinstance(index, int):
@@ -48,35 +48,63 @@ class Segments:
     def __len__(self) -> int:
         return len(self.content)
 
+    def _split_seg_into_dicts(self, seg, hour_offset: float = 0) -> list[dict]:
+        """Helper function to split segments into separate dicts for each day."""
+
+        # Date modification
+        # TODO: Review and avoid changing timezone when everything is more stable
+        start = seg.start.replace(tzinfo=datetime.timezone.utc) + datetime.timedelta(
+            hours=hour_offset
+        )
+        end = seg.end.replace(tzinfo=datetime.timezone.utc) + datetime.timedelta(
+            hours=hour_offset
+        )
+
+        # Splitting itself
+        split_dicts = []
+        while start < end:
+            next_day = datetime.datetime(
+                start.year, start.month, start.day, tzinfo=datetime.timezone.utc
+            ) + datetime.timedelta(days=1)
+            if next_day > end:
+                next_day = end
+            split_dicts.append(
+                {
+                    "start": start.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "end": (next_day - datetime.timedelta(seconds=1)).strftime(
+                        "%Y-%m-%dT%H:%M:%S"
+                    ),
+                    "tooltip": seg.value,
+                }
+            )
+            start = next_day
+        return split_dicts
+
     def export_to_longcalendar(
-        self, path_filename: str, hour_offset: float = 0, opacity: float = 1.0
+        self, path_filename: str, hour_offset: float = 0.0, opacity: float = 1.0
     ) -> None:
         """Long calendar is a custom application of mine that I use to visualize
         my data."""
 
+        # Asserts n stuff
+        assert isinstance(hour_offset, (float, int))
+        assert isinstance(opacity, float)
         if not path_filename.endswith(".json"):
             raise ValueError("path_filename must end with .json")
 
-        to_export = [
-            {
-                "start": (seg.start + datetime.timedelta(hours=hour_offset)).strftime(
-                    "%Y-%m-%dT%H:%M:%S"
-                ),
-                "end": (seg.end + datetime.timedelta(hours=hour_offset)).strftime(
-                    "%Y-%m-%dT%H:%M:%S"
-                ),
-                "tooltip": seg.value,
-            }
-            for seg in self.content
-        ]
+        # Export itself
+        to_export = []
+        for seg in self.content:
+            to_export += self._split_seg_into_dicts(seg, hour_offset)
 
+        # Opacity setting
         if opacity != 1.0:
             for seg in to_export:
                 seg["opacity"] = opacity
 
+        # Export process
         if not os.path.exists(os.path.split(path_filename)[0]):
             os.makedirs(os.path.split(path_filename)[0])
-
         with open(os.path.join(path_filename), "w") as f:
             json.dump(to_export, f, indent=4, default=str)
 
