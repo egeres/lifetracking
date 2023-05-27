@@ -104,12 +104,14 @@ class Node_segmentize_pandas(Node_segments):
         n0: Node_pandas,
         config: Any,
         time_column_name: str,
+        time_to_split_in_mins: float = 5.0,
     ) -> None:
         # assert isinstance(n0, Node_pandas)
         super().__init__()
         self.n0 = n0
         self.config = config
         self.time_column_name = time_column_name
+        self.time_to_split_in_mins = time_to_split_in_mins
 
     def _get_children(self) -> list[Node]:
         return [self.n0]
@@ -121,13 +123,12 @@ class Node_segmentize_pandas(Node_segments):
         self,
         n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
         t: Time_interval | None = None,
-    ) -> list[tuple[datetime.datetime, datetime.datetime]]:
+    ) -> Segments:
         assert t is None or isinstance(t, Time_interval)
 
         # Variable loading
         column_to_process = self.config[0]
         values_of_interest = self.config[1]
-        time_to_split_in_mins = 5.0
         df: pd.DataFrame = n0  # type: ignore
         df[self.time_column_name] = pd.to_datetime(
             df[self.time_column_name], format="ISO8601"
@@ -138,7 +139,7 @@ class Node_segmentize_pandas(Node_segments):
 
         # Segmentizing
         to_return = []
-        time_delta = pd.Timedelta(minutes=time_to_split_in_mins)
+        time_delta = pd.Timedelta(minutes=self.time_to_split_in_mins)
         if not df.empty:
             start_time = df.iloc[0][self.time_column_name]
             end_time = df.iloc[0][self.time_column_name]
