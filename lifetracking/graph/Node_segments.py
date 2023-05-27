@@ -55,6 +55,7 @@ class Node_segments_generate(Node_segments):
 
 class Node_segments_from_pdDataframe(Node_segments):
     def __init__(self, n0: Node_pandas, config) -> None:
+        assert isinstance(n0, Node_pandas)
         super().__init__()
         self.n0 = n0
         self.config = config

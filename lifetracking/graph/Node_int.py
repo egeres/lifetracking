@@ -64,6 +64,7 @@ class Node_int_generate_unavailable(Node_int_generate):
 
 class Node_int_singleincrement(Node_int):
     def __init__(self, n0: Node_int, artificial_delay: float = 0) -> None:
+        assert isinstance(n0, Node_int)
         super().__init__()
         self.n0 = n0
         self.artificial_delay = artificial_delay

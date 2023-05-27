@@ -73,8 +73,8 @@ class Node_pandas_operation(Node_pandas):
             [pd.DataFrame | PrefectFuture[pd.DataFrame, Sync]], pd.DataFrame
         ],
     ) -> None:
-        assert callable(fn_operation), "operation_main must be callable"
         assert isinstance(n0, Node_pandas)
+        assert callable(fn_operation), "operation_main must be callable"
         super().__init__()
         self.n0 = n0
         self.fn_operation = fn_operation
@@ -142,7 +142,10 @@ class Reader_csvs(Node_pandas):
         ).hexdigest()
 
     def _available(self) -> bool:
-        return os.path.isdir(self.path_dir)
+        return (
+            os.path.isdir(self.path_dir)
+            and len([i for i in os.listdir(self.path_dir) if i.endswith(".csv")]) > 0
+        )
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         assert t is None or isinstance(t, Time_interval)

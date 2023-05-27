@@ -35,6 +35,7 @@ class Parse_BLE_info(Node_segments):
             return self._config
 
     def __init__(self, n0: Node_pandas, config: dict[str, Any] | str) -> None:
+        assert isinstance(n0, Node_pandas)
         super().__init__()
         self.n0 = n0
         self.config = self.Config(config)

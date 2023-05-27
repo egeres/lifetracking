@@ -85,10 +85,14 @@ class Label_geopandas(Node_geopandas):
         self,
         n0: Node_geopandas,
         coords_points: list[tuple[Any, str]],
-        data_polygons,
+        coords_polygs: list[tuple[list[tuple[float, float]], str]],
     ) -> None:
+        assert isinstance(n0, Node_geopandas)
         super().__init__()
         self.n0 = n0
+
+        self.hash_coords_points = hashlib.md5((str(coords_points)).encode()).hexdigest()
+        self.hash_coords_polygs = hashlib.md5((str(coords_polygs)).encode()).hexdigest()
 
         self.coords_points = gpd.GeoDataFrame(
             coords_points,
@@ -100,29 +104,29 @@ class Label_geopandas(Node_geopandas):
         )
         self.coords_points.crs = "EPSG:4326"
 
-        self.data_polygons = gpd.GeoDataFrame(
-            data_polygons,
+        self.coords_polygs = gpd.GeoDataFrame(
+            coords_polygs,
             columns=["geometry", "label"],
             geometry=[
-                Polygon([pt[::-1] for pt in coords]) for coords, _ in data_polygons
+                Polygon([pt[::-1] for pt in coords]) for coords, _ in coords_polygs
             ],
         )
-        self.data_polygons.crs = "EPSG:4326"
+        self.coords_polygs.crs = "EPSG:4326"
 
     def _get_children(self) -> list[Node]:
         return [self.n0]
 
     def _hashstr(self) -> str:
         return hashlib.md5(
-            (super()._hashstr() + str(self.path_dir)).encode()
+            (
+                super()._hashstr()
+                + str(self.hash_coords_points)
+                + str(self.hash_coords_polygs)
+            ).encode()
         ).hexdigest()
 
     def _available(self) -> bool:
-        return (
-            os.path.isdir(self.path_dir)
-            and len([i for i in os.listdir(self.path_dir) if i.endswith(".geojson")])
-            > 0
-        )
+        return self.n0.available
 
     def _operation(self, n0, t: Time_interval | None = None) -> gpd.GeoDataFrame:
         assert t is None or isinstance(t, Time_interval)
@@ -139,7 +143,7 @@ class Label_geopandas(Node_geopandas):
                     return pt_row["label"]
 
             # If not, check if the point is within any of the provided polygons
-            for _, poly_row in self.data_polygons.iterrows():
+            for _, poly_row in self.coords_polygs.iterrows():
                 if point.geometry.buffer(20 / 10**5).intersects(poly_row["geometry"]):
                     return poly_row["label"]
 
@@ -151,7 +155,7 @@ class Label_geopandas(Node_geopandas):
 
     def _run_sequential(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> int | None:
+    ) -> gpd.GeoDataFrame | None:
         # Node is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_run(self.n0, t, context)
         if n0_out is None:
@@ -163,7 +167,7 @@ class Label_geopandas(Node_geopandas):
 
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[int, Sync]:
+    ) -> PrefectFuture[gpd.GeoDataFrame, Sync]:
         # Node graph is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(

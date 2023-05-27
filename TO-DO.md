@@ -11,14 +11,25 @@ Nodes
   - [x] Study
 
   - [x] Creation
-
 - [ ] AW
   - [x] Get all buckets
   - [x] Get data for window case
   - [ ] Get data for AFK case?
-
 - [ ] GPS
-- [ ] Video
+  - [x] Load data
+  - [x] Label data 101
+  - [ ] get as segments
+  - [ ] cache
+
+- [ ] Video 101
+  - [x] Reader video files
+  - [ ] ...
+  - [ ] Face identifier?
+
+- [ ] Audio 101
+  - [ ] Reader
+  - [ ] Voice identifyer?
+
 - [ ] Commits
 - [ ] File creation
   - [ ] Version for known dateformat in name? (for photos)
@@ -30,6 +41,9 @@ Nodes
 - [ ] Phone calls
 - [ ] Sleep
 - [ ] Phone AW
+- [ ] Global data
+  - [ ] Weather information?
+
 - [ ] Zamb
 - [ ] CO2 / humid /...
 - [ ] Parse exported telegram chat....?
@@ -55,6 +69,8 @@ Fix
 Feats
 
 - [ ] Make a milestones system
+
+- [ ] Anomaly detection 101
 
 - [ ] Add asserts on all the nodes with non 0 children pls
 

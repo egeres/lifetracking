@@ -10,6 +10,7 @@ from prefect import flow as prefect_flow
 from prefect.futures import PrefectFuture
 from prefect.task_runners import ConcurrentTaskRunner
 from prefect.utilities.asyncutils import Sync
+from rich import print
 
 from lifetracking.graph.Time_interval import Time_interval
 
@@ -88,6 +89,7 @@ class Node(ABC, Generic[T]):
 
         # Post-run stuff
         self.last_run_info["time"] = time.time() - t0
+        self.last_run_info["run_mode"] = "prefect" if prefect else "sequential"
         # self.last_run_info["steps_executed"] = #TODO
         return to_return
 
@@ -98,11 +100,12 @@ class Node(ABC, Generic[T]):
             print("No statistics available")
         else:
             print("")
-            print("📊 Statistics:")
-            print("\t✨ Time: ", self.last_run_info["time"])
-            # TODO: Add run mode
+            print("Stats...")
+            print("\t✨ Time    : ", round(self.last_run_info["time"], 2), "sec")
+            print("\t✨ Run mode: ", self.last_run_info["run_mode"])
             # TODO: Add how many nodes were executed
             # Also, how many caches were computed n stuff like that
+            # Nodes that took the most?
             print("")
 
     def _run_prefect_graph(self, t=None) -> T | None:
