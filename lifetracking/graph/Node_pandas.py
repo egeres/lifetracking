@@ -4,6 +4,7 @@ import datetime
 import dis
 import hashlib
 import os
+import warnings
 from typing import Any, Callable
 
 import pandas as pd
@@ -126,12 +127,13 @@ class Node_pandas_filter(Node_pandas_operation):
 class Reader_csvs(Node_pandas):
     """Can be used to read a .csv or a directory of .csvs"""
 
-    def __init__(self, path_dir: str) -> None:
+    def __init__(self, path_dir: str, dated_name=None) -> None:
         if not path_dir.endswith(".csv"):
             if not os.path.exists(path_dir):
                 raise ValueError(f"{path_dir} does not exist")
         super().__init__()
         self.path_dir = path_dir
+        self.dated_name = dated_name
 
     def _get_children(self) -> list[Node]:
         return []
@@ -166,12 +168,17 @@ class Reader_csvs(Node_pandas):
         for filename in files_to_read:
             if filename.endswith(".csv"):
                 # Filter by date
-                if not self.path_dir.endswith(".csv"):
-                    filename_date = datetime.datetime.strptime(
-                        filename.split("_")[-1], "%Y-%m-%d.csv"
-                    )
-                    if t is not None and not (t.start <= filename_date <= t.end):
-                        continue
+                if t is not None:
+                    if self.dated_name is not None:
+                        filename_date = self.dated_name(filename)
+                        if t is not None and not (t.start <= filename_date <= t.end):
+                            continue
+                    else:
+                        warnings.warn(
+                            "No dated_name function provided,"
+                            " so the files will not be filtered by date",
+                            stacklevel=2,
+                        )
                 # Read
                 try:
                     to_return.append(pd.read_csv(os.path.join(self.path_dir, filename)))

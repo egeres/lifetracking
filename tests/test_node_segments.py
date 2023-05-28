@@ -10,6 +10,7 @@ from lifetracking.datatypes.Segment import Segments
 from lifetracking.graph.Node_pandas import Node_pandas_generate
 from lifetracking.graph.Node_segments import (
     Node_segmentize_pandas,
+    Node_segmentize_pandas_duration,
     Node_segments_generate,
 )
 from lifetracking.graph.Time_interval import Time_interval
@@ -179,3 +180,21 @@ def test_node_segments_segmentize_mincount():
     o = b.run()
     assert o is not None
     assert len(o) == 0
+
+
+def test_node_segments_segmentize_byduration():
+    # Data setup
+    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    df = pd.DataFrame(
+        [
+            {"time": d + datetime.timedelta(minutes=10), "duration": 5},
+            {"time": d + datetime.timedelta(minutes=20), "duration": 5},
+        ]
+    )
+
+    # Graph & run with min_count=1
+    a = Node_pandas_generate(df)
+    b = Node_segmentize_pandas_duration(a, "time", "duration")
+    o = b.run()
+    assert o is not None
+    assert len(o) == 2

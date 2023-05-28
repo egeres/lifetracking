@@ -41,11 +41,16 @@ class Parse_anki_study(Node_pandas):
         return os.path.exists(self.path_dir)
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+        # Data gathering
         col = ankipandas.Collection(
             os.path.join(self.path_dir, "User 1", "collection.anki2")
         )
         revisions = col.revs.copy()
-        # TODO: Add deck column
+
+        # We add the deck name
+        cards = col.cards[["cdeck"]]
+        revisions = revisions.join(cards, on="cid")
+        # Date parsing
         revisions["timestamp"] = revisions["cid"] / 1e3
         revisions["timestamp"] = revisions["timestamp"].apply(
             lambda x: datetime.datetime.fromtimestamp(x)
@@ -56,7 +61,6 @@ class Parse_anki_study(Node_pandas):
             return revisions[
                 (revisions["timestamp"] >= t.start) & (revisions["timestamp"] <= t.end)
             ]
-
         return revisions
 
     def _run_sequential(
@@ -72,11 +76,15 @@ class Parse_anki_study(Node_pandas):
 
 class Parse_anki_creation(Parse_anki_study):
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+        # Data gathering
         col = ankipandas.Collection(
             os.path.join(self.path_dir, "User 1", "collection.anki2")
         )
         cards = col.cards.copy()
+
+        # Rename deck column
         cards = cards.rename(columns={"cdeck": "deck"})
+        # Date parsing
         cards["timestamp"] = cards.index / 1e3
         cards["timestamp"] = cards["timestamp"].apply(
             lambda x: datetime.datetime.fromtimestamp(x)
@@ -87,5 +95,4 @@ class Parse_anki_creation(Parse_anki_study):
             return cards[
                 (cards["timestamp"] >= t.start) & (cards["timestamp"] <= t.end)
             ]
-
         return cards
