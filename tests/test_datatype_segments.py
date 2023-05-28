@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import json
 import os
 import tempfile
@@ -8,6 +9,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+from lifetracking.datatypes.Seg import Seg
 from lifetracking.datatypes.Segment import Segments
 from lifetracking.graph.Time_interval import Time_interval
 
@@ -122,3 +124,28 @@ def test_export_data_to_lc_multidays():
             # data to long calendar should split segments into other
             # sub-segments
             assert len(data) == 2
+
+
+def test_segments_merge():
+    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    b = Segments(
+        [
+            Seg(
+                a + datetime.timedelta(minutes=0),
+                a + datetime.timedelta(minutes=1),
+            ),
+            Seg(
+                a + datetime.timedelta(minutes=3),
+                a + datetime.timedelta(minutes=5),
+            ),
+            Seg(
+                a + datetime.timedelta(minutes=100),
+                a + datetime.timedelta(minutes=105),
+            ),
+        ]
+    )
+
+    c = Segments.merge(b, 5 * 60)
+    assert len(c) == 2
+    assert c[0].start == b[0].start
+    assert c[0].end == b[1].end

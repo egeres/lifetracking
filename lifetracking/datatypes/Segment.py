@@ -116,3 +116,22 @@ class Segments:
 
     def __add__(self, other: Segments) -> Segments:
         return Segments(sorted(other.content + self.content))
+
+    # TODO: time_to_mergue_s also accepts a datetime.timedelta
+    # TODO: Or... is just a timedeleta :[
+    @staticmethod
+    def merge(segs: Segments, time_to_mergue_s: float) -> Segments:
+        """Merges segments that are close to each other in time."""
+
+        to_return = []
+        for seg in segs.content:
+            if len(to_return) == 0:
+                to_return.append(seg)
+            else:
+                if seg.start - to_return[-1].end < datetime.timedelta(
+                    seconds=time_to_mergue_s
+                ):
+                    to_return[-1].end = seg.end
+                else:
+                    to_return.append(seg)
+        return Segments(to_return)
