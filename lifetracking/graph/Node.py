@@ -106,6 +106,7 @@ class Node(ABC, Generic[T]):
             print("\t✨ Time    : ", round(self.last_run_info["time"], 2), "sec")
             print("\t✨ Run mode: ", self.last_run_info["run_mode"])
             print("\t✨ t in    : ", self.last_run_info["t_in"])
+            # Print name if defined
             # print timespan input and output
             # TODO: Add how many nodes were executed
             # Also, how many caches were computed n stuff like that
