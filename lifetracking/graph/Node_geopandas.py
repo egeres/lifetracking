@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import datetime
+import dis
 import hashlib
 import os
-from typing import Any
+from typing import Any, Callable
 
 import geopandas as gpd
 import pandas as pd
@@ -20,6 +21,68 @@ from lifetracking.graph.Time_interval import Time_interval
 class Node_geopandas(Node[gpd.GeoDataFrame]):
     def __init__(self) -> None:
         super().__init__()
+
+    def operation(
+        self,
+        f: Callable[
+            [gpd.GeoDataFrame | PrefectFuture[gpd.GeoDataFrame, Sync]], gpd.GeoDataFrame
+        ],
+    ) -> Node_geopandas:
+        return Node_geopandas_operation(self, f)
+
+
+# TODO: Ok, so... does this count as duplicated code? Maybe I should do some
+# kind of template for operation nodes which then is implemented for
+# sub-classes...?
+class Node_geopandas_operation(Node_geopandas):
+    def __init__(
+        self,
+        n0: Node_geopandas,
+        fn_operation: Callable[
+            [gpd.GeoDataFrame | PrefectFuture[gpd.GeoDataFrame, Sync]], gpd.GeoDataFrame
+        ],
+    ) -> None:
+        assert isinstance(n0, Node_geopandas)
+        assert callable(fn_operation), "operation_main must be callable"
+        super().__init__()
+        self.n0 = n0
+        self.fn_operation = fn_operation
+
+    def _get_children(self) -> list[Node]:
+        return [self.n0]
+
+    def _hashstr(self) -> str:
+        instructions = list(dis.get_instructions(self.fn_operation))
+        dis_output = "\n".join(
+            [f"{i.offset} {i.opname} {i.argrepr}" for i in instructions]
+        )
+        return hashlib.md5((super()._hashstr() + str(dis_output)).encode()).hexdigest()
+
+    def _operation(
+        self,
+        n0: gpd.GeoDataFrame | PrefectFuture[gpd.GeoDataFrame, Sync],
+        t: Time_interval | None = None,
+    ) -> gpd.GeoDataFrame:
+        assert t is None or isinstance(t, Time_interval)
+        return self.fn_operation(n0)
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> gpd.GeoDataFrame | None:
+        n0_out = self._get_value_from_context_or_run(self.n0, t, context)
+        if n0_out is None:
+            return None
+        return self._operation(n0_out, t)
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[gpd.GeoDataFrame, Sync] | None:
+        n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
+        if n0_out is None:
+            return None
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
+            n0_out, t
+        )
 
 
 class Reader_geojson(Node_geopandas):
