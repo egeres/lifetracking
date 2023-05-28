@@ -124,9 +124,12 @@ class Node_pandas_filter(Node_pandas_operation):
 
 
 class Reader_csvs(Node_pandas):
+    """Can be used to read a .csv or a directory of .csvs"""
+
     def __init__(self, path_dir: str) -> None:
-        if not os.path.isdir(path_dir):
-            raise ValueError(f"{path_dir} is not a directory")
+        if not path_dir.endswith(".csv"):
+            if not os.path.exists(path_dir):
+                raise ValueError(f"{path_dir} does not exist")
         super().__init__()
         self.path_dir = path_dir
 
@@ -139,30 +142,39 @@ class Reader_csvs(Node_pandas):
         ).hexdigest()
 
     def _available(self) -> bool:
-        return (
-            os.path.isdir(self.path_dir)
-            and len([i for i in os.listdir(self.path_dir) if i.endswith(".csv")]) > 0
-        )
+        if self.path_dir.endswith(".csv"):
+            return os.path.exists(self.path_dir)
+        else:
+            return (
+                os.path.isdir(self.path_dir)
+                and len([i for i in os.listdir(self.path_dir) if i.endswith(".csv")])
+                > 0
+            )
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         assert t is None or isinstance(t, Time_interval)
+
+        # Get files
+        files_to_read = (
+            [self.path_dir]
+            if self.path_dir.endswith(".csv")
+            else os.listdir(self.path_dir)
+        )
+
+        # Load them
         to_return: list = []
-        for filename in os.listdir(self.path_dir):
+        for filename in files_to_read:
             if filename.endswith(".csv"):
-                filename_date = datetime.datetime.strptime(
-                    filename.split("_")[-1], "%Y-%m-%d.csv"
-                )
-                if t is not None and not (t.start <= filename_date <= t.end):
-                    continue
-                try:
-                    to_return.append(
-                        pd.read_csv(
-                            os.path.join(
-                                self.path_dir,
-                                filename,
-                            )
-                        )
+                # Filter by date
+                if not self.path_dir.endswith(".csv"):
+                    filename_date = datetime.datetime.strptime(
+                        filename.split("_")[-1], "%Y-%m-%d.csv"
                     )
+                    if t is not None and not (t.start <= filename_date <= t.end):
+                        continue
+                # Read
+                try:
+                    to_return.append(pd.read_csv(os.path.join(self.path_dir, filename)))
                 except pd.errors.ParserError:
                     print(f"Error reading {filename}")
         return pd.concat(to_return, axis=0)
