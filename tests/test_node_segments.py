@@ -118,3 +118,64 @@ def test_node_segments_segmentize():
     assert len(o) == 1
     assert o[0].start == d + datetime.timedelta(minutes=1)
     assert o[0].end == d + datetime.timedelta(minutes=12)
+
+
+def test_node_segments_segmentize_timetosplitinmins():
+    # Data setup
+    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    df = pd.DataFrame(
+        [
+            # A
+            {"time": d + datetime.timedelta(minutes=0), "label": "A"},
+            {"time": d + datetime.timedelta(minutes=100), "label": "A"},
+            {"time": d + datetime.timedelta(minutes=200), "label": "A"},
+            {"time": d + datetime.timedelta(minutes=300), "label": "A"},
+        ]
+    )
+
+    # Graph & run, time_to_split_in_mins=1
+    a = Node_pandas_generate(df)
+    b = Node_segmentize_pandas(a, ("label", ["A"]), "time", time_to_split_in_mins=1)
+    o = b.run()
+    assert o is not None
+    assert len(o) == 0
+
+    # Graph & run, time_to_split_in_mins=99999
+    a = Node_pandas_generate(df)
+    b = Node_segmentize_pandas(a, ("label", ["A"]), "time", time_to_split_in_mins=99999)
+    o = b.run()
+    assert o is not None
+    assert len(o) == 1
+
+
+def test_node_segments_segmentize_mincount():
+    # Data setup
+    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    df = pd.DataFrame(
+        [
+            # A
+            {"time": d + datetime.timedelta(minutes=0), "label": "A"},
+            {"time": d + datetime.timedelta(minutes=1), "label": "A"},
+            {"time": d + datetime.timedelta(minutes=2), "label": "A"},
+            {"time": d + datetime.timedelta(minutes=3), "label": "A"},
+            # B
+            {"time": d + datetime.timedelta(minutes=50), "label": "B"},
+            {"time": d + datetime.timedelta(minutes=51), "label": "B"},
+            {"time": d + datetime.timedelta(minutes=52), "label": "B"},
+            {"time": d + datetime.timedelta(minutes=53), "label": "B"},
+        ]
+    )
+
+    # Graph & run with min_count=1
+    a = Node_pandas_generate(df)
+    b = Node_segmentize_pandas(a, ("label", ["A", "B"]), "time", min_count=1)
+    o = b.run()
+    assert o is not None
+    assert len(o) == 2
+
+    # Graph & run with min_count=9999
+    a = Node_pandas_generate(df)
+    b = Node_segmentize_pandas(a, ("label", ["A", "B"]), "time", min_count=9999)
+    o = b.run()
+    assert o is not None
+    assert len(o) == 0

@@ -105,19 +105,30 @@ class Node_segmentize_pandas(Node_segments):
         config: Any,
         time_column_name: str,
         time_to_split_in_mins: float = 5.0,
+        min_count: int = 1,
     ) -> None:
-        # assert isinstance(n0, Node_pandas)
+        # assert isinstance(n0, Node_pandas) TODO: Merge with geopandas or something
+        assert isinstance(time_column_name, str)
+        assert isinstance(min_count, int)
         super().__init__()
         self.n0 = n0
         self.config = config
         self.time_column_name = time_column_name
         self.time_to_split_in_mins = time_to_split_in_mins
+        self.min_count = min_count
 
     def _get_children(self) -> list[Node]:
         return [self.n0]
 
     def _hashstr(self) -> str:
-        return super()._hashstr()
+        return hashlib.md5(
+            (
+                super()._hashstr()
+                + str(self.config)
+                + str(self.time_to_split_in_mins)
+                + str(self.min_count)
+            ).encode()
+        ).hexdigest()
 
     def _operation(
         self,
@@ -130,28 +141,37 @@ class Node_segmentize_pandas(Node_segments):
         column_to_process = self.config[0]
         values_of_interest = self.config[1]
         df: pd.DataFrame = n0  # type: ignore
-        df[self.time_column_name] = pd.to_datetime(
-            df[self.time_column_name], format="ISO8601"
-        )
+        if df[self.time_column_name].dtype == "object":
+            df[self.time_column_name] = pd.to_datetime(
+                df[self.time_column_name],
+                format="ISO8601",
+                # format="mixed",
+            )
 
         # Filtering
         df = df[df[column_to_process].isin(values_of_interest)]
 
-        # Segmentizing
+        # Pre
         to_return = []
         time_delta = pd.Timedelta(minutes=self.time_to_split_in_mins)
-        if not df.empty:
-            start_time = df.iloc[0][self.time_column_name]
-            end_time = df.iloc[0][self.time_column_name]
+        count = 1
+        start = df[self.time_column_name].iloc[0]
+        end = df[self.time_column_name].iloc[0]
 
-            for i in range(1, len(df)):
-                current_time = df.iloc[i][self.time_column_name]
-                if (current_time - end_time) > time_delta:
-                    to_return.append(Seg(start_time, end_time))
-                    start_time = current_time
-                end_time = current_time
-
-            to_return.append(Seg(start_time, end_time))
+        # Segmentizing
+        for i in df[self.time_column_name].iloc[1:]:
+            current_time = i
+            if (current_time - end) < time_delta:
+                count += 1
+                end = current_time
+            else:
+                if count > self.min_count:
+                    to_return.append(Seg(start, end))
+                count = 1
+                start = current_time
+                end = current_time
+        if count > self.min_count:
+            to_return.append(Seg(start, end))
 
         return Segments(to_return)
 

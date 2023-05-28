@@ -9,6 +9,7 @@ class Seg:
     def __init__(
         self, start: datetime.datetime, end: datetime.datetime, value: Any | None = None
     ):
+        assert start <= end
         self.start = start
         self.end = end
         self.value = value
