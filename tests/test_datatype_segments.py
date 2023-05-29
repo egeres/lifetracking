@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import datetime
 import json
 import os
@@ -144,8 +145,26 @@ def test_segments_merge():
             ),
         ]
     )
-
     c = Segments.merge(b, 5 * 60)
     assert len(c) == 2
     assert c[0].start == b[0].start
     assert c[0].end == b[1].end
+
+    b = Segments(
+        [
+            Seg(
+                a + datetime.timedelta(minutes=0),
+                a + datetime.timedelta(minutes=1),
+            ),
+            Seg(
+                a + datetime.timedelta(minutes=3),
+                a + datetime.timedelta(minutes=5),
+            ),
+            Seg(
+                a + datetime.timedelta(minutes=100),
+                a + datetime.timedelta(minutes=105),
+            ),
+        ]
+    )
+    c = Segments.merge(b, 0)
+    assert len(c) == 3

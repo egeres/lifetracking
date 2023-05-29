@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import datetime
+import dis
 import hashlib
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 from prefect import task as prefect_task
@@ -19,6 +20,61 @@ from lifetracking.graph.Time_interval import Time_interval
 class Node_segments(Node[Segments]):
     def __init__(self) -> None:
         super().__init__()
+
+    def merge(self, time_to_mergue_s):
+        return Node_segments_operation(
+            self,
+            lambda x: Segments.merge(x, time_to_mergue_s),
+        )
+
+
+class Node_segments_operation(Node_segments):
+    def __init__(
+        self,
+        n0: Node_segments,
+        fn_operation: Callable[[Segments | PrefectFuture[Segments, Sync]], Segments],
+    ) -> None:
+        assert isinstance(n0, Node_segments)
+        assert callable(fn_operation), "operation_main must be callable"
+        super().__init__()
+        self.n0 = n0
+        self.fn_operation = fn_operation
+
+    def _get_children(self) -> list[Node]:
+        return [self.n0]
+
+    def _hashstr(self) -> str:
+        instructions = list(dis.get_instructions(self.fn_operation))
+        dis_output = "\n".join(
+            [f"{i.offset} {i.opname} {i.argrepr}" for i in instructions]
+        )
+        return hashlib.md5((super()._hashstr() + str(dis_output)).encode()).hexdigest()
+
+    def _operation(
+        self,
+        n0: Segments | PrefectFuture[Segments, Sync],
+        t: Time_interval | None = None,
+    ) -> Segments:
+        assert t is None or isinstance(t, Time_interval)
+        return self.fn_operation(n0)
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> Segments | None:
+        n0_out = self._get_value_from_context_or_run(self.n0, t, context)
+        if n0_out is None:
+            return None
+        return self._operation(n0_out, t)
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[Segments, Sync] | None:
+        n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
+        if n0_out is None:
+            return None
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
+            n0_out, t
+        )
 
 
 class Node_segments_generate(Node_segments):
@@ -235,9 +291,17 @@ class Node_segmentize_pandas_duration(Node_segments):
                 # format="mixed",
             )
 
+        iterable = df[[self.name_column_date, self.name_column_duration]].iterrows()
+        if len(df) > 0:
+            if (
+                df.iloc[0][self.name_column_duration]
+                > df.iloc[1][self.name_column_duration]
+            ):
+                iterable = reversed(list(iterable))
+
         # Segmentizing
         to_return = []
-        for _, i in df[[self.name_column_date, self.name_column_duration]].iterrows():
+        for _, i in iterable:
             d = i[self.name_column_date]
             to_return.append(
                 Seg(
@@ -245,6 +309,7 @@ class Node_segmentize_pandas_duration(Node_segments):
                     d + datetime.timedelta(seconds=i[self.name_column_duration]),
                 )
             )
+            print(to_return[-1].start, to_return[-1].end)
         return Segments(to_return)
 
     def _run_sequential(
