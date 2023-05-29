@@ -20,14 +20,14 @@ class Node_pandas(Node[pd.DataFrame]):
     def __init__(self) -> None:
         super().__init__()
 
-    def filter(self, f: Callable[[pd.Series], bool]) -> Node_pandas:
-        return Node_pandas_filter(self, f)
-
     def operation(
         self,
         f: Callable[[pd.DataFrame | PrefectFuture[pd.DataFrame, Sync]], pd.DataFrame],
     ) -> Node_pandas:
         return Node_pandas_operation(self, f)
+
+    def filter(self, f: Callable[[pd.Series], bool]) -> Node_pandas:
+        return Node_pandas_filter(self, f)
 
 
 class Node_pandas_generate(Node_pandas):

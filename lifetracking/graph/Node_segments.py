@@ -21,11 +21,18 @@ class Node_segments(Node[Segments]):
     def __init__(self) -> None:
         super().__init__()
 
+    def operation(
+        self,
+        f: Callable[[Segments | PrefectFuture[Segments, Sync]], Segments],
+    ) -> Node_segments:
+        return Node_segments_operation(self, f)
+
     def merge(self, time_to_mergue_s):
-        return Node_segments_operation(
-            self,
-            lambda x: Segments.merge(x, time_to_mergue_s),
-        )
+        # return Node_segments_operation(
+        #     self,
+        #     lambda x: Segments.merge(x, time_to_mergue_s),
+        # )
+        return Node_segments_merge(self, time_to_mergue_s)
 
 
 class Node_segments_operation(Node_segments):
@@ -75,6 +82,16 @@ class Node_segments_operation(Node_segments):
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(
             n0_out, t
         )
+
+
+class Node_segments_merge(Node_segments_operation):
+    def __init__(self, n0: Node_segments, time_to_mergue_s: float) -> None:
+        # assert callable(fn_filter), "operation_main must be callable"
+        assert isinstance(n0, Node_segments)
+        super().__init__(
+            n0,
+            lambda x: Segments.merge(x, time_to_mergue_s),
+        )  # type: ignore
 
 
 class Node_segments_generate(Node_segments):

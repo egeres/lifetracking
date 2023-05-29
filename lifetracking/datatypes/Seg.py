@@ -7,7 +7,10 @@ from typing import Any
 
 class Seg:
     def __init__(
-        self, start: datetime.datetime, end: datetime.datetime, value: Any | None = None
+        self,
+        start: datetime.datetime,
+        end: datetime.datetime,
+        value: dict | None = None,
     ):
         assert start <= end
         self.start = start
@@ -49,6 +52,16 @@ class Seg:
             and self.end == other.end
             and self.value == other.value
         )
+
+    def __getitem__(self, key: Any) -> Any:
+        if self.value is None:
+            self.value = {}
+        return self.value[key]
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        if self.value is None:
+            self.value = {}
+        self.value[key] = value
 
     def _hashstr(self) -> str:
         # TODO this needs some work... 🥵

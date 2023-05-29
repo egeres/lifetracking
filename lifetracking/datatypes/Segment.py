@@ -4,7 +4,9 @@ import datetime
 import hashlib
 import json
 import os
-from typing import overload
+from typing import Any, overload
+
+from typing_extensions import Self
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.graph.Time_interval import Time_interval
@@ -31,6 +33,12 @@ class Segments:
     def __getitem__(self, index: Time_interval) -> Segments:
         ...  # pragma: no cover
 
+    def set_property(self, property_name: str, value: Any) -> Self:
+        """Sets a property of all the segments"""
+        for seg in self.content:
+            seg[property_name] = value
+        return self
+
     def __getitem__(self, index: Time_interval | int) -> Segments | Seg:
         if isinstance(index, int):
             return self.content[index]
@@ -48,7 +56,12 @@ class Segments:
     def __len__(self) -> int:
         return len(self.content)
 
-    def _split_seg_into_dicts(self, seg, hour_offset: float = 0) -> list[dict]:
+    def _split_seg_into_dicts(
+        self,
+        seg: Seg,
+        hour_offset: float = 0,
+        tooltip: str | None = None,
+    ) -> list[dict]:
         """Helper function to split segments into separate dicts for each day."""
 
         # Date modification
@@ -74,14 +87,19 @@ class Segments:
                     "end": (next_day - datetime.timedelta(seconds=1)).strftime(
                         "%Y-%m-%dT%H:%M:%S"
                     ),
-                    "tooltip": seg.value,
                 }
             )
+            if tooltip is not None:
+                split_dicts[-1]["tooltip"] = str(seg[tooltip])
             start = next_day
         return split_dicts
 
     def export_to_longcalendar(
-        self, path_filename: str, hour_offset: float = 0.0, opacity: float = 1.0
+        self,
+        path_filename: str,
+        hour_offset: float = 0.0,
+        opacity: float = 1.0,
+        tooltip: str | None = None,
     ) -> None:
         """Long calendar is a custom application of mine that I use to visualize
         my data."""
@@ -95,7 +113,7 @@ class Segments:
         # Export itself
         to_export = []
         for seg in self.content:
-            to_export += self._split_seg_into_dicts(seg, hour_offset)
+            to_export += self._split_seg_into_dicts(seg, hour_offset, tooltip)
 
         # Opacity setting
         if opacity != 1.0:
