@@ -27,7 +27,12 @@ class Node_segments(Node[Segments]):
     ) -> Node_segments:
         return Node_segments_operation(self, f)
 
-    def merge(self, time_to_mergue_s):
+    def merge(
+        self,
+        time_to_mergue_s: float,
+        # TODO: Hehe, custom_rule would be nice
+        custom_rule: None | Callable[[dict], bool] = None,
+    ):
         # return Node_segments_operation(
         #     self,
         #     lambda x: Segments.merge(x, time_to_mergue_s),
@@ -273,11 +278,16 @@ class Node_segmentize_pandas_duration(Node_segments):
         n0: Node_pandas,
         name_column_date: str,
         name_column_duration: str,
+        segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
     ) -> None:
+        assert isinstance(name_column_date, str)
+        assert isinstance(name_column_duration, str)
+        assert segment_metadata is None or callable(segment_metadata)
         super().__init__()
         self.n0 = n0
         self.name_column_date = name_column_date
         self.name_column_duration = name_column_duration
+        self.segment_metadata = segment_metadata
 
     def _get_children(self) -> list[Node]:
         return [self.n0]
@@ -308,7 +318,12 @@ class Node_segmentize_pandas_duration(Node_segments):
                 # format="mixed",
             )
 
-        iterable = df[[self.name_column_date, self.name_column_duration]].iterrows()
+        # TODO: Measure if there is an actual performance increase on this
+        if self.segment_metadata is not None:
+            iterable = df[[self.name_column_date, self.name_column_duration]].iterrows()
+        else:
+            iterable = df.iterrows()
+        # TODO: Could this be removed by always ensuring an ordering in the dates?
         if len(df) > 0:
             if (
                 df.iloc[0][self.name_column_duration]
@@ -324,9 +339,9 @@ class Node_segmentize_pandas_duration(Node_segments):
                 Seg(
                     d,
                     d + datetime.timedelta(seconds=i[self.name_column_duration]),
+                    None if self.segment_metadata is None else self.segment_metadata(i),
                 )
             )
-            print(to_return[-1].start, to_return[-1].end)
         return Segments(to_return)
 
     def _run_sequential(
