@@ -53,8 +53,20 @@ class Segments:
         else:
             raise TypeError("index must be Time_interval or int")
 
+    def __iter__(self):
+        return iter(self.content)
+
     def __len__(self) -> int:
         return len(self.content)
+
+    def min(self) -> datetime.datetime:
+        return min(seg.start for seg in self.content)
+
+    def max(self) -> datetime.datetime:
+        return max(seg.end for seg in self.content)
+
+    def __add__(self, other: Segments) -> Segments:
+        return Segments(sorted(other.content + self.content))
 
     def _split_seg_into_dicts(
         self,
@@ -123,17 +135,8 @@ class Segments:
         # Export process
         if not os.path.exists(os.path.split(path_filename)[0]):
             os.makedirs(os.path.split(path_filename)[0])
-        with open(os.path.join(path_filename), "w") as f:
+        with open(path_filename, "w") as f:
             json.dump(to_export, f, indent=4, default=str)
-
-    def min(self) -> datetime.datetime:
-        return min(seg.start for seg in self.content)
-
-    def max(self) -> datetime.datetime:
-        return max(seg.end for seg in self.content)
-
-    def __add__(self, other: Segments) -> Segments:
-        return Segments(sorted(other.content + self.content))
 
     # TODO: time_to_mergue_s also accepts a datetime.timedelta
     # TODO: Or... is just a timedeleta :[

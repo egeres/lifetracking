@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import datetime
+import json
+import os
+import tempfile
 
 import pandas as pd
 from hypothesis import given, settings
@@ -182,7 +185,7 @@ def test_node_segments_segmentize_mincount():
     assert len(o) == 0
 
 
-def test_node_segments_segmentize_byduration():
+def test_node_segments_segmentize_byduration_0():
     # Data setup
     d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     df = pd.DataFrame(
@@ -192,9 +195,65 @@ def test_node_segments_segmentize_byduration():
         ]
     )
 
-    # Graph & run with min_count=1
     a = Node_pandas_generate(df)
     b = Node_segmentize_pandas_duration(a, "time", "duration")
     o = b.run()
     assert o is not None
     assert len(o) == 2
+
+
+def test_node_segments_segmentize_byduration_1():
+    """Like the previous one, but tests segment_metadata"""
+    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    df = pd.DataFrame(
+        [
+            {"time": d + datetime.timedelta(minutes=10), "duration": 5, "a": "A"},
+            {"time": d + datetime.timedelta(minutes=20), "duration": 5, "a": "B"},
+            {"time": d + datetime.timedelta(minutes=30), "duration": 5, "a": "C"},
+            {"time": d + datetime.timedelta(minutes=40), "duration": 5, "a": "D"},
+        ]
+    )
+
+    a = Node_pandas_generate(df)
+    b = Node_segmentize_pandas_duration(
+        a,
+        "time",
+        "duration",
+        lambda x: {"a_title?": x["a"] + "_suffix"},
+    )
+    o = b.run()
+    assert o is not None
+    assert len(o) == 4
+    assert [x.value for x in o] == [
+        {"a_title?": "A_suffix"},
+        {"a_title?": "B_suffix"},
+        {"a_title?": "C_suffix"},
+        {"a_title?": "D_suffix"},
+    ]
+
+    # with tempfile.NamedTemporaryFile(suffix=".json", mode="w") as tmp:
+    #     o.export_to_longcalendar(
+    #         tmp.name,
+    #         hour_offset=+2.0,
+    #         tooltip="a_title?",
+    #     )
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        filename = os.path.join(
+            tmpdirname, "a", "basdasd", "cad44ad", "kandknasdknasd.json"
+        )
+        o.export_to_longcalendar(
+            filename,
+            hour_offset=+2.0,
+            tooltip="a_title?",
+        )
+
+        with open(filename) as f:
+            data = json.load(f)
+
+        assert [x["tooltip"] for x in data] == [
+            "A_suffix",
+            "B_suffix",
+            "C_suffix",
+            "D_suffix",
+        ]

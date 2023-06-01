@@ -319,7 +319,7 @@ class Node_segmentize_pandas_duration(Node_segments):
             )
 
         # TODO: Measure if there is an actual performance increase on this
-        if self.segment_metadata is not None:
+        if self.segment_metadata is None:
             iterable = df[[self.name_column_date, self.name_column_duration]].iterrows()
         else:
             iterable = df.iterrows()
