@@ -13,6 +13,7 @@ class Seg:
         value: dict | None = None,
     ):
         assert start <= end
+        assert isinstance(value, dict) or value is None
         self.start = start
         self.end = end
         self.value = value

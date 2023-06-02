@@ -168,3 +168,7 @@ def test_segments_merge():
     )
     c = Segments.merge(b, 0)
     assert len(c) == 3
+
+    b["my_key"] = 0
+    for i in b:
+        assert i["my_key"] == 0

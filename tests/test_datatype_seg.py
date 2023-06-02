@@ -27,7 +27,7 @@ def test_seg_repr():
     b = Seg(
         datetime.datetime(2021, 1, 1, 0, 0, 0, 0),
         datetime.datetime(2021, 1, 1, 23, 59, 59, 999999),
-        "Huh, I could write text here?? 🤡",
+        {"A": "Huh, I could write text here?? 🤡"},
     )
     assert len(str(a)) < len(str(b))
 
@@ -90,7 +90,7 @@ def test_seg_eq():
     c = Seg(
         datetime.datetime(2021, 1, 1),
         datetime.datetime(2021, 1, 2),
-        "🤗 I break this __eq__, wii",
+        {"A": "🤗 I break this __eq__, wii"},
     )
     assert a != c
 
@@ -123,3 +123,15 @@ def test_seg_hashstr(object_of_datatype: Any):
     a.value = object_of_datatype
     b.value = object_of_datatype
     assert a._hashstr() == b._hashstr()
+
+
+def test_seg_getvalue():
+    a = Seg(
+        datetime.datetime(2021, 1, 1),
+        datetime.datetime(2021, 1, 2),
+    )
+    a["a"] = 1
+    assert a["a"] == 1
+
+    with pytest.raises(KeyError):
+        a["b"]

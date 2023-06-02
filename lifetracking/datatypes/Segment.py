@@ -33,12 +33,6 @@ class Segments:
     def __getitem__(self, index: Time_interval) -> Segments:
         ...  # pragma: no cover
 
-    def set_property(self, property_name: str, value: Any) -> Self:
-        """Sets a property of all the segments"""
-        for seg in self.content:
-            seg[property_name] = value
-        return self
-
     def __getitem__(self, index: Time_interval | int) -> Segments | Seg:
         if isinstance(index, int):
             return self.content[index]
@@ -52,6 +46,12 @@ class Segments:
             )
         else:
             raise TypeError("index must be Time_interval or int")
+
+    def __setitem__(self, property_name: str, value: Any) -> Self:
+        """Sets a property of all the segments"""
+        for seg in self.content:
+            seg[property_name] = value
+        return self
 
     def __iter__(self):
         return iter(self.content)

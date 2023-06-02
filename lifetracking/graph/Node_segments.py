@@ -184,6 +184,7 @@ class Node_segmentize_pandas(Node_segments):
         time_column_name: str,
         time_to_split_in_mins: float = 5.0,
         min_count: int = 1,
+        segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
     ) -> None:
         # assert isinstance(n0, Node_pandas) TODO: Merge with geopandas or something
         assert isinstance(time_column_name, str)
@@ -194,6 +195,9 @@ class Node_segmentize_pandas(Node_segments):
         self.time_column_name = time_column_name
         self.time_to_split_in_mins = time_to_split_in_mins
         self.min_count = min_count
+
+        if segment_metadata is not None:
+            raise NotImplementedError
 
     def _get_children(self) -> list[Node]:
         return [self.n0]
