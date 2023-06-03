@@ -107,7 +107,7 @@ class Parse_BLE_info(Node_segments):
                         ):
                             segments[-1].end = end_time
                         else:
-                            segments.append(Seg(start_time, end_time, name))
+                            segments.append(Seg(start_time, end_time, {"name": name}))
                         in_segment = False
 
             to_return.extend(segments)

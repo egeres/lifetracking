@@ -135,3 +135,23 @@ def test_seg_getvalue():
 
     with pytest.raises(KeyError):
         a["b"]
+
+
+def test_seg_split():
+    a = Seg(
+        datetime.datetime(2021, 1, 1, 12),
+        datetime.datetime(2021, 1, 3, 12),
+        {"1+1": "2"},
+    )
+    b = a.split_into_segments_per_day()
+
+    assert len(b) == 3
+    assert b[0].start == datetime.datetime(2021, 1, 1, 12)
+    assert b[0].end == datetime.datetime(2021, 1, 1, 23, 59, 59)
+    assert b[0].value == {"1+1": "2"}
+    assert b[1].start == datetime.datetime(2021, 1, 2, 0)
+    assert b[1].end == datetime.datetime(2021, 1, 2, 23, 59, 59)
+    assert b[1].value == {"1+1": "2"}
+    assert b[2].start == datetime.datetime(2021, 1, 3, 0)
+    assert b[2].end == datetime.datetime(2021, 1, 3, 12)
+    assert b[2].value == {"1+1": "2"}

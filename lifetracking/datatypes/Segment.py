@@ -68,44 +68,6 @@ class Segments:
     def __add__(self, other: Segments) -> Segments:
         return Segments(sorted(other.content + self.content))
 
-    def _split_seg_into_dicts(
-        self,
-        seg: Seg,
-        hour_offset: float = 0,
-        tooltip: str | None = None,
-    ) -> list[dict]:
-        """Helper function to split segments into separate dicts for each day."""
-
-        # Date modification
-        # TODO: Review and avoid changing timezone when everything is more stable
-        start = seg.start.replace(tzinfo=datetime.timezone.utc) + datetime.timedelta(
-            hours=hour_offset
-        )
-        end = seg.end.replace(tzinfo=datetime.timezone.utc) + datetime.timedelta(
-            hours=hour_offset
-        )
-
-        # Splitting itself
-        split_dicts = []
-        while start < end:
-            next_day = datetime.datetime(
-                start.year, start.month, start.day, tzinfo=datetime.timezone.utc
-            ) + datetime.timedelta(days=1)
-            if next_day > end:
-                next_day = end
-            split_dicts.append(
-                {
-                    "start": start.strftime("%Y-%m-%dT%H:%M:%S"),
-                    "end": (next_day - datetime.timedelta(seconds=1)).strftime(
-                        "%Y-%m-%dT%H:%M:%S"
-                    ),
-                }
-            )
-            if tooltip is not None:
-                split_dicts[-1]["tooltip"] = str(seg[tooltip])
-            start = next_day
-        return split_dicts
-
     def export_to_longcalendar(
         self,
         path_filename: str,
@@ -125,7 +87,17 @@ class Segments:
         # Export itself
         to_export = []
         for seg in self.content:
-            to_export += self._split_seg_into_dicts(seg, hour_offset, tooltip)
+            seg += datetime.timedelta(hours=hour_offset)
+            splitted_segs = seg.split_into_segments_per_day()
+            for s in splitted_segs:
+                to_export.append(
+                    {
+                        "start": s.start.strftime("%Y-%m-%dT%H:%M:%S"),
+                        "end": s.end.strftime("%Y-%m-%dT%H:%M:%S"),
+                    }
+                )
+                if tooltip is not None:
+                    to_export[-1]["tooltip"] = str(seg[tooltip])
 
         # Opacity setting
         if opacity != 1.0:
