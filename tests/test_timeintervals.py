@@ -1,10 +1,72 @@
 import copy
 import datetime
+from datetime import timedelta
 
-from hypothesis import given, reproduce_failure, settings
+import pytest
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
+
+
+def test_contains():
+    # Is IIIIN
+    a = Time_interval.last_week()
+    now = datetime.datetime.now() - timedelta(days=1)
+    assert now in a
+
+    # Is NOT in... 🥺
+    a = Time_interval.last_week()
+    a += timedelta(days=1000)
+    assert now not in a
+    a = Time_interval.last_week()
+    a -= timedelta(days=1000)
+    assert now not in a
+
+
+def test_timeinterval_truncate():
+    a = Time_interval(
+        datetime.datetime(2021, 1, 1, 12, 5, 23),
+        datetime.datetime(2021, 1, 1, 13, 4, 3),
+    )
+
+    b = a.truncate(Time_resolution.HOUR)
+    assert b.start == datetime.datetime(2021, 1, 1, 12, 0, 0)
+    assert b.end == datetime.datetime(2021, 1, 1, 13, 59, 59, 999999)
+
+    b = a.truncate(Time_resolution.DAY)
+    assert b.start == datetime.datetime(2021, 1, 1, 0, 0, 0)
+    assert b.end == datetime.datetime(2021, 1, 1, 23, 59, 59, 999999)
+
+    with pytest.raises(ValueError):
+        b = a.truncate(999)  # type: ignore
+
+
+def test_timeinterval():
+    a = Time_interval.last_week()
+    assert a.start < a.end
+    assert a.duration_days <= 7 + 1
+
+
+def test_get_overlap_innerouter():
+    a = Time_interval.today()
+    b = Time_interval(a.start + timedelta(hours=4), a.end - timedelta(hours=4))
+    c = Time_interval(a.start - timedelta(hours=8), a.end)
+    d = Time_interval(a.start, a.end + timedelta(hours=8))
+    e = Time_interval(a.start - timedelta(hours=8), a.end + timedelta(hours=8))
+    f = Time_interval(a.start - timedelta(hours=999), a.end - timedelta(hours=999))
+    g = Time_interval(a.start + timedelta(hours=999), a.end + timedelta(hours=999))
+
+    assert a.get_overlap_innerouter(a) == ([a], [])
+    assert a.get_overlap_innerouter(b) == ([b], [])
+    assert a.get_overlap_innerouter(c) == ([a], [Time_interval(c.start, a.start)])
+    assert a.get_overlap_innerouter(d) == ([a], [Time_interval(a.end, d.end)])
+    assert a.get_overlap_innerouter(e) == (
+        [a],
+        [Time_interval(e.start, a.start), Time_interval(a.end, e.end)],
+    )
+    assert a.get_overlap_innerouter(f) == ([], [f])
+    assert a.get_overlap_innerouter(g) == ([], [g])
 
 
 def test_normalize_ends():

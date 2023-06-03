@@ -16,8 +16,10 @@ from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Time_interval import Time_interval
 
 
-class Parse_anki(Node_pandas):
-    path_dir_datasource: str = rf"C:/Users/{os.getlogin()}/AppData/Roaming/Anki2"
+class Parse_anki_study(Node_pandas):
+    path_dir_datasource: str = os.path.join(
+        os.path.expanduser("~"), "AppData", "Roaming", "Anki2"
+    )
 
     def __init__(self, path_dir: str | None = None) -> None:
         if path_dir is None:
@@ -35,16 +37,30 @@ class Parse_anki(Node_pandas):
             (super()._hashstr() + str(self.path_dir)).encode()
         ).hexdigest()
 
+    def _available(self) -> bool:
+        return os.path.exists(self.path_dir)
+
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        # We load the collection
-        col = ankipandas.Collection(rf"{self.path_dir}\User 1\collection.anki2")
+        # Data gathering
+        col = ankipandas.Collection(
+            os.path.join(self.path_dir, "User 1", "collection.anki2")
+        )
         revisions = col.revs.copy()
 
-        # We parse the revisions column
+        # We add the deck name
+        cards = col.cards[["cdeck"]]
+        revisions = revisions.join(cards, on="cid")
+        # Date parsing
         revisions["timestamp"] = revisions["cid"] / 1e3
         revisions["timestamp"] = revisions["timestamp"].apply(
             lambda x: datetime.datetime.fromtimestamp(x)
         )
+
+        # We filter by time interval
+        if t is not None:
+            return revisions[
+                (revisions["timestamp"] >= t.start) & (revisions["timestamp"] <= t.end)
+            ]
         return revisions
 
     def _run_sequential(
@@ -56,3 +72,27 @@ class Parse_anki(Node_pandas):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[pd.DataFrame, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
+
+
+class Parse_anki_creation(Parse_anki_study):
+    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+        # Data gathering
+        col = ankipandas.Collection(
+            os.path.join(self.path_dir, "User 1", "collection.anki2")
+        )
+        cards = col.cards.copy()
+
+        # Rename deck column
+        cards = cards.rename(columns={"cdeck": "deck"})
+        # Date parsing
+        cards["timestamp"] = cards.index / 1e3
+        cards["timestamp"] = cards["timestamp"].apply(
+            lambda x: datetime.datetime.fromtimestamp(x)
+        )
+
+        # We filter by time interval
+        if t is not None:
+            return cards[
+                (cards["timestamp"] >= t.start) & (cards["timestamp"] <= t.end)
+            ]
+        return cards

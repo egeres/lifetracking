@@ -22,6 +22,7 @@ class Time_interval:
         start: datetime.datetime,
         end: datetime.datetime,
     ):
+        assert start <= end
         self.start: datetime.datetime = start
         self.end: datetime.datetime = end
 
@@ -37,6 +38,70 @@ class Time_interval:
     def __contains__(self, another: datetime.datetime) -> bool:
         assert isinstance(another, datetime.datetime)
         return self.start <= another <= self.end
+
+    def __repr__(self) -> str:
+        return (
+            f"<{self.start.strftime('%Y-%m-%d %H:%M')}"
+            + f",{self.end.strftime('%Y-%m-%d %H:%M')}>"
+        )
+
+    def truncate(self, time_res: Time_resolution) -> Time_interval:
+        if time_res == Time_resolution.HOUR:
+            return Time_interval(
+                self.start.replace(minute=0, second=0, microsecond=0),
+                self.end.replace(minute=59, second=59, microsecond=999999),
+            )
+        elif time_res == Time_resolution.DAY:
+            return Time_interval(
+                self.start.replace(hour=0, minute=0, second=0, microsecond=0),
+                self.end.replace(hour=23, minute=59, second=59, microsecond=999999),
+            )
+        else:
+            raise ValueError(f"Unsupported time resolution: {time_res}")
+
+    def get_overlap_innerouter(
+        self, another: Time_interval
+    ) -> tuple[list[Time_interval], list[Time_interval]]:
+        """Given another time interval (B), it returns a tuple of two lists of
+        overlaps expressed in time intervals against the instance (A). The first
+        list contains the overlap of B against A, the second list, the
+        non-overlapping part of B against A.
+
+        [Overlapping, Non-overlapping]"""
+
+        # If "another" interval is within self interval
+        if another.start >= self.start and another.end <= self.end:
+            return [another], []
+
+        # "another" has 0 overlap
+        elif another.end <= self.start:
+            return [], [another]
+
+        # "another" has 0 overlap
+        elif another.start >= self.end:
+            return [], [another]
+
+        # If "another" starts before self and ends within self
+        elif another.start < self.start and another.end <= self.end:
+            return [Time_interval(self.start, another.end)], [
+                Time_interval(another.start, self.start)
+            ]
+
+        # If "another" starts within self and ends after self
+        elif another.start >= self.start and another.end > self.end:
+            return [Time_interval(another.start, self.end)], [
+                Time_interval(self.end, another.end)
+            ]
+
+        # If "another" starts before self and ends after self
+        elif another.start < self.start and another.end > self.end:
+            return [self], [
+                Time_interval(another.start, self.start),
+                Time_interval(self.end, another.end),
+            ]
+
+        else:
+            raise ValueError("Unhandled case ??")
 
     def normalize_ends(self) -> Self:
         self.start = self.start.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -71,6 +136,14 @@ class Time_interval:
 
         else:
             raise ValueError(f"Unsupported time resolution: {resolution}")
+
+    @property
+    def duration_days(self) -> float:
+        """Careful! things like .last_week() are usually longer than 7 days,
+        this is because it's not a week per se, but the last 7 days, starting
+        and ending at 00:00 and 23:59 respectively."""
+
+        return (self.end - self.start).total_seconds() / 86400
 
     @staticmethod
     def last_n_days(n: int, now: datetime.datetime | None = None) -> Time_interval:

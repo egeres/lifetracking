@@ -21,6 +21,9 @@ class Node_int(Node[int]):
     def __init__(self) -> None:
         super().__init__()
 
+    def __add__(self, other: Node_int) -> Node_int_addition:
+        return Node_int_addition(self, other)
+
 
 class Node_int_generate(Node_int):
     def __init__(self, value: int, artificial_delay: float = 0) -> None:
@@ -51,9 +54,6 @@ class Node_int_generate(Node_int):
     ) -> PrefectFuture[int, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 
-    def __add__(self, other: Node_int) -> Node_int_addition:
-        return Node_int_addition(self, other)
-
 
 class Node_int_generate_unavailable(Node_int_generate):
     """Intended to be used for testing purposes, it's always unavailable"""
@@ -64,6 +64,7 @@ class Node_int_generate_unavailable(Node_int_generate):
 
 class Node_int_singleincrement(Node_int):
     def __init__(self, n0: Node_int, artificial_delay: float = 0) -> None:
+        assert isinstance(n0, Node_int)
         super().__init__()
         self.n0 = n0
         self.artificial_delay = artificial_delay
@@ -71,7 +72,7 @@ class Node_int_singleincrement(Node_int):
     def _get_children(self) -> list[Node]:
         return [self.n0]
 
-    def _hashstr(self):
+    def _hashstr(self) -> str:
         return super()._hashstr()
 
     def _operation(

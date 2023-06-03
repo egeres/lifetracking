@@ -5,7 +5,7 @@ import hashlib
 import os
 from typing import Any
 
-import ffmpeg
+import librosa
 from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
@@ -16,7 +16,7 @@ from lifetracking.graph.Node_segments import Node_segments
 from lifetracking.graph.Time_interval import Time_interval
 
 
-class Reader_videos(Node_segments):
+class Reader_audios(Node_segments):
     def __init__(self, path_dir: str) -> None:
         super().__init__()
         if not os.path.isdir(path_dir):
@@ -29,47 +29,39 @@ class Reader_videos(Node_segments):
     def _hashstr(self) -> str:
         return hashlib.md5((super()._hashstr() + self.path_dir).encode()).hexdigest()
 
-    # TODO add cache_hash to this
     @staticmethod
-    def _get_video_length_in_s(filename: str) -> float | None:
-        """Warning, has cache decorator"""
-        vid = ffmpeg.probe(filename)
-        if (
-            len(vid["streams"]) == 2
-            and vid["streams"][0].get("tags", {}).get("DURATION") is not None
-        ):
-            dur_hours = int(
-                vid["streams"][0]["tags"]["DURATION"].split(".")[0].split(":")[0]
-            )
-            dur_mins = int(
-                vid["streams"][0]["tags"]["DURATION"].split(".")[0].split(":")[1]
-            )
-            dur_secs = int(
-                vid["streams"][0]["tags"]["DURATION"].split(".")[0].split(":")[2]
-            )
-            time_in_s = dur_secs + 60 * dur_mins + 3600 * dur_hours
-            return time_in_s
-        else:
-            print("Woops, error, invalid video streams!")
+    def _get_audio_length_in_s(filename: str) -> float | None:
+        try:
+            return librosa.get_duration(filename=filename)
+        except Exception as e:
+            print(f"Error while reading {filename}: {e}")
+            return None
 
-    def _operation(self, t: Time_interval | None = None) -> Segments:
+    def _get_plausible_files(self, path_dir: str) -> list[str]:
         to_return = []
-        for i in os.listdir(self.path_dir):
+        for i in os.listdir(path_dir):
             # File processing
-            filename = os.path.join(self.path_dir, i)
+            filename = os.path.join(path_dir, i)
             if not os.path.isfile(filename):
                 continue
             if "desktop.ini" in filename:
                 continue
             if not (
-                filename.endswith(".mp4")
-                or filename.endswith(".mkv")
-                or filename.endswith(".avi")
-                or filename.endswith(".mov")
-                or filename.endswith(".webm")
+                filename.endswith(".mp3")
+                or filename.endswith(".wav")
+                or filename.endswith(".flac")
+                or filename.endswith(".ogg")
+                or filename.endswith(".m4a")
+                or filename.endswith(".opus")
+                or filename.endswith(".wma")
             ):
                 continue
+            to_return.append(filename)
+        return to_return
 
+    def _operation(self, t: Time_interval | None = None) -> Segments:
+        to_return = []
+        for filename in self._get_plausible_files(self.path_dir):
             # Date filtering
             date_creation = datetime.datetime.fromtimestamp(os.stat(filename).st_ctime)
             if t is not None:
@@ -77,7 +69,7 @@ class Reader_videos(Node_segments):
                     continue
 
             # Info extraction
-            duration_in_s = self._get_video_length_in_s(filename)
+            duration_in_s = self._get_audio_length_in_s(filename)
             if duration_in_s is None:
                 continue  # TODO This should be registered as faulty data
             to_return.append(

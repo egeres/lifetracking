@@ -5,6 +5,8 @@ Setup:
 
 ```shell
 poetry install
+pre-commit install
+pre-commit install --hook-type commit-msg
 ```
 
 Update:
@@ -13,7 +15,8 @@ Update:
 poetry update
 pre-commit autoupdate
 pre-commit run --all-files
-pytest --disable-pytest-warnings
+pytest -n auto --disable-pytest-warnings
 coverage run -m pytest --disable-pytest-warnings
 coverage report -m
+ruff . --watch --ignore=F401
 ```

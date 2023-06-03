@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from hypothesis import given, settings
+from hypothesis import given
 from hypothesis import strategies as st
 
 from lifetracking.graph.Node import Node, run_multiple, run_multiple_parallel
 from lifetracking.graph.Node_int import (
-    Node_int,
     Node_int_addition,
     Node_int_generate,
     Node_int_singleincrement,

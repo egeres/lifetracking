@@ -10,6 +10,9 @@ from prefect import flow as prefect_flow
 from prefect.futures import PrefectFuture
 from prefect.task_runners import ConcurrentTaskRunner
 from prefect.utilities.asyncutils import Sync
+from rich import print
+
+from lifetracking.graph.Time_interval import Time_interval
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -19,7 +22,7 @@ class Node(ABC, Generic[T]):
     """Abstract class for a node in the graph"""
 
     def __init__(self):
-        self.last_run_info: dict[str, Any] = {}
+        self.last_run_info: dict[str, Any] | None = None
 
     @property
     def children(self) -> list[Node]:
@@ -27,6 +30,7 @@ class Node(ABC, Generic[T]):
 
     @property
     def available(self) -> bool:
+        """Is the node available? 🤔"""
         return self._available()
 
     @abstractmethod
@@ -42,12 +46,12 @@ class Node(ABC, Generic[T]):
 
     # @abstractmethod
     def _available(self) -> bool:
-        """Returns whether the node is available to be run"""
+        """Returns whether the node is available to be run or not"""
         return self._children_are_available()
 
     @abstractmethod
     def _operation(self, t=None) -> T | None:
-        """The main operation of the node"""
+        """Main operation of the node"""
         ...
 
     @abstractmethod
@@ -62,14 +66,15 @@ class Node(ABC, Generic[T]):
 
     def run(
         self,
+        t: Time_interval | None = None,
         prefect: bool = False,
-        t: Any = None,
         context: dict[Node, Any] | None = None,
     ) -> T | None:
         """Entry point to run the graph"""
 
         assert context is None or isinstance(context, dict)
         assert isinstance(prefect, bool)
+        assert t is None or isinstance(t, Time_interval)
 
         # Prepare stuff
         self.last_run_info = {}
@@ -84,8 +89,29 @@ class Node(ABC, Generic[T]):
 
         # Post-run stuff
         self.last_run_info["time"] = time.time() - t0
+        self.last_run_info["run_mode"] = "prefect" if prefect else "sequential"
         # self.last_run_info["steps_executed"] = #TODO
+        self.last_run_info["t_in"] = t
+        # self.last_run_info["t_out"] = Time_interval(min(to_return), max(to_return))
         return to_return
+
+    def print_stats(self):
+        """Prints some statistics"""
+
+        if self.last_run_info is None:
+            print("No statistics available")
+        else:
+            print("")
+            print("Stats...")
+            print("\t✨ Time    : ", round(self.last_run_info["time"], 2), "sec")
+            print("\t✨ Run mode: ", self.last_run_info["run_mode"])
+            print("\t✨ t in    : ", self.last_run_info["t_in"])
+            # Print name if defined
+            # print timespan input and output
+            # TODO: Add how many nodes were executed
+            # Also, how many caches were computed n stuff like that
+            # Nodes that took the most?
+            print("")
 
     def _run_prefect_graph(self, t=None) -> T | None:
         """Run the graph using prefect concurrently"""
@@ -133,9 +159,9 @@ class Node(ABC, Generic[T]):
             context[node] = out
         return out
 
-    def hash_tree(self, debug: bool = False) -> str:
+    def hash_tree(self) -> str:
         """Hashes the tree of nodes"""
-        hashes = [x.hash_tree(debug) for x in self.children]
+        hashes = [x.hash_tree() for x in self.children]
         summed = reduce(lambda x, y: x + y, hashes, "")
         return hashlib.md5((summed + self._hashstr()).encode()).hexdigest()
 
@@ -148,8 +174,7 @@ def run_multiple(
     nodes_to_run: list[Node], t=None, prefect: bool = False
 ) -> Iterable[Any]:
     """Computes multiple nodes in sequence"""
-
-    return [node.run(prefect, t) for node in nodes_to_run]
+    return [node.run(t, prefect) for node in nodes_to_run]
 
 
 def run_multiple_parallel(

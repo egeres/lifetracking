@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from lifetracking.graph.Node_int import (
-    Node_int,
-    Node_int_addition,
     Node_int_generate,
     Node_int_generate_unavailable,
     Node_int_singleincrement,

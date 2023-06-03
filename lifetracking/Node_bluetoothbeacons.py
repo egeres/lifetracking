@@ -35,6 +35,7 @@ class Parse_BLE_info(Node_segments):
             return self._config
 
     def __init__(self, n0: Node_pandas, config: dict[str, Any] | str) -> None:
+        assert isinstance(n0, Node_pandas)
         super().__init__()
         self.n0 = n0
         self.config = self.Config(config)
@@ -68,6 +69,7 @@ class Parse_BLE_info(Node_segments):
     ) -> Segments:
         assert n0 is not None
         assert config is not None
+        assert t is None or isinstance(t, Time_interval)
 
         df: pd.DataFrame = n0  # type: ignore
         df.replace(9999.0, np.nan, inplace=True)
@@ -77,8 +79,6 @@ class Parse_BLE_info(Node_segments):
         for column_name in list(df.columns):
             if self._operation_skip_Certain_columns(column_name, config, df):
                 continue
-
-            print("Processing", column_name)
 
             # Pre-data
             name, min_distance = config.config[column_name]
@@ -107,7 +107,7 @@ class Parse_BLE_info(Node_segments):
                         ):
                             segments[-1].end = end_time
                         else:
-                            segments.append(Seg(start_time, end_time, name))
+                            segments.append(Seg(start_time, end_time, {"name": name}))
                         in_segment = False
 
             to_return.extend(segments)
