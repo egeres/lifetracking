@@ -25,10 +25,14 @@ def export_pddataframe_to_lc_single(
 def hash_method(method: Callable) -> str:
     z = ""
     for i in dis.get_instructions(method):
+        # Skipping RESUME instruction
+        # https://github.com/python/cpython/issues/91201
+        if i.opcode == 151:
+            continue
         z += str(i.arg)
         z += i.argrepr
         z += str(i.is_jump_target)
-        z += str(i.offset)
+        # z += str(i.offset) # Skipping this for now...
         z += str(i.opcode)
         z += ";"
     return hashlib.md5(z.encode()).hexdigest()
