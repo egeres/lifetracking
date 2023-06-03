@@ -14,6 +14,7 @@ from prefect.utilities.asyncutils import Sync
 
 from lifetracking.graph.Node import Node
 from lifetracking.graph.Time_interval import Time_interval
+from lifetracking.utils import hash_method
 
 
 class Node_pandas(Node[pd.DataFrame]):
@@ -84,11 +85,9 @@ class Node_pandas_operation(Node_pandas):
         return [self.n0]
 
     def _hashstr(self) -> str:
-        instructions = list(dis.get_instructions(self.fn_operation))
-        dis_output = "\n".join(
-            [f"{i.offset} {i.opname} {i.argrepr}" for i in instructions]
-        )
-        return hashlib.md5((super()._hashstr() + str(dis_output)).encode()).hexdigest()
+        return hashlib.md5(
+            (super()._hashstr() + hash_method(self.fn_operation)).encode()
+        ).hexdigest()
 
     def _operation(
         self,
@@ -207,12 +206,12 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
         self.criteria_to_select_file = criteria_to_select_file
 
     def _hashstr(self) -> str:
-        instructions = list(dis.get_instructions(self.criteria_to_select_file))
-        dis_output = "\n".join(
-            [f"{i.offset} {i.opname} {i.argrepr}" for i in instructions]
-        )
         return hashlib.md5(
-            (super()._hashstr() + str(self.path_dir)).encode() + dis_output.encode()
+            (
+                super()._hashstr()
+                + str(self.path_dir)
+                + hash_method(self.criteria_to_select_file)
+            ).encode()
         ).hexdigest()
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:

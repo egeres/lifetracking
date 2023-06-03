@@ -15,6 +15,7 @@ from lifetracking.datatypes.Segment import Segments
 from lifetracking.graph.Node import Node
 from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Time_interval import Time_interval
+from lifetracking.utils import hash_method
 
 
 class Node_segments(Node[Segments]):
@@ -56,11 +57,9 @@ class Node_segments_operation(Node_segments):
         return [self.n0]
 
     def _hashstr(self) -> str:
-        instructions = list(dis.get_instructions(self.fn_operation))
-        dis_output = "\n".join(
-            [f"{i.offset} {i.opname} {i.argrepr}" for i in instructions]
-        )
-        return hashlib.md5((super()._hashstr() + str(dis_output)).encode()).hexdigest()
+        return hashlib.md5(
+            (super()._hashstr() + hash_method(self.fn_operation)).encode()
+        ).hexdigest()
 
     def _operation(
         self,

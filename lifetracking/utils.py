@@ -1,3 +1,5 @@
+import dis
+import hashlib
 import json
 from typing import Callable
 
@@ -18,3 +20,15 @@ def export_pddataframe_to_lc_single(
         to_export.append({"start": fn(i)})
     with open(path_filename, "w") as f:
         json.dump(to_export, f, indent=4, default=str)
+
+
+def hash_method(method: Callable) -> str:
+    z = ""
+    for i in dis.get_instructions(method):
+        z += str(i.arg)
+        z += i.argrepr
+        z += str(i.is_jump_target)
+        z += str(i.offset)
+        z += str(i.opcode)
+        z += ";"
+    return hashlib.md5(z.encode()).hexdigest()
