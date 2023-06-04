@@ -176,23 +176,116 @@ class Node_segments_from_pdDataframe(Node_segments):
         )
 
 
-class Node_segmentize_pandas(Node_segments):
+class Node_segmentize_pandas_by_density(Node_segments):
+    """We have a df with events tagged with a time column and we want to create
+    segments if "many of these events haven closely" in time"""
+
     def __init__(
         self,
         n0: Node_pandas,
-        config: Any,
-        time_column_name: str,
+        name_column_time: str,
         time_to_split_in_mins: float = 5.0,
         min_count: int = 1,
         segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
     ) -> None:
         # assert isinstance(n0, Node_pandas) TODO: Merge with geopandas or something
-        assert isinstance(time_column_name, str)
+        assert isinstance(name_column_time, str)
+        assert isinstance(min_count, int)
+        super().__init__()
+        self.n0 = n0
+        self.name_column_time = name_column_time
+        self.time_to_split_in_mins = time_to_split_in_mins
+        self.min_count = min_count
+
+    def _get_children(self) -> list[Node]:
+        return [self.n0]
+
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (
+                super()._hashstr()
+                + self.name_column_time
+                + str(self.time_to_split_in_mins)
+                + str(self.min_count)
+            ).encode()
+        ).hexdigest()
+
+    def _operation(
+        self,
+        n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
+        t: Time_interval | None = None,
+    ) -> Segments:
+        assert t is None or isinstance(t, Time_interval)
+
+        # Variable loading
+        df: pd.DataFrame = n0  # type: ignore
+        if df[self.name_column_time].dtype == "object":
+            df[self.name_column_time] = pd.to_datetime(
+                df[self.name_column_time],
+                # format="ISO8601",
+                # format="mixed",
+            )
+
+        # Pre
+        to_return = []
+        time_delta = pd.Timedelta(minutes=self.time_to_split_in_mins)
+        count = 1
+        start = df[self.name_column_time].iloc[0]
+        end = df[self.name_column_time].iloc[0]
+
+        # Segmentizing
+        for i in df[self.name_column_time].iloc[1:]:
+            current_time = i
+            if (current_time - end) < time_delta:
+                count += 1
+                end = current_time
+            else:
+                if count > self.min_count:
+                    to_return.append(Seg(start, end))
+                count = 1
+                start = current_time
+                end = current_time
+        if count > self.min_count:
+            to_return.append(Seg(start, end))
+
+        return Segments(to_return)
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> Segments | None:
+        n0_out = self._get_value_from_context_or_run(self.n0, t, context)
+        if n0_out is None:
+            return None
+        return self._operation(n0_out, t)
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[Segments, Sync] | None:
+        n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
+        if n0_out is None:
+            return None
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
+            n0_out, t
+        )
+
+
+class Node_segmentize_pandas(Node_segments):
+    def __init__(
+        self,
+        n0: Node_pandas,
+        config: Any,
+        name_column_time: str,
+        time_to_split_in_mins: float = 5.0,
+        min_count: int = 1,
+        segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
+    ) -> None:
+        # assert isinstance(n0, Node_pandas) TODO: Merge with geopandas or something
+        assert isinstance(name_column_time, str)
         assert isinstance(min_count, int)
         super().__init__()
         self.n0 = n0
         self.config = config
-        self.time_column_name = time_column_name
+        self.name_column_time = name_column_time
         self.time_to_split_in_mins = time_to_split_in_mins
         self.min_count = min_count
 
@@ -207,6 +300,7 @@ class Node_segmentize_pandas(Node_segments):
             (
                 super()._hashstr()
                 + str(self.config)
+                + self.name_column_time
                 + str(self.time_to_split_in_mins)
                 + str(self.min_count)
             ).encode()
@@ -223,9 +317,9 @@ class Node_segmentize_pandas(Node_segments):
         column_to_process = self.config[0]
         values_of_interest = self.config[1]
         df: pd.DataFrame = n0  # type: ignore
-        if df[self.time_column_name].dtype == "object":
-            df[self.time_column_name] = pd.to_datetime(
-                df[self.time_column_name],
+        if df[self.name_column_time].dtype == "object":
+            df[self.name_column_time] = pd.to_datetime(
+                df[self.name_column_time],
                 format="ISO8601",
                 # format="mixed",
             )
@@ -237,11 +331,11 @@ class Node_segmentize_pandas(Node_segments):
         to_return = []
         time_delta = pd.Timedelta(minutes=self.time_to_split_in_mins)
         count = 1
-        start = df[self.time_column_name].iloc[0]
-        end = df[self.time_column_name].iloc[0]
+        start = df[self.name_column_time].iloc[0]
+        end = df[self.name_column_time].iloc[0]
 
         # Segmentizing
-        for i in df[self.time_column_name].iloc[1:]:
+        for i in df[self.name_column_time].iloc[1:]:
             current_time = i
             if (current_time - end) < time_delta:
                 count += 1
@@ -277,6 +371,9 @@ class Node_segmentize_pandas(Node_segments):
 
 
 class Node_segmentize_pandas_duration(Node_segments):
+    """Our df has a start and a duration column. We want to generate a Segments
+    object with various Seg instances corresponding to this"""
+
     def __init__(
         self,
         n0: Node_pandas,
@@ -372,6 +469,9 @@ class Node_segmentize_pandas_duration(Node_segments):
 
 # TODO: Probs should refactor w/ the above n stuff
 class Node_segmentize_pandas_startend(Node_segments):
+    """Our df has a start and end column, we want to segmentize it creating a
+    Segments with Seg objects according to these"""
+
     def __init__(
         self,
         n0: Node_pandas,

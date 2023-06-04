@@ -13,6 +13,7 @@ from lifetracking.datatypes.Segment import Segments
 from lifetracking.graph.Node_pandas import Node_pandas_generate
 from lifetracking.graph.Node_segments import (
     Node_segmentize_pandas,
+    Node_segmentize_pandas_by_density,
     Node_segmentize_pandas_duration,
     Node_segments_generate,
 )
@@ -257,3 +258,29 @@ def test_node_segments_segmentize_byduration_1():
             "C_suffix",
             "D_suffix",
         ]
+
+
+def test_node_segments_segmentize_by_density_0():
+    # Data setup
+    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    df = pd.DataFrame(
+        [
+            # A
+            {"time": d + datetime.timedelta(minutes=0), "label": "A"},
+            {"time": d + datetime.timedelta(minutes=1), "label": "A"},
+            {"time": d + datetime.timedelta(minutes=2), "label": "A"},
+            {"time": d + datetime.timedelta(minutes=3), "label": "A"},
+            # B
+            {"time": d + datetime.timedelta(minutes=50), "label": "B"},
+            {"time": d + datetime.timedelta(minutes=51), "label": "B"},
+            {"time": d + datetime.timedelta(minutes=52), "label": "B"},
+            {"time": d + datetime.timedelta(minutes=53), "label": "B"},
+        ]
+    )
+
+    a = Node_pandas_generate(df)
+    b = Node_segmentize_pandas_by_density(a, "time")
+
+    o = b.run()
+    assert o is not None
+    assert len(o) == 2
