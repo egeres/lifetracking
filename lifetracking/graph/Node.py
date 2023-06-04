@@ -4,7 +4,7 @@ import hashlib
 import time
 from abc import ABC, abstractmethod
 from functools import reduce
-from typing import Any, Generic, Iterable, TypeVar
+from typing import Any, Callable, Generic, Iterable, TypeVar
 
 from prefect import flow as prefect_flow
 from prefect.futures import PrefectFuture
@@ -23,6 +23,8 @@ class Node(ABC, Generic[T]):
 
     def __init__(self):
         self.last_run_info: dict[str, Any] | None = None
+        self.name: str | None = None
+        self.export: Callable | None = None
 
     @property
     def children(self) -> list[Node]:

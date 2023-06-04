@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+import inspect
 import json
 import os
-from typing import Any, overload
+from typing import Any, Callable, overload
 
 from typing_extensions import Self
 
@@ -74,6 +75,7 @@ class Segments:
         hour_offset: float = 0.0,
         opacity: float = 1.0,
         tooltip: str | None = None,
+        color: str | Callable[[Seg], str] | None = None,
     ) -> None:
         """Long calendar is a custom application of mine that I use to visualize
         my data."""
@@ -83,6 +85,14 @@ class Segments:
         assert isinstance(opacity, float)
         if not path_filename.endswith(".json"):
             raise ValueError("path_filename must end with .json")
+
+        # If color is callable, it has one argument, the Seg itself
+        assert color is None or isinstance(color, str) or callable(color)
+        assert (
+            color is None
+            or isinstance(color, str)
+            or len(inspect.signature(color).parameters) == 1
+        )
 
         # Export itself
         to_export = []
@@ -98,6 +108,12 @@ class Segments:
                 )
                 if tooltip is not None:
                     to_export[-1]["tooltip"] = str(seg[tooltip])
+                if color is not None:
+                    if callable(color):
+                        to_export[-1]["color"] = color(s)
+                    else:
+                        # TODO: Shouldn't be per element, but per day at the config.json
+                        to_export[-1]["color"] = color
 
         # Opacity setting
         if opacity != 1.0:
