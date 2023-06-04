@@ -132,6 +132,7 @@ class Node_segments_generate(Node_segments):
         return self._operation(t)
 
 
+# TODO: Re... remove?
 class Node_segments_from_pdDataframe(Node_segments):
     def __init__(self, n0: Node_pandas, config) -> None:
         assert isinstance(n0, Node_pandas)
@@ -298,6 +299,7 @@ class Node_segmentize_pandas_duration(Node_segments):
     def _hashstr(self) -> str:
         return hashlib.md5(
             (
+                # TODO: Missing self.segment_metadata
                 super()._hashstr()
                 + str(self.name_column_date)
                 + str(self.name_column_duration)
@@ -309,6 +311,7 @@ class Node_segmentize_pandas_duration(Node_segments):
         n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
         t: Time_interval | None = None,
     ) -> Segments:
+        # TODO: t is doing nothing? :[
         assert t is None or isinstance(t, Time_interval)
 
         df: pd.DataFrame = n0  # type: ignore
@@ -321,6 +324,7 @@ class Node_segmentize_pandas_duration(Node_segments):
                 # format="mixed",
             )
 
+        # TODO: Is iterrows really needed? Add tests first then remove if possible
         # TODO: Measure if there is an actual performance increase on this
         if self.segment_metadata is None:
             iterable = df[[self.name_column_date, self.name_column_duration]].iterrows()
@@ -342,6 +346,97 @@ class Node_segmentize_pandas_duration(Node_segments):
                 Seg(
                     d,
                     d + datetime.timedelta(seconds=i[self.name_column_duration]),
+                    None if self.segment_metadata is None else self.segment_metadata(i),
+                )
+            )
+        return Segments(to_return)
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> Segments | None:
+        n0_out = self._get_value_from_context_or_run(self.n0, t, context)
+        if n0_out is None:
+            return None
+        return self._operation(n0_out, t)
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[Segments, Sync] | None:
+        n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
+        if n0_out is None:
+            return None
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
+            n0_out, t
+        )
+
+
+# TODO: Probs should refactor w/ the above n stuff
+class Node_segmentize_pandas_startend(Node_segments):
+    def __init__(
+        self,
+        n0: Node_pandas,
+        name_column_start: str,
+        name_column_end: str,
+        segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
+    ) -> None:
+        assert isinstance(name_column_start, str)
+        assert isinstance(name_column_end, str)
+        assert segment_metadata is None or callable(segment_metadata)
+        super().__init__()
+        self.n0 = n0
+        self.name_column_start = name_column_start
+        self.name_column_end = name_column_end
+        self.segment_metadata = segment_metadata
+
+    def _get_children(self) -> list[Node]:
+        return [self.n0]
+
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (
+                # TODO: Missing self.segment_metadata
+                super()._hashstr()
+                + str(self.name_column_start)
+                + str(self.name_column_end)
+            ).encode()
+        ).hexdigest()
+
+    def _operation(
+        self,
+        n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
+        t: Time_interval | None = None,
+    ) -> Segments:
+        assert t is None or isinstance(t, Time_interval)
+
+        df: pd.DataFrame = n0  # type: ignore
+
+        # Small preprocessing
+        if df[self.name_column_start].dtype == "object":
+            df[self.name_column_start] = pd.to_datetime(
+                df[self.name_column_start],
+                # format="ISO8601",
+                # format="mixed",
+            )
+        if df[self.name_column_end].dtype == "object":
+            df[self.name_column_end] = pd.to_datetime(df[self.name_column_end])
+
+        # TODO: Measure if there is an actual performance increase on this
+        if self.segment_metadata is None:
+            iterable = df[[self.name_column_start, self.name_column_end]].iterrows()
+        else:
+            iterable = df.iterrows()
+        # TODO: Could this be removed by always ensuring an ordering in the dates?
+        if len(df) > 0:
+            if df.iloc[0][self.name_column_start] > df.iloc[1][self.name_column_start]:
+                iterable = reversed(list(iterable))
+
+        # Segmentizing
+        to_return = []
+        for _, i in iterable:
+            to_return.append(
+                Seg(
+                    i[self.name_column_start],
+                    i[self.name_column_end],
                     None if self.segment_metadata is None else self.segment_metadata(i),
                 )
             )
