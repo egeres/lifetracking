@@ -2264,6 +2264,23 @@ dev = ["check-manifest"]
 test = ["hypothesis", "pytest"]
 
 [[package]]
+name = "meteostat"
+version = "1.6.5"
+description = "Access and analyze historical weather and climate data with Python."
+category = "main"
+optional = false
+python-versions = ">=3.6.0"
+files = [
+    {file = "meteostat-1.6.5-py3-none-any.whl", hash = "sha256:e93d7a9563fd26268bdc8534dd948b9743c5c642ea58077fea065d2dbf053e8d"},
+    {file = "meteostat-1.6.5.tar.gz", hash = "sha256:e514ee8f081d7b3b407e1eee2f521047a75b6af2ae160723c288eeb64d99344e"},
+]
+
+[package.dependencies]
+numpy = "*"
+pandas = ">=1.1"
+pytz = "*"
+
+[[package]]
 name = "msgpack"
 version = "1.0.5"
 description = "MessagePack serializer"
@@ -4476,4 +4493,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4"
-content-hash = "ef4e7433d514f2c5d31815fa3908617b4908ec3273a327d7bc8c3006ce01d1df"
+content-hash = "8f9374a7a6d1358f742e66160514ae372e8b2a59a34936d22180297869107873"
