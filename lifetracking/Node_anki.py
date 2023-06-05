@@ -56,9 +56,6 @@ class Parse_anki_study(Node_pandas):
             lambda x: datetime.datetime.fromtimestamp(x)
         )
 
-        # Sort by timestamp
-        # revisions = revisions.sort_values("timestamp", ascending=True)
-
         # We filter by time interval
         if t is None:
             return revisions

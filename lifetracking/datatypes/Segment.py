@@ -69,7 +69,9 @@ class Segments:
     def __add__(self, other: Segments) -> Segments:
         return Segments(sorted(other.content + self.content))
 
-    def _edit_dict(self, x: dict, s: Seg, tooltip, tooltip_shows_length, color):
+    def _export_to_longcalendar_edit_dict(
+        self, x: dict, s: Seg, tooltip, tooltip_shows_length, color
+    ):
         # Tooltip
         if tooltip is not None:
             if callable(tooltip):
@@ -132,7 +134,7 @@ class Segments:
                         "end": s.end.strftime("%Y-%m-%dT%H:%M:%S"),
                     }
                 )
-                self._edit_dict(
+                self._export_to_longcalendar_edit_dict(
                     to_export[-1],
                     s,
                     tooltip,
@@ -193,3 +195,9 @@ class Segments:
     def remove_if_shorter_than(self, seconds: float) -> Segments:
         """Removes segments that are shorter than a given time."""
         return self.remove(lambda seg: seg.length_s() < seconds)
+
+    def set_property(self, property_name: str, value: Any) -> Segments:
+        """Sets a property of all the children Seg"""
+        for seg in self.content:
+            seg[property_name] = value
+        return self

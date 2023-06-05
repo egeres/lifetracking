@@ -14,6 +14,7 @@ from lifetracking.datatypes.Segment import Seg, Segments
 from lifetracking.graph.Node import Node
 from lifetracking.graph.Node_segments import Node_segments
 from lifetracking.graph.Time_interval import Time_interval
+from lifetracking.utils import cache_singleargument
 
 
 class Reader_audios(Node_segments):
@@ -30,6 +31,7 @@ class Reader_audios(Node_segments):
         return hashlib.md5((super()._hashstr() + self.path_dir).encode()).hexdigest()
 
     @staticmethod
+    @cache_singleargument("cache_audios_length")
     def _get_audio_length_in_s(filename: str) -> float | None:
         try:
             return librosa.get_duration(filename=filename)

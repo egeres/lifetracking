@@ -4,18 +4,20 @@ import dis
 import hashlib
 import json
 import os
+import pickle
 import tempfile
 from typing import Callable
 
 import pandas as pd
 
 
-# TODO: Should probably be removed
 def export_pddataframe_to_lc_single(
     df: pd.DataFrame,
     fn: Callable[[pd.Series], str],
     path_filename: str,
+    # TODO: Callable support
     color: str | None = None,
+    # TODO: Callable support
     opacity: float | None = None,
 ):
     assert callable(fn), "fn must be callable"
@@ -54,3 +56,37 @@ def hash_method(method: Callable) -> str:
         z += str(i.opcode)
         z += ";"
     return hashlib.md5(z.encode()).hexdigest()
+
+
+def hash_string(string: str) -> str:
+    return hashlib.md5(string.encode()).hexdigest()
+
+
+def cache_singleargument(dirname: str) -> Callable:
+    # Create folder if not exists
+    path_dir = os.path.join(tempfile.gettempdir(), dirname)
+    if not os.path.exists(path_dir):
+        os.mkdir(path_dir)
+
+    def decorator(method: Callable) -> Callable:
+        def wrapper(arg: str) -> str:
+            caches_existing = [
+                x.split(".pickle")[0]
+                for x in os.listdir(path_dir)
+                if x.endswith(".pickle")
+            ]
+            hash_arg = hash_string(arg)
+
+            if hash_arg in caches_existing:
+                with open(os.path.join(path_dir, f"{hash_arg}.pickle"), "rb") as f:
+                    return pickle.load(f)
+            else:
+                to_return = method(arg)
+                if to_return is not None:  # Huh, should I?
+                    with open(os.path.join(path_dir, f"{hash_arg}.pickle"), "wb") as f:
+                        pickle.dump(to_return, f)
+                return to_return
+
+        return wrapper
+
+    return decorator
