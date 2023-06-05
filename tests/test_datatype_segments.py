@@ -168,7 +168,40 @@ def test_segments_merge():
     )
     c = Segments.merge(b, 0)
     assert len(c) == 3
-
     b["my_key"] = 0
     for i in b:
         assert i["my_key"] == 0
+
+
+def test_segments_merge_with_customrule():
+    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    b = Segments(
+        [
+            Seg(
+                a + datetime.timedelta(minutes=0),
+                a + datetime.timedelta(minutes=1),
+                {"my_key": 0},
+            ),
+            Seg(
+                a + datetime.timedelta(minutes=3),
+                a + datetime.timedelta(minutes=4),
+                {"my_key": 1},
+            ),
+            Seg(
+                a + datetime.timedelta(minutes=6),
+                a + datetime.timedelta(minutes=7),
+                {"my_key": 0},
+            ),
+            Seg(
+                a + datetime.timedelta(minutes=9),
+                a + datetime.timedelta(minutes=10),
+                {"my_key": 0},
+            ),
+        ]
+    )
+    c = Segments.merge(b, 5 * 60, lambda x, y: x["my_key"] == y["my_key"])
+
+    assert len(c) == 3
+    assert c[0]["my_key"] == 0
+    assert c[1]["my_key"] == 1
+    assert c[2]["my_key"] == 0

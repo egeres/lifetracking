@@ -129,18 +129,32 @@ class Segments:
     # TODO: time_to_mergue_s also accepts a datetime.timedelta
     # TODO: Or... is just a timedeleta :[
     @staticmethod
-    def merge(segs: Segments, time_to_mergue_s: float) -> Segments:
+    def merge(
+        segs: Segments,
+        time_to_mergue_s: float,
+        custom_rule: None | Callable[[Seg, Seg], bool] = None,
+    ) -> Segments:
         """Merges segments that are close to each other in time."""
 
         to_return = []
-        for seg in segs.content:
-            if len(to_return) == 0:
-                to_return.append(seg)
-            else:
+
+        if custom_rule is None:
+            to_return.append(segs.content[0])
+            for seg in segs.content[1:]:
                 if seg.start - to_return[-1].end < datetime.timedelta(
                     seconds=time_to_mergue_s
                 ):
                     to_return[-1].end = seg.end
                 else:
                     to_return.append(seg)
+        else:
+            to_return.append(segs.content[0])
+            for seg in segs.content[1:]:
+                if seg.start - to_return[-1].end < datetime.timedelta(
+                    seconds=time_to_mergue_s
+                ) and custom_rule(to_return[-1], seg):
+                    to_return[-1].end = seg.end
+                else:
+                    to_return.append(seg)
+
         return Segments(to_return)

@@ -31,14 +31,9 @@ class Node_segments(Node[Segments]):
     def merge(
         self,
         time_to_mergue_s: float,
-        # TODO: Hehe, custom_rule would be nice
-        custom_rule: None | Callable[[dict], bool] = None,
+        custom_rule: None | Callable[[Seg, Seg], bool] = None,
     ):
-        # return Node_segments_operation(
-        #     self,
-        #     lambda x: Segments.merge(x, time_to_mergue_s),
-        # )
-        return Node_segments_merge(self, time_to_mergue_s)
+        return Node_segments_merge(self, time_to_mergue_s, custom_rule)
 
 
 class Node_segments_operation(Node_segments):
@@ -89,13 +84,22 @@ class Node_segments_operation(Node_segments):
 
 
 class Node_segments_merge(Node_segments_operation):
-    def __init__(self, n0: Node_segments, time_to_mergue_s: float) -> None:
-        # assert callable(fn_filter), "operation_main must be callable"
+    def __init__(
+        self,
+        n0: Node_segments,
+        time_to_mergue_s: float,
+        custom_rule: None | Callable[[Seg, Seg], bool] = None,
+    ) -> None:
+        assert isinstance(time_to_mergue_s, float)
         assert isinstance(n0, Node_segments)
+        assert custom_rule is None or callable(
+            custom_rule
+        ), "operation_main must be callable"
+
         super().__init__(
             n0,
-            lambda x: Segments.merge(x, time_to_mergue_s),
-        )  # type: ignore
+            lambda x: Segments.merge(x, time_to_mergue_s, custom_rule),  # type: ignore
+        )
 
 
 class Node_segments_generate(Node_segments):
@@ -428,7 +432,7 @@ class Node_segmentize_pandas_duration(Node_segments):
         else:
             iterable = df.iterrows()
         # TODO: Could this be removed by always ensuring an ordering in the dates?
-        if len(df) > 0:
+        if len(df) > 1:
             if (
                 df.iloc[0][self.name_column_duration]
                 > df.iloc[1][self.name_column_duration]
