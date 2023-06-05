@@ -245,12 +245,12 @@ class Node_segmentize_pandas_by_density(Node_segments):
                 end = current_time
             else:
                 if count > self.min_count:
-                    to_return.append(Seg(start, end))
+                    to_return.append(Seg(start, end, {"operation_count": count}))
                 count = 1
                 start = current_time
                 end = current_time
         if count > self.min_count:
-            to_return.append(Seg(start, end))
+            to_return.append(Seg(start, end, {"operation_count": count}))
 
         return Segments(to_return)
 

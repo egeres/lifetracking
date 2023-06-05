@@ -69,13 +69,39 @@ class Segments:
     def __add__(self, other: Segments) -> Segments:
         return Segments(sorted(other.content + self.content))
 
+    def _edit_dict(self, x: dict, s: Seg, tooltip, tooltip_shows_length, color):
+        # Tooltip
+        if tooltip is not None:
+            if callable(tooltip):
+                x["tooltip"] = tooltip(s)
+            else:
+                # x["tooltip"] = str(seg[tooltip])
+                x["tooltip"] = str(s[tooltip])
+
+        # Tooltip length
+        # Jesus christ bro 🤦🏻‍♂️, just write another if inside and
+        # stop doing parkour, you're not raymond belle 🙄
+        if tooltip_shows_length:
+            x["tooltip"] = x.get("tooltip", "") + f" ({round(s.length_h(), 1)}h)"
+            x["tooltip"] = x["tooltip"].strip()
+
+        # Color
+        if color is not None:
+            if callable(color):
+                x = color(s)
+            else:
+                # TODO: Shouldn't be per element, but per day at the
+                # config.json
+                x = color
+
     def export_to_longcalendar(
         self,
         path_filename: str,
         hour_offset: float = 0.0,
         opacity: float = 1.0,
-        tooltip: str | None = None,
+        tooltip: str | Callable[[Seg], str] | None = None,
         color: str | Callable[[Seg], str] | None = None,
+        tooltip_shows_length: bool = False,
     ) -> None:
         """Long calendar is a custom application of mine that I use to visualize
         my data."""
@@ -106,14 +132,13 @@ class Segments:
                         "end": s.end.strftime("%Y-%m-%dT%H:%M:%S"),
                     }
                 )
-                if tooltip is not None:
-                    to_export[-1]["tooltip"] = str(seg[tooltip])
-                if color is not None:
-                    if callable(color):
-                        to_export[-1]["color"] = color(s)
-                    else:
-                        # TODO: Shouldn't be per element, but per day at the config.json
-                        to_export[-1]["color"] = color
+                self._edit_dict(
+                    to_export[-1],
+                    s,
+                    tooltip,
+                    tooltip_shows_length,
+                    color,
+                )
 
         # Opacity setting
         if opacity != 1.0:
@@ -145,6 +170,7 @@ class Segments:
                     seconds=time_to_mergue_s
                 ):
                     to_return[-1].end = seg.end
+                    # TODO: Maybe adds a counter with "operation_merge_count"?
                 else:
                     to_return.append(seg)
         else:
@@ -154,6 +180,7 @@ class Segments:
                     seconds=time_to_mergue_s
                 ) and custom_rule(to_return[-1], seg):
                     to_return[-1].end = seg.end
+                    # TODO: Maybe adds a counter with "operation_merge_count"?
                 else:
                     to_return.append(seg)
 

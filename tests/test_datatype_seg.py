@@ -155,3 +155,12 @@ def test_seg_split():
     assert b[2].start == datetime.datetime(2021, 1, 3, 0)
     assert b[2].end == datetime.datetime(2021, 1, 3, 12)
     assert b[2].value == {"1+1": "2"}
+
+
+def test_seg_length_h():
+    a = Seg(
+        datetime.datetime(2021, 1, 1, 12),
+        datetime.datetime(2021, 1, 3, 12),
+        {"1+1": "2"},
+    )
+    assert a.length_h() == 48

@@ -98,3 +98,6 @@ class Seg:
             )
             self.start = next_day
         return splits
+
+    def length_h(self) -> float:
+        return (self.end - self.start).total_seconds() / 3600.0

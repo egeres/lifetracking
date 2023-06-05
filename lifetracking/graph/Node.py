@@ -6,12 +6,14 @@ from abc import ABC, abstractmethod
 from functools import reduce
 from typing import Any, Callable, Generic, Iterable, TypeVar
 
+import pandas as pd
 from prefect import flow as prefect_flow
 from prefect.futures import PrefectFuture
 from prefect.task_runners import ConcurrentTaskRunner
 from prefect.utilities.asyncutils import Sync
 from rich import print
 
+from lifetracking.datatypes.Segment import Segments
 from lifetracking.graph.Time_interval import Time_interval
 
 T = TypeVar("T")
@@ -92,9 +94,21 @@ class Node(ABC, Generic[T]):
         # Post-run stuff
         self.last_run_info["time"] = time.time() - t0
         self.last_run_info["run_mode"] = "prefect" if prefect else "sequential"
-        # self.last_run_info["steps_executed"] = #TODO
+        # TODO: Add executed steps count
+        # self.last_run_info["steps_executed"] =
         self.last_run_info["t_in"] = t
-        # self.last_run_info["t_out"] = Time_interval(min(to_return), max(to_return))
+        if isinstance(to_return, Segments) and len(to_return) > 0:
+            self.last_run_info["t_out"] = Time_interval(
+                min(to_return).start, max(to_return).end
+            )
+
+        if isinstance(to_return, (Segments, pd.DataFrame)):
+            self.last_run_info["len"] = len(to_return)
+        if isinstance(to_return, int):
+            self.last_run_info["len"] = 1
+        else:
+            raise NotImplementedError
+
         return to_return
 
     def print_stats(self):
@@ -104,10 +118,15 @@ class Node(ABC, Generic[T]):
             print("No statistics available")
         else:
             print("")
-            print("Stats...")
+            print("Stats...", f"({self.name})" if self.name is not None else "")
             print("\t✨ Time    : ", round(self.last_run_info["time"], 2), "sec")
             print("\t✨ Run mode: ", self.last_run_info["run_mode"])
             print("\t✨ t in    : ", self.last_run_info["t_in"])
+            if "t_out" in self.last_run_info:
+                print("\t✨ t out   : ", self.last_run_info["t_out"])
+                # TODO: Besides this, the length of the output should be printed
+            if "len" in self.last_run_info:
+                print("\t✨ Lenth   : ", self.last_run_info["len"])
             # Print name if defined
             # print timespan input and output
             # TODO: Add how many nodes were executed
