@@ -51,17 +51,20 @@ class Parse_anki_study(Node_pandas):
         cards = col.cards[["cdeck"]]
         revisions = revisions.join(cards, on="cid")
         # Date parsing
-        revisions["timestamp"] = revisions["cid"] / 1e3
+        revisions["timestamp"] = revisions.index / 1e3
         revisions["timestamp"] = revisions["timestamp"].apply(
             lambda x: datetime.datetime.fromtimestamp(x)
         )
 
+        # Sort by timestamp
+        # revisions = revisions.sort_values("timestamp", ascending=True)
+
         # We filter by time interval
-        if t is not None:
-            return revisions[
-                (revisions["timestamp"] >= t.start) & (revisions["timestamp"] <= t.end)
-            ]
-        return revisions
+        if t is None:
+            return revisions
+        return revisions[
+            (revisions["timestamp"] >= t.start) & (revisions["timestamp"] <= t.end)
+        ]
 
     def _run_sequential(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
@@ -91,8 +94,6 @@ class Parse_anki_creation(Parse_anki_study):
         )
 
         # We filter by time interval
-        if t is not None:
-            return cards[
-                (cards["timestamp"] >= t.start) & (cards["timestamp"] <= t.end)
-            ]
-        return cards
+        if t is None:
+            return cards
+        return cards[(cards["timestamp"] >= t.start) & (cards["timestamp"] <= t.end)]
