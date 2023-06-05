@@ -185,3 +185,11 @@ class Segments:
                     to_return.append(seg)
 
         return Segments(to_return)
+
+    def remove(self, condition: Callable[[Seg], bool]) -> Segments:
+        """Removes segments that satisfy a condition."""
+        return Segments([seg for seg in self.content if not condition(seg)])
+
+    def remove_if_shorter_than(self, seconds: float) -> Segments:
+        """Removes segments that are shorter than a given time."""
+        return self.remove(lambda seg: seg.length_s() < seconds)

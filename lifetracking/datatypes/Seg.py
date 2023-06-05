@@ -99,5 +99,14 @@ class Seg:
             self.start = next_day
         return splits
 
+    def length_days(self) -> float:
+        return (self.end - self.start).total_seconds() / 86400.0
+
     def length_h(self) -> float:
         return (self.end - self.start).total_seconds() / 3600.0
+
+    def length_m(self) -> float:
+        return (self.end - self.start).total_seconds() / 60.0
+
+    def length_s(self) -> float:
+        return (self.end - self.start).total_seconds()

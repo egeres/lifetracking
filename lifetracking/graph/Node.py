@@ -104,7 +104,7 @@ class Node(ABC, Generic[T]):
 
         if isinstance(to_return, (Segments, pd.DataFrame)):
             self.last_run_info["len"] = len(to_return)
-        if isinstance(to_return, int):
+        elif isinstance(to_return, int):
             self.last_run_info["len"] = 1
         else:
             raise NotImplementedError

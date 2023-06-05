@@ -90,7 +90,7 @@ class Node_segments_merge(Node_segments_operation):
         time_to_mergue_s: float,
         custom_rule: None | Callable[[Seg, Seg], bool] = None,
     ) -> None:
-        assert isinstance(time_to_mergue_s, float)
+        assert isinstance(time_to_mergue_s, (float, int))
         assert isinstance(n0, Node_segments)
         assert custom_rule is None or callable(
             custom_rule

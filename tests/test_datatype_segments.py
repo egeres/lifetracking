@@ -131,17 +131,10 @@ def test_segments_merge():
     a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
         [
+            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=1)),
+            Seg(a + datetime.timedelta(minutes=3), a + datetime.timedelta(minutes=5)),
             Seg(
-                a + datetime.timedelta(minutes=0),
-                a + datetime.timedelta(minutes=1),
-            ),
-            Seg(
-                a + datetime.timedelta(minutes=3),
-                a + datetime.timedelta(minutes=5),
-            ),
-            Seg(
-                a + datetime.timedelta(minutes=100),
-                a + datetime.timedelta(minutes=105),
+                a + datetime.timedelta(minutes=100), a + datetime.timedelta(minutes=105)
             ),
         ]
     )
@@ -152,17 +145,10 @@ def test_segments_merge():
 
     b = Segments(
         [
+            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=1)),
+            Seg(a + datetime.timedelta(minutes=3), a + datetime.timedelta(minutes=5)),
             Seg(
-                a + datetime.timedelta(minutes=0),
-                a + datetime.timedelta(minutes=1),
-            ),
-            Seg(
-                a + datetime.timedelta(minutes=3),
-                a + datetime.timedelta(minutes=5),
-            ),
-            Seg(
-                a + datetime.timedelta(minutes=100),
-                a + datetime.timedelta(minutes=105),
+                a + datetime.timedelta(minutes=90), a + datetime.timedelta(minutes=105)
             ),
         ]
     )
@@ -205,3 +191,18 @@ def test_segments_merge_with_customrule():
     assert c[0]["my_key"] == 0
     assert c[1]["my_key"] == 1
     assert c[2]["my_key"] == 0
+
+
+def test_segments_remove_if_short():
+    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    b = Segments(
+        [
+            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=1)),
+            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=5)),
+            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=15)),
+            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=40)),
+        ]
+    )
+    c = b.remove_if_shorter_than(10 * 60)
+
+    assert len(c) == 2

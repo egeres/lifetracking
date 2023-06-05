@@ -164,3 +164,4 @@ def test_seg_length_h():
         {"1+1": "2"},
     )
     assert a.length_h() == 48
+    assert a.length_s() > a.length_m() > a.length_h() > a.length_days()
