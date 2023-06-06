@@ -68,6 +68,8 @@ class Node_pandas_generate(Node_pandas):
 
 
 class Node_pandas_operation(Node_pandas):
+    """Node to apply an operation to a pandas dataframe"""
+
     def __init__(
         self,
         n0: Node_pandas,
@@ -117,6 +119,8 @@ class Node_pandas_operation(Node_pandas):
 
 
 class Node_pandas_filter(Node_pandas_operation):
+    """Filter rows of a dataframe based on `fn_filter`"""
+
     def __init__(self, n0: Node_pandas, fn_filter: Callable[[pd.Series], bool]) -> None:
         assert callable(fn_filter), "operation_main must be callable"
         assert isinstance(n0, Node_pandas)
@@ -124,6 +128,8 @@ class Node_pandas_filter(Node_pandas_operation):
 
 
 class Node_pandas_remove_close(Node_pandas_operation):
+    """Remove rows that are too close together in time"""
+
     @staticmethod
     def _remove_dupe_rows_df(
         df: pd.DataFrame,
@@ -132,6 +138,8 @@ class Node_pandas_remove_close(Node_pandas_operation):
     ):
         if isinstance(max_time, datetime.timedelta):
             max_time = max_time.total_seconds() / 60.0
+        if df[column_name].dtype != "datetime64[ns]":
+            df[column_name] = pd.to_datetime(df[column_name])
         df = df.sort_values(by=[column_name])
         df["time_diff"] = df[column_name].diff()
         mask = df["time_diff"].isnull() | (

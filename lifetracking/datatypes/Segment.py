@@ -90,11 +90,11 @@ class Segments:
         # Color
         if color is not None:
             if callable(color):
-                x = color(s)
+                x["color"] = color(s)
             else:
                 # TODO: Shouldn't be per element, but per day at the
                 # config.json
-                x = color
+                x["color"] = color
 
     def export_to_longcalendar(
         self,
