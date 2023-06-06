@@ -123,6 +123,41 @@ class Node_pandas_filter(Node_pandas_operation):
         super().__init__(n0, lambda df: df[df.apply(fn_filter, axis=1)])  # type: ignore
 
 
+class Node_pandas_remove_close(Node_pandas_operation):
+    @staticmethod
+    def _remove_dupe_rows_df(
+        df: pd.DataFrame,
+        column_name: str,
+        max_time: int | float | datetime.timedelta,
+    ):
+        if isinstance(max_time, datetime.timedelta):
+            max_time = max_time.total_seconds() / 60.0
+        df = df.sort_values(by=[column_name])
+        df["time_diff"] = df[column_name].diff()
+        mask = df["time_diff"].isnull() | (
+            df["time_diff"].dt.total_seconds() / 60.0 >= max_time
+        )
+        return df[mask].drop(columns=["time_diff"])
+
+    def __init__(
+        self,
+        n0: Node_pandas,
+        column_name: str,
+        max_time: int | float | datetime.timedelta,
+    ):
+        assert isinstance(n0, Node_pandas)
+        assert isinstance(column_name, str)
+        assert isinstance(max_time, (int, float, datetime.timedelta))
+        super().__init__(
+            n0,
+            lambda df: self._remove_dupe_rows_df(
+                df,  # type: ignore
+                column_name,
+                max_time,
+            ),
+        )
+
+
 class Reader_csvs(Node_pandas):
     """Can be used to read a .csv or a directory of .csvs"""
 

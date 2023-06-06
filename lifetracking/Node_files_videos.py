@@ -21,7 +21,8 @@ class Reader_videos(Node_segments):
     def __init__(
         self,
         path_dir: str,
-        # TODO: Add filename_date_pattern
+        # TODO: Add filename_date_pattern or
+        # option for os.stat(filename).st_ctime
         filename_date_pattern=None,
     ) -> None:
         super().__init__()
