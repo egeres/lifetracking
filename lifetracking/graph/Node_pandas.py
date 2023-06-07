@@ -169,13 +169,19 @@ class Node_pandas_remove_close(Node_pandas_operation):
 class Reader_csvs(Node_pandas):
     """Can be used to read a .csv or a directory of .csvs"""
 
-    def __init__(self, path_dir: str, dated_name=None) -> None:
+    def __init__(
+        self,
+        path_dir: str,
+        dated_name=None,
+        column_date_index: str | None = None,
+    ) -> None:
         if not path_dir.endswith(".csv"):
             if not os.path.exists(path_dir):
                 raise ValueError(f"{path_dir} does not exist")
         super().__init__()
         self.path_dir = path_dir
         self.dated_name = dated_name
+        self.column_date_index = column_date_index
 
     def _get_children(self) -> list[Node]:
         return []
@@ -202,31 +208,44 @@ class Reader_csvs(Node_pandas):
         files_to_read = (
             [self.path_dir]
             if self.path_dir.endswith(".csv")
-            else os.listdir(self.path_dir)
+            else (x for x in os.listdir(self.path_dir) if x.endswith(".csv"))
         )
 
         # Load them
         to_return: list = []
         for filename in files_to_read:
-            if filename.endswith(".csv"):
-                # Filter by date
-                if t is not None:
-                    if self.dated_name is not None:
-                        filename_date = self.dated_name(filename)
-                        if t is not None and not (t.start <= filename_date <= t.end):
-                            continue
-                    else:
-                        warnings.warn(
-                            "No dated_name function provided,"
-                            " so the files will not be filtered by date",
-                            stacklevel=2,
-                        )
-                # Read
-                try:
-                    to_return.append(pd.read_csv(os.path.join(self.path_dir, filename)))
-                except pd.errors.ParserError:
-                    print(f"Error reading {filename}")
-        return pd.concat(to_return, axis=0)
+            # Filter by date
+            if t is not None:
+                if self.dated_name is not None:
+                    filename_date = self.dated_name(filename)
+                    if t is not None and not (t.start <= filename_date <= t.end):
+                        continue
+                elif self.path_dir.endswith(".csv"):
+                    warnings.warn(
+                        "No dated_name function provided,"
+                        " so the files will not be filtered by date",
+                        stacklevel=2,
+                    )
+
+            # Read
+            try:
+                to_return.append(pd.read_csv(os.path.join(self.path_dir, filename)))
+            except pd.errors.ParserError:
+                print(f"Error reading {filename}")
+        df = pd.concat(to_return, axis=0)
+
+        # If the user specifies a date column, use it as such
+        if self.column_date_index is not None:
+            df[self.column_date_index] = pd.to_datetime(df[self.column_date_index])
+            # df = df.set_index(self.column_date_index)
+            if t is not None:
+                df = df[
+                    (df[self.column_date_index] >= t.start)
+                    & (df[self.column_date_index] <= t.end)
+                ]
+            df = df.sort_values(by=[self.column_date_index])
+
+        return df
 
     def _run_sequential(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
