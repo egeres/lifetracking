@@ -11,6 +11,12 @@ from hypothesis import strategies as st
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.datatypes.Segment import Segments
+from lifetracking.graph.Node import Node, run_multiple, run_multiple_parallel
+from lifetracking.graph.Node_int import (
+    Node_int_addition,
+    Node_int_generate,
+    Node_int_singleincrement,
+)
 from lifetracking.graph.Node_segments import Node_segments_generate, Node_segments_merge
 from lifetracking.graph.Time_interval import Time_interval
 
@@ -45,3 +51,27 @@ def test_print_stats():
 
     c.run()
     c.print_stats()
+
+
+def test_graph_count_nodes_0():
+    a = Node_int_generate(1)
+    assert len(a._get_children_all()) + 1 == 1
+
+
+def test_graph_count_nodes_1():
+    a = Node_int_generate(1)
+    b = Node_int_generate(2)
+    c = a + Node_int_singleincrement(b)
+    assert len(c._get_children_all()) + 1 == 4
+
+
+def test_graph_count_nodes_2():
+    a = Node_int_generate(0)
+    b = Node_int_singleincrement(a)
+    c = Node_int_singleincrement(b)
+    d = Node_int_singleincrement(c)
+    e = Node_int_singleincrement(d)
+    f = e + e
+    o = f.run()
+    assert o == 8
+    assert len(f._get_children_all()) + 1 == 6

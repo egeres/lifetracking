@@ -28,6 +28,11 @@ class Node(ABC, Generic[T]):
         self.name: str | None = None
         self.export: Callable | None = None
 
+    def __repr__(self) -> str:
+        if self.name is not None:
+            return f"{self.__class__.__name__}({self.name})"
+        return self.__class__.__name__
+
     @property
     def children(self) -> list[Node]:
         return self._get_children()
@@ -119,6 +124,9 @@ class Node(ABC, Generic[T]):
         else:
             print("")
             print("Stats...", f"({self.name})" if self.name is not None else "")
+            print(
+                "\t✨ Nodes   : ", len(self._get_children_all()) + 1
+            )  # Allegledly, unique nodes in the graph
             print("\t✨ Time    : ", round(self.last_run_info["time"], 2), "sec")
             print("\t✨ Run mode: ", self.last_run_info["run_mode"])
             print("\t✨ t in    : ", self.last_run_info["t_in"])
@@ -145,11 +153,11 @@ class Node(ABC, Generic[T]):
         # Then is executed
         return flow()
 
-    def _get_children_tree(self) -> set[Node]:
-        """Returns a set with the children of the node"""
+    def _get_children_all(self) -> set[Node]:
+        """Returns a set with all the children of the node"""
         children = set(self._get_children())
         for child in children:
-            children = children | child._get_children_tree()
+            children = children | child._get_children_all()
         return children
 
     @staticmethod
