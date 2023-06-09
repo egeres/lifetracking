@@ -259,6 +259,8 @@ class Reader_csvs(Node_pandas):
 
 
 class Reader_csvs_datedsubfolders(Reader_csvs):
+    # DOCS Add docstring
+
     def __init__(
         self,
         path_dir: str,

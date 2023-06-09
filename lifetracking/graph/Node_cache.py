@@ -240,7 +240,7 @@ class Node_cache(Node[T]):
             t_sub_truncated = copy.copy(t_sub).truncate(self.resolution)
             for t_sub_sub in t_sub_truncated.iterate_over_interval(self.resolution):
                 if self.resolution == Time_resolution.DAY:
-                    # TODO: Rename this bs name for the var
+                    # REFACTOR: Rename this bs name for the var
                     filename_slice_date = (
                         t_sub_sub.start.replace(
                             hour=0, minute=0, second=0, microsecond=0
@@ -340,7 +340,6 @@ class Node_cache(Node[T]):
         context: dict | None = None,
         prefect: bool = False,
     ):
-        # TODO: Refactor, almost too complex
         to_return = []
 
         # Cache data loading

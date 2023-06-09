@@ -159,6 +159,19 @@ def test_segments_merge():
         assert i["my_key"] == 0
 
 
+def test_segments_merge_empty():
+    b = Segments([])
+    c = Segments.merge(b, 5 * 60)
+    assert len(c) == 0
+
+    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    b = Segments(
+        [Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=1))]
+    )
+    c = Segments.merge(b, 5 * 60)
+    assert len(c) == 1
+
+
 def test_segments_merge_with_customrule():
     a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(

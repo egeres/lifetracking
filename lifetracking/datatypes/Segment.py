@@ -163,6 +163,9 @@ class Segments:
     ) -> Segments:
         """Merges segments that are close to each other in time."""
 
+        if len(segs) < 2:
+            return segs
+
         to_return = []
 
         if custom_rule is None:
