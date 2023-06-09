@@ -65,6 +65,29 @@ def test_node_segments_available():
     assert a.available
 
 
+def test_node_segments_add():
+    a = Node_segments_generate(Segments([Time_interval.today().to_seg()]))
+    b = Node_segments_generate(Segments([Time_interval.yesterday().to_seg()]))
+    c = a + b
+    o = c.run()
+
+    assert o is not None
+    assert len(o) == 2
+    assert c.children == [a, b]
+
+
+def test_node_segments_add_multiple():
+    a = Node_segments_generate(Segments([Time_interval.today().to_seg()]))
+    b = Node_segments_generate(Segments([Time_interval.yesterday().to_seg()]))
+    c = Node_segments_generate(Segments([Time_interval.last_n_days(3).to_seg()]))
+    d = a + b + c
+    o = d.run()
+
+    assert o is not None
+    assert len(o) == 3
+    assert d.children == [a, b, c]
+
+
 def test_node_segments_segmentize():
     # Data setup
     d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)

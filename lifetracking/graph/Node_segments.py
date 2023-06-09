@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import datetime
-import dis
 import hashlib
+from functools import reduce
 from typing import Any, Callable
 
 import pandas as pd
@@ -34,6 +34,9 @@ class Node_segments(Node[Segments]):
         custom_rule: None | Callable[[Seg, Seg], bool] = None,
     ):
         return Node_segments_merge(self, time_to_mergue_s, custom_rule)
+
+    def __add__(self, other: Node_segments) -> Node_segments:
+        return Node_segments_add([self, other])
 
 
 class Node_segments_operation(Node_segments):
@@ -134,6 +137,53 @@ class Node_segments_generate(Node_segments):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> Segments | None:
         return self._operation(t)
+
+
+class Node_segments_add(Node_segments):
+    def __init__(self, value: list[Node_segments]) -> None:
+        super().__init__()
+        self.value: list[Node_segments] = value
+
+    def _get_children(self) -> list[Node_segments]:
+        return self.value
+
+    def _hashstr(self):
+        return hashlib.md5(
+            (super()._hashstr() + "".join([v._hashstr() for v in self.value])).encode()
+        ).hexdigest()
+
+    def _operation(
+        self,
+        value: list[Segments | PrefectFuture[Segments, Sync]],
+        t: Time_interval | None = None,
+    ) -> Segments:
+        # TODO: t is not used
+        return reduce(
+            lambda x, y: x + y,
+            [x for x in value if x is not None],  # type: ignore
+        )
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[Segments, Sync]:
+        n_out = [
+            self._get_value_from_context_or_makegraph(n, t, context) for n in self.value
+        ]
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
+            n_out,
+            t=t,
+        )
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> Segments | None:
+        n_out = [self._get_value_from_context_or_run(n, t, context) for n in self.value]
+        return self._operation(n_out, t=t)
+
+    def __add__(self, other: Node_segments) -> Node_segments:
+        """This node keeps eating other nodes if you add them"""
+        self.value.append(other)
+        return self
 
 
 # TODO: Re... remove?

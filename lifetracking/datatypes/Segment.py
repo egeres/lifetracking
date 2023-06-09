@@ -84,7 +84,10 @@ class Segments:
         # Jesus christ bro 🤦🏻‍♂️, just write another if inside and
         # stop doing parkour, you're not raymond belle 🙄
         if tooltip_shows_length:
-            x["tooltip"] = x.get("tooltip", "") + f" ({round(s.length_h(), 1)}h)"
+            if s.length_h() < 0.1:
+                x["tooltip"] = x.get("tooltip", "") + f" ({round(s.length_m(), 1)}m)"
+            else:
+                x["tooltip"] = x.get("tooltip", "") + f" ({round(s.length_h(), 1)}h)"
             x["tooltip"] = x["tooltip"].strip()
 
         # Color

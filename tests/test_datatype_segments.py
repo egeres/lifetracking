@@ -127,6 +127,18 @@ def test_export_data_to_lc_multidays():
             assert len(data) == 2
 
 
+def test_segments_add():
+    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    s0 = Segments(
+        [Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=1))]
+    )
+    s1 = Segments(
+        [Seg(a + datetime.timedelta(minutes=3), a + datetime.timedelta(minutes=5))]
+    )
+    s2 = s0 + s1
+    assert len(s2) == 2
+
+
 def test_segments_merge():
     a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
