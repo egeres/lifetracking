@@ -70,7 +70,13 @@ class Segments:
         return Segments(sorted(other.content + self.content))
 
     def _export_to_longcalendar_edit_dict(
-        self, x: dict, s: Seg, tooltip, tooltip_shows_length, color
+        self,
+        x: dict,
+        s: Seg,
+        tooltip,
+        tooltip_shows_length: bool = False,
+        color: str | Callable[[Seg], str] | None = None,
+        opacity: float | Callable[[Seg], float] = 1.0,
     ) -> None:
         # Tooltip
         if tooltip is not None:
@@ -99,6 +105,13 @@ class Segments:
                 # config.json
                 x["color"] = color
 
+        # Opacity
+        if opacity != 1.0:
+            if callable(opacity):
+                x["opacity"] = opacity(s)
+            else:
+                x["opacity"] = opacity
+
     def export_to_longcalendar(
         self,
         path_filename: str,
@@ -112,8 +125,10 @@ class Segments:
         my data."""
 
         # Asserts n stuff
+        assert isinstance(path_filename, str)
         assert isinstance(hour_offset, (float, int))
         assert isinstance(opacity, float)
+        assert isinstance(tooltip_shows_length, bool)
         if not path_filename.endswith(".json"):
             raise ValueError("path_filename must end with .json")
 
@@ -143,12 +158,8 @@ class Segments:
                     tooltip,
                     tooltip_shows_length,
                     color,
+                    opacity,
                 )
-
-        # Opacity setting
-        if opacity != 1.0:
-            for seg in to_export:
-                seg["opacity"] = opacity
 
         # Export process
         if not os.path.exists(os.path.split(path_filename)[0]):
@@ -189,7 +200,7 @@ class Segments:
                 if seg.start - to_return[-1].end < datetime.timedelta(
                     seconds=time_to_mergue_s
                 ) and custom_rule(to_return[-1], seg):
-                    to_return[-1].end = seg.end
+                    to_return[-1].end = max(seg.end, to_return[-1].end)
                     # TODO: Maybe adds a counter with "operation_merge_count"?
                 else:
                     to_return.append(seg)

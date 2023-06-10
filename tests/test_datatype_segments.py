@@ -189,6 +189,23 @@ def test_segments_merge_1():
     assert len(c) == 1
 
 
+def test_segments_merge_2():
+    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    b = Segments(
+        [
+            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=8)),
+            Seg(a + datetime.timedelta(minutes=1), a + datetime.timedelta(minutes=9)),
+            Seg(a + datetime.timedelta(minutes=4), a + datetime.timedelta(minutes=5)),
+        ]
+    )
+    # Segments look like this
+    # |-------|
+    #  |-------|
+    #     ||
+    c = Segments.merge(b, 2)
+    assert len(c) == 1
+
+
 def test_segments_merge_empty():
     b = Segments([])
     c = Segments.merge(b, 5 * 60)

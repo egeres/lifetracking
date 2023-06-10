@@ -1,8 +1,15 @@
+import datetime
 import os
 import tempfile
 import time
 
-from lifetracking.utils import cache_singleargument, hash_method
+import pandas as pd
+
+from lifetracking.utils import (
+    cache_singleargument,
+    export_pddataframe_to_lc_single,
+    hash_method,
+)
 
 
 def test_hash_method():
@@ -75,3 +82,25 @@ def test_cache_singleargument():
 
         assert 0.4 < t2 < 0.6
         assert 0.0 < t3 < 0.1
+
+
+def test_export_pddataframe_to_lc_single():
+    # Data setup
+    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    df = pd.DataFrame(
+        [
+            # A
+            {"time": d + datetime.timedelta(minutes=1), "label": "A"},
+            {"time": d + datetime.timedelta(minutes=2), "label": "A"},
+            {"time": d + datetime.timedelta(minutes=3), "label": "A"},
+        ]
+    )
+
+    with tempfile.TemporaryDirectory() as path_dir:
+        export_pddataframe_to_lc_single(
+            df,
+            lambda x: x["time"],
+            os.path.join(path_dir, "out.json"),
+            color="#F00",
+            opacity=0.5,
+        )
