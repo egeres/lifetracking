@@ -71,7 +71,7 @@ class Segments:
 
     def _export_to_longcalendar_edit_dict(
         self, x: dict, s: Seg, tooltip, tooltip_shows_length, color
-    ):
+    ) -> None:
         # Tooltip
         if tooltip is not None:
             if callable(tooltip):
@@ -164,7 +164,9 @@ class Segments:
         time_to_mergue_s: float,
         custom_rule: None | Callable[[Seg, Seg], bool] = None,
     ) -> Segments:
-        """Merges segments that are close to each other in time."""
+        """Merges segments that are close to each other in time. So if we set
+        `time_to_mergue_s` to be 1 minute, and we have two segments that are 30
+        seconds apart, they will be merged."""
 
         if len(segs) < 2:
             return segs

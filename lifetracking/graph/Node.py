@@ -45,7 +45,7 @@ class Node(ABC, Generic[T]):
     @abstractmethod
     def _get_children(self) -> list[Node]:
         """Returns a set with the children of the node"""
-        ...
+        ...  # pragma: no cover
 
     @abstractmethod
     def _hashstr(self) -> str:
@@ -61,17 +61,17 @@ class Node(ABC, Generic[T]):
     @abstractmethod
     def _operation(self, t=None) -> T | None:
         """Main operation of the node"""
-        ...
+        ...  # pragma: no cover
 
     @abstractmethod
     def _run_sequential(self, t=None, context=None) -> T | None:
         """Runs the graph sequentially"""
-        ...
+        ...  # pragma: no cover
 
     @abstractmethod
     def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture[T, Sync]:
         """Parses the graph to prefect"""
-        ...
+        ...  # pragma: no cover
 
     def run(
         self,

@@ -1,4 +1,8 @@
-from lifetracking.utils import hash_method
+import os
+import tempfile
+import time
+
+from lifetracking.utils import cache_singleargument, hash_method
 
 
 def test_hash_method():
@@ -10,15 +14,15 @@ def test_hash_method():
     assert hash_method(a) != hash_method(c)
 
     def deffed_a(x):
-        return x
+        return x  # pragma: no cover
 
     def deffed_b(x):
-        return x
+        return x  # pragma: no cover
 
     assert hash_method(deffed_a) == hash_method(deffed_b)
 
     def deffed_c(x):
-        return x + 1
+        return x + 1  # pragma: no cover
 
     assert hash_method(deffed_a) != hash_method(deffed_c)
 
@@ -38,3 +42,36 @@ def test_hash_method():
         "Cities.exe",
     ]
     assert hash_method(a) == hash_method(b)
+
+
+def test_cache_singleargument():
+    with tempfile.TemporaryDirectory() as path_dir:
+
+        def non_cached_method(x: str):
+            time.sleep(0.5)
+            return x
+
+        t0 = time.time()
+        non_cached_method("a")
+        t0 = time.time() - t0
+        t1 = time.time()
+        non_cached_method("a")
+        t1 = time.time() - t1
+
+        assert 0.4 < t0 < 0.6
+        assert 0.4 < t1 < 0.6
+
+        @cache_singleargument(os.path.join(path_dir, "aha"))
+        def cached_method(x: str):
+            time.sleep(0.5)
+            return x
+
+        t2 = time.time()
+        cached_method("a")
+        t2 = time.time() - t2
+        t3 = time.time()
+        cached_method("a")
+        t3 = time.time() - t3
+
+        assert 0.4 < t2 < 0.6
+        assert 0.0 < t3 < 0.1

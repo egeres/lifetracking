@@ -86,7 +86,7 @@ def test_segments_minmax_add():
 
 @given(st.floats(min_value=0.0, max_value=1.0))
 @settings(deadline=None)  # To avoid hypothesis.errors.Flaky
-def test_export_data_to_lc(opacity: float):
+def test_export_to_longcalendar(opacity: float):
     a = Segments(
         [
             Time_interval.today().to_seg(),
@@ -98,7 +98,9 @@ def test_export_data_to_lc(opacity: float):
     with tempfile.TemporaryDirectory() as tmpdirname:
         # Ok
         filename = os.path.join(tmpdirname, "a", "b", "c", "test.json")
+        a.export_to_longcalendar(filename)
         a.export_to_longcalendar(filename, opacity=opacity)
+        a.export_to_longcalendar(filename, tooltip=lambda x: "test")
 
         # Failure
         with pytest.raises(ValueError):
@@ -108,7 +110,7 @@ def test_export_data_to_lc(opacity: float):
             a.export_to_longcalendar(filename, opacity=opacity)
 
 
-def test_export_data_to_lc_multidays():
+def test_export_to_longcalendar_multidays():
     a = Segments(
         [
             Time_interval.last_n_days(1).to_seg(),
@@ -139,7 +141,7 @@ def test_segments_add():
     assert len(s2) == 2
 
 
-def test_segments_merge():
+def test_segments_merge_0():
     a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
         [
@@ -169,6 +171,22 @@ def test_segments_merge():
     b["my_key"] = 0
     for i in b:
         assert i["my_key"] == 0
+
+
+def test_segments_merge_1():
+    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    b = Segments(
+        [
+            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=1)),
+            Seg(a + datetime.timedelta(minutes=4), a + datetime.timedelta(minutes=5)),
+            Seg(a + datetime.timedelta(minutes=8), a + datetime.timedelta(minutes=9)),
+        ]
+    )
+    c = Segments.merge(b, 0.01)
+    assert len(c) == 3
+
+    c = Segments.merge(b, 9999)
+    assert len(c) == 1
 
 
 def test_segments_merge_empty():

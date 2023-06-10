@@ -21,6 +21,13 @@ from lifetracking.graph.Node_segments import Node_segments_generate, Node_segmen
 from lifetracking.graph.Time_interval import Time_interval
 
 
+def test_node_basics_0():
+    a = Node_int_generate(1)
+    assert str(a) == "Node_int_generate"
+    a.name = "a"
+    assert str(a) == "Node_int_generate(a)"
+
+
 def test_print_stats():
     a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
@@ -72,6 +79,13 @@ def test_graph_count_nodes_2():
     d = Node_int_singleincrement(c)
     e = Node_int_singleincrement(d)
     f = e + e
-    o = f.run()
+    o = f.run(prefect=True)
     assert o == 8
     assert len(f._get_children_all()) + 1 == 6
+
+
+def test_graph_count_nodes_3():
+    a = Node_int_generate(1)
+    b = a + a
+    o = b.run(prefect=True)
+    assert o == 2
