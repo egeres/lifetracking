@@ -1,4 +1,5 @@
 import datetime
+import os
 import tempfile
 
 import pandas as pd
@@ -110,15 +111,19 @@ def test_node_pddataframe_readdata_1(file_format: str):
     with tempfile.TemporaryDirectory() as tmpdirname:
         # File creation n stuff
         if file_format == "csv":
-            df_a.to_csv(f"{tmpdirname}/test_1000_01_01.{file_format}", index=False)
-            df_b.to_csv(f"{tmpdirname}/test_2023_01_01.{file_format}", index=False)
+            df_a.to_csv(
+                os.path.join(tmpdirname, f"test_1000_01_01.{file_format}"), index=False
+            )
+            df_b.to_csv(
+                os.path.join(tmpdirname, f"test_2023_01_01.{file_format}"), index=False
+            )
             reader = Reader_csvs(
                 tmpdirname,
                 lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         elif file_format == "json":
-            df_a.to_json(f"{tmpdirname}/test_1000_01_01.{file_format}")
-            df_b.to_json(f"{tmpdirname}/test_2023_01_01.{file_format}")
+            df_a.to_json(os.path.join(tmpdirname, f"test_1000_01_01.{file_format}"))
+            df_b.to_json(os.path.join(tmpdirname, f"test_2023_01_01.{file_format}"))
             reader = Reader_jsons(
                 tmpdirname,
                 lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),

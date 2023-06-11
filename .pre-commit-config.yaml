@@ -29,12 +29,12 @@ repos:
       - id: black
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.4.0
+    rev: v3.6.0
     hooks:
       - id: pyupgrade
 
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v2.2.0
+    rev: v2.3.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]

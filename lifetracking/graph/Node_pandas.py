@@ -18,18 +18,22 @@ from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import hash_method
 
 
+# Actually, the value of fn should be:
+# Callable[[pd.DataFrame | PrefectFuture[pd.DataFrame, Sync]], pd.DataFrame]
+# But PrefectFuture[pd.DataFrame, Sync]] doesn't inherit properties from
+# pd.DataFrame, so it gives type errors when called by the user
 class Node_pandas(Node[pd.DataFrame]):
     def __init__(self) -> None:
         super().__init__()
 
     def operation(
         self,
-        f: Callable[[pd.DataFrame | PrefectFuture[pd.DataFrame, Sync]], pd.DataFrame],
+        fn: Callable[[pd.DataFrame], pd.DataFrame],
     ) -> Node_pandas:
-        return Node_pandas_operation(self, f)
+        return Node_pandas_operation(self, fn)  # type: ignore
 
-    def filter(self, f: Callable[[pd.Series], bool]) -> Node_pandas:
-        return Node_pandas_filter(self, f)
+    def filter(self, fn: Callable[[pd.Series], bool]) -> Node_pandas:
+        return Node_pandas_filter(self, fn)
 
 
 class Node_pandas_generate(Node_pandas):
@@ -183,7 +187,7 @@ class Reader_pandas(Node_pandas):
     def __init__(
         self,
         path_dir: str,
-        dated_name=None,
+        dated_name: Callable[[str], datetime.datetime] | None = None,
         column_date_index: str | None = None,
     ) -> None:
         # We parse info that should be specified by the subclasses
@@ -267,6 +271,13 @@ class Reader_pandas(Node_pandas):
                 x for x in os.listdir(self.path_dir) if x.endswith(self.file_extension)
             )
         )
+
+        # Sort the files by the name if self.dated_name is not None
+        if self.dated_name is not None:
+            files_to_read = sorted(
+                files_to_read,
+                key=lambda x: self.dated_name(os.path.split(x)[1]),
+            )
 
         # Load them
         to_return: list = []
