@@ -33,7 +33,7 @@ class Node_pandas(Node[pd.DataFrame]):
 
 
 class Node_pandas_generate(Node_pandas):
-    """Really for debugging purposes I guess"""
+    """Created for debugging purposes and such"""
 
     def __init__(self, df: pd.DataFrame) -> None:
         assert isinstance(df, pd.DataFrame)
@@ -240,7 +240,7 @@ class Reader_pandas(Node_pandas):
         dated_name: Callable[[str], datetime.datetime] | None = None,
     ) -> bool:
         if t is not None:
-            if self.dated_name is None:
+            if dated_name is None:
                 warnings.warn(
                     "No dated_name function provided,"
                     " so the files will not be filtered by date",
@@ -248,11 +248,9 @@ class Reader_pandas(Node_pandas):
                 )
             else:
                 try:
-                    filename_date = self.dated_name(filename)
+                    filename_date = dated_name(os.path.split(filename)[1])
                     if t is not None and not (t.start <= filename_date <= t.end):
                         return True
-                    else:
-                        print(filename_date)
                 except ValueError:
                     return True
 
@@ -287,7 +285,9 @@ class Reader_pandas(Node_pandas):
             except ValueError:
                 print(f"Error reading {filename} (value)")
 
-        # Hehe, concat ╰(*°▽°*)╯
+        # Hehe, will I concat?? ╰(*°▽°*)╯
+        if len(to_return) == 0:
+            return pd.DataFrame()
         df = pd.concat(to_return, axis=0)
 
         # If the user specifies a date column, use it to filter the t
