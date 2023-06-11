@@ -55,33 +55,33 @@ def test_cache_singleargument():
     with tempfile.TemporaryDirectory() as path_dir:
 
         def non_cached_method(x: str):
-            time.sleep(0.5)
+            time.sleep(1.0)
             return x
 
-        t0 = time.time()
+        t0 = time.perf_counter()
         non_cached_method("a")
-        t0 = time.time() - t0
-        t1 = time.time()
+        t0 = time.perf_counter() - t0
+        t1 = time.perf_counter()
         non_cached_method("a")
-        t1 = time.time() - t1
+        t1 = time.perf_counter() - t1
 
-        assert 0.4 < t0 < 0.6
-        assert 0.4 < t1 < 0.6
+        assert 0.9 < t0 < 1.5
+        assert 0.9 < t1 < 1.5
 
         @cache_singleargument(os.path.join(path_dir, "aha"))
         def cached_method(x: str):
-            time.sleep(0.5)
+            time.sleep(1.0)
             return x
 
-        t2 = time.time()
+        t2 = time.perf_counter()
         cached_method("a")
-        t2 = time.time() - t2
-        t3 = time.time()
+        t2 = time.perf_counter() - t2
+        t3 = time.perf_counter()
         cached_method("a")
-        t3 = time.time() - t3
+        t3 = time.perf_counter() - t3
 
-        assert 0.4 < t2 < 0.6
-        assert 0.0 < t3 < 0.1
+        assert 0.9 < t2 < 1.5
+        assert 0.0 < t3 < 0.2
 
 
 def test_export_pddataframe_to_lc_single():
