@@ -5,6 +5,7 @@ import dis
 import hashlib
 import os
 import warnings
+from abc import abstractmethod
 from typing import Any, Callable
 
 import pandas as pd
@@ -166,8 +167,18 @@ class Node_pandas_remove_close(Node_pandas_operation):
         )
 
 
-class Reader_csvs(Node_pandas):
-    """Can be used to read a .csv or a directory of .csvs"""
+class Reader_pandas(Node_pandas):
+    """Base class for reading pandas dataframes from files of varied formats"""
+
+    @abstractmethod
+    def _gen_file_extension(self) -> str:
+        """Something like .csv etc"""
+        ...  # pragma: no cover
+
+    @abstractmethod
+    def _gen_reading_method(self) -> Callable:
+        """Stuff like pd.read_csv etc"""
+        ...  # pragma: no cover
 
     def __init__(
         self,
@@ -175,9 +186,22 @@ class Reader_csvs(Node_pandas):
         dated_name=None,
         column_date_index: str | None = None,
     ) -> None:
-        if not path_dir.endswith(".csv"):
+        # We parse info that should be specified by the subclasses
+        self.file_extension = self._gen_file_extension()
+        assert self.file_extension.startswith(".")
+        assert len(self.file_extension) > 1
+        self.reading_method = self._gen_reading_method()
+        assert callable(self.reading_method)
+
+        # The rest of the init!
+        assert isinstance(path_dir, str)
+        assert isinstance(column_date_index, (str, type(None)))
+        if not path_dir.endswith(self.file_extension):
             if not os.path.exists(path_dir):
                 raise ValueError(f"{path_dir} does not exist")
+        else:
+            if not os.path.isfile(path_dir):
+                raise ValueError(f"{path_dir} is not a file")
         super().__init__()
         self.path_dir = path_dir
         self.dated_name = dated_name
@@ -188,18 +212,51 @@ class Reader_csvs(Node_pandas):
 
     def _hashstr(self) -> str:
         return hashlib.md5(
-            (super()._hashstr() + str(self.path_dir)).encode()
+            (
+                super()._hashstr() + str(self.path_dir) + str(self.column_date_index)
+            ).encode()
         ).hexdigest()
 
     def _available(self) -> bool:
-        if self.path_dir.endswith(".csv"):
+        if self.path_dir.endswith(self.file_extension):
             return os.path.exists(self.path_dir)
         else:
             return (
                 os.path.isdir(self.path_dir)
-                and len([i for i in os.listdir(self.path_dir) if i.endswith(".csv")])
+                and len(
+                    [
+                        i
+                        for i in os.listdir(self.path_dir)
+                        if i.endswith(self.file_extension)
+                    ]
+                )
                 > 0
             )
+
+    def _operation_filter_by_date(
+        self,
+        t: Time_interval | None,
+        filename: str,
+        dated_name: Callable[[str], datetime.datetime] | None = None,
+    ) -> bool:
+        if t is not None:
+            if self.dated_name is None:
+                warnings.warn(
+                    "No dated_name function provided,"
+                    " so the files will not be filtered by date",
+                    stacklevel=2,
+                )
+            else:
+                try:
+                    filename_date = self.dated_name(filename)
+                    if t is not None and not (t.start <= filename_date <= t.end):
+                        return True
+                    else:
+                        print(filename_date)
+                except ValueError:
+                    return True
+
+        return False
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         assert t is None or isinstance(t, Time_interval)
@@ -207,37 +264,36 @@ class Reader_csvs(Node_pandas):
         # Get files
         files_to_read = (
             [self.path_dir]
-            if self.path_dir.endswith(".csv")
-            else (x for x in os.listdir(self.path_dir) if x.endswith(".csv"))
+            if self.path_dir.endswith(self.file_extension)
+            else (
+                x for x in os.listdir(self.path_dir) if x.endswith(self.file_extension)
+            )
         )
 
         # Load them
         to_return: list = []
         for filename in files_to_read:
             # Filter by date
-            if t is not None:
-                if self.dated_name is not None:
-                    filename_date = self.dated_name(filename)
-                    if t is not None and not (t.start <= filename_date <= t.end):
-                        continue
-                elif self.path_dir.endswith(".csv"):
-                    warnings.warn(
-                        "No dated_name function provided,"
-                        " so the files will not be filtered by date",
-                        stacklevel=2,
-                    )
+            if self._operation_filter_by_date(t, filename, self.dated_name):
+                continue
 
             # Read
             try:
-                to_return.append(pd.read_csv(os.path.join(self.path_dir, filename)))
+                to_return.append(
+                    self.reading_method(os.path.join(self.path_dir, filename))
+                )
             except pd.errors.ParserError:
                 print(f"Error reading {filename}")
+            except ValueError:
+                print(f"Error reading {filename} (value)")
+
+        # Hehe, concat ╰(*°▽°*)╯
         df = pd.concat(to_return, axis=0)
 
-        # If the user specifies a date column, use it as such
+        # If the user specifies a date column, use it to filter the t
         if self.column_date_index is not None:
             df[self.column_date_index] = pd.to_datetime(df[self.column_date_index])
-            # df = df.set_index(self.column_date_index)
+            # df = df.set_index(self.column_date_index) # Hums.....
             if t is not None:
                 df = df[
                     (df[self.column_date_index] >= t.start)
@@ -256,6 +312,26 @@ class Reader_csvs(Node_pandas):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[pd.DataFrame, Sync]:
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
+
+
+class Reader_csvs(Reader_pandas):
+    """Can be used to read a .csv or a directory of .csv files"""
+
+    def _gen_file_extension(self) -> str:
+        return ".csv"
+
+    def _gen_reading_method(self) -> Callable:
+        return pd.read_csv
+
+
+class Reader_jsons(Reader_pandas):
+    """Can be used to read a .json or a directory of .json files"""
+
+    def _gen_file_extension(self) -> str:
+        return ".json"
+
+    def _gen_reading_method(self) -> Callable:
+        return pd.read_json
 
 
 class Reader_csvs_datedsubfolders(Reader_csvs):
@@ -304,79 +380,3 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
                     break
 
         return pd.concat(to_return, axis=0)
-
-
-# TODO: Maybe merge with Reader_csvs with a base class
-class Reader_jsons(Node_pandas):
-    """Can be used to read a .json or a directory of .jsons"""
-
-    def __init__(self, path_dir: str, dated_name=None) -> None:
-        if not path_dir.endswith(".json"):
-            if not os.path.exists(path_dir):
-                raise ValueError(f"{path_dir} does not exist")
-        super().__init__()
-        self.path_dir = path_dir
-        self.dated_name = dated_name
-
-    def _get_children(self) -> list[Node]:
-        return []
-
-    def _hashstr(self) -> str:
-        return hashlib.md5(
-            (super()._hashstr() + str(self.path_dir)).encode()
-        ).hexdigest()
-
-    def _available(self) -> bool:
-        if self.path_dir.endswith(".json"):
-            return os.path.exists(self.path_dir)
-        else:
-            return (
-                os.path.isdir(self.path_dir)
-                and len([i for i in os.listdir(self.path_dir) if i.endswith(".json")])
-                > 0
-            )
-
-    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        assert t is None or isinstance(t, Time_interval)
-
-        # Get files
-        files_to_read = (
-            [self.path_dir]
-            if self.path_dir.endswith(".json")
-            else os.listdir(self.path_dir)
-        )
-
-        # Load them
-        to_return: list = []
-        for filename in files_to_read:
-            if filename.endswith(".json"):
-                # Filter by date
-                if t is not None:
-                    if self.dated_name is not None:
-                        filename_date = self.dated_name(filename)
-                        if t is not None and not (t.start <= filename_date <= t.end):
-                            continue
-                    else:
-                        warnings.warn(
-                            "No dated_name function provided,"
-                            " so the files will not be filtered by date",
-                            stacklevel=2,
-                        )
-                # Read
-                try:
-                    to_return.append(
-                        pd.read_json(os.path.join(self.path_dir, filename))
-                    )
-                except pd.errors.ParserError:
-                    print(f"Error reading {filename}")
-        return pd.concat(to_return, axis=0)
-
-    def _run_sequential(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> pd.DataFrame | None:
-        return self._operation(t)
-
-    def _make_prefect_graph(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[pd.DataFrame, Sync]:
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
