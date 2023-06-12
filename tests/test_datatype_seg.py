@@ -165,3 +165,30 @@ def test_seg_length_h():
     )
     assert a.length_h() == 48
     assert a.length_s() > a.length_m() > a.length_h() > a.length_days()
+
+
+def test_seg_overlap():
+    #           |---a---|
+    # |---b---|
+    a = Seg(datetime.datetime(2010, 1, 1), datetime.datetime(2010, 6, 1))
+    b = Seg(datetime.datetime(2000, 1, 1), datetime.datetime(2000, 6, 1))
+    assert not a.overlaps(b)
+    assert not b.overlaps(a)
+
+    #           |---a---|
+    #             |-c-|
+    c = Seg(datetime.datetime(2010, 3, 1), datetime.datetime(2010, 4, 1))
+    assert c.overlaps(a)
+    assert a.overlaps(c)
+
+    #           |---a---|
+    #      |---d---|
+    d = Seg(datetime.datetime(2009, 8, 1), datetime.datetime(2010, 3, 1))
+    assert d.overlaps(a)
+    assert a.overlaps(d)
+
+    #           |---a---|
+    #               |---e---|
+    e = Seg(datetime.datetime(2010, 3, 1), datetime.datetime(2010, 9, 1))
+    assert e.overlaps(a)
+    assert a.overlaps(e)
