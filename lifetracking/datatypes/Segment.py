@@ -48,11 +48,11 @@ class Segments:
                         content_index -= 1
                         break
                     # t covers the right side
-                    if t.end > s.end:
+                    if t.end >= s.end:
                         s.end = t.start
                         break
                     # t covers the left side
-                    elif t.start < s.start:
+                    elif t.start <= s.start:
                         s.start = t.end
                         break
                     else:

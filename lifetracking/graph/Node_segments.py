@@ -42,6 +42,9 @@ class Node_segments(Node[Segments]):
     def __add__(self, other: Node_segments) -> Node_segments:
         return Node_segments_add([self, other])
 
+    def __sub__(self, other: Node_segments) -> Node_segments:
+        return Node_segments_sub(self, [other])
+
 
 class Node_segments_operation(Node_segments):
     def __init__(
@@ -184,12 +187,64 @@ class Node_segments_add(Node_segments):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> Segments | None:
         n_out = [self._get_value_from_context_or_run(n, t, context) for n in self.value]
-        return self._operation(n_out, t=t)
+        return self._operation(
+            n_out,
+            t=t,
+        )
 
     def __add__(self, other: Node_segments) -> Node_segments:
         """This node keeps eating other nodes if you add them"""
         self.value.append(other)
         return self
+
+
+class Node_segments_sub(Node_segments):
+    def __init__(self, n0: Node_segments, value: list[Node_segments]) -> None:
+        super().__init__()
+        self.n0: Node_segments = n0
+        self.value: list[Node_segments] = value
+
+    def _get_children(self) -> list[Node_segments]:
+        return self.value
+
+    def _hashstr(self):
+        return hashlib.md5(
+            (super()._hashstr() + "".join([v._hashstr() for v in self.value])).encode()
+        ).hexdigest()
+
+    def _operation(
+        self,
+        n0: Segments | PrefectFuture[Segments, Sync],
+        value: list[Segments | PrefectFuture[Segments, Sync]],
+        t: Time_interval | None = None,
+    ) -> Segments:
+        # TODO: t is not used
+        for i in value:
+            n0 = n0 - i
+        return n0
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[Segments, Sync]:
+        n0_out = self._get_value_from_context_or_run(self.n0, t, context)
+        value_out = [
+            self._get_value_from_context_or_run(n, t, context) for n in self.value
+        ]
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
+            n0_out, value_out, t=t
+        )
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> Segments | None:
+        n0_out = self._get_value_from_context_or_run(self.n0, t, context)
+        # TODO: Add these in all nodes with a child?
+        if n0_out is None:
+            return None
+        value_out = [
+            self._get_value_from_context_or_run(n, t, context) for n in self.value
+        ]
+        return self._operation(n0_out, value_out, t=t)
 
 
 # TODO: Re... remove?

@@ -76,6 +76,22 @@ def test_node_segments_add():
     assert c.children == [a, b]
 
 
+def test_node_segments_sub():
+    a = Node_segments_generate(Segments([Time_interval.last_n_days(5).to_seg()]))
+    b = Node_segments_generate(Segments([Time_interval.last_n_days(1).to_seg()]))
+    c = a - b
+    o = c.run()
+    assert o is not None
+    assert len(o) == 1
+
+    a = Node_segments_generate(Segments([Time_interval.last_n_days(5).to_seg()]))
+    b = Node_segments_generate(Segments([Time_interval.last_n_days(1).to_seg()]))
+    c = b - a
+    o = c.run()
+    assert o is not None
+    assert len(o) == 0
+
+
 def test_node_segments_add_multiple():
     a = Node_segments_generate(Segments([Time_interval.today().to_seg()]))
     b = Node_segments_generate(Segments([Time_interval.yesterday().to_seg()]))
