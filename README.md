@@ -19,4 +19,5 @@ pytest -n auto --disable-pytest-warnings
 coverage run -m pytest --disable-pytest-warnings
 coverage report -m
 ruff . --watch --ignore=F401
+flake8 . --count --max-complexity=10 --max-line-length=88 --statistics --ignore=F401,W503
 ```

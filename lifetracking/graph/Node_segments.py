@@ -24,9 +24,9 @@ class Node_segments(Node[Segments]):
 
     def operation(
         self,
-        f: Callable[[Segments | PrefectFuture[Segments, Sync]], Segments],
+        fn: Callable[[Segments], Segments],
     ) -> Node_segments:
-        return Node_segments_operation(self, f)
+        return Node_segments_operation(self, fn)  # type: ignore
 
     def merge(
         self,
@@ -47,20 +47,20 @@ class Node_segments_operation(Node_segments):
     def __init__(
         self,
         n0: Node_segments,
-        fn_operation: Callable[[Segments | PrefectFuture[Segments, Sync]], Segments],
+        fn: Callable[[Segments | PrefectFuture[Segments, Sync]], Segments],
     ) -> None:
         assert isinstance(n0, Node_segments)
-        assert callable(fn_operation), "operation_main must be callable"
+        assert callable(fn), "operation_main must be callable"
         super().__init__()
         self.n0 = n0
-        self.fn_operation = fn_operation
+        self.fn = fn
 
     def _get_children(self) -> list[Node]:
         return [self.n0]
 
     def _hashstr(self) -> str:
         return hashlib.md5(
-            (super()._hashstr() + hash_method(self.fn_operation)).encode()
+            (super()._hashstr() + hash_method(self.fn)).encode()
         ).hexdigest()
 
     def _operation(
@@ -69,7 +69,9 @@ class Node_segments_operation(Node_segments):
         t: Time_interval | None = None,
     ) -> Segments:
         assert t is None or isinstance(t, Time_interval)
-        return self.fn_operation(n0)
+        o = self.fn(n0)
+        assert isinstance(o, Segments), "The fn must return a Segments object!"
+        return o
 
     def _run_sequential(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
