@@ -5,6 +5,7 @@ import datetime
 import json
 import os
 import tempfile
+from datetime import timedelta
 
 import pytest
 from hypothesis import given, settings
@@ -131,12 +132,8 @@ def test_export_to_longcalendar_multidays():
 
 def test_segments_add():
     a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    s0 = Segments(
-        [Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=1))]
-    )
-    s1 = Segments(
-        [Seg(a + datetime.timedelta(minutes=3), a + datetime.timedelta(minutes=5))]
-    )
+    s0 = Segments([Seg(a + timedelta(minutes=0), a + timedelta(minutes=1))])
+    s1 = Segments([Seg(a + timedelta(minutes=3), a + timedelta(minutes=5))])
     s2 = s0 + s1
     assert len(s2) == 2
 
@@ -145,11 +142,9 @@ def test_segments_merge_0():
     a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
         [
-            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=1)),
-            Seg(a + datetime.timedelta(minutes=3), a + datetime.timedelta(minutes=5)),
-            Seg(
-                a + datetime.timedelta(minutes=100), a + datetime.timedelta(minutes=105)
-            ),
+            Seg(a + timedelta(minutes=0), a + timedelta(minutes=1)),
+            Seg(a + timedelta(minutes=3), a + timedelta(minutes=5)),
+            Seg(a + timedelta(minutes=100), a + timedelta(minutes=105)),
         ]
     )
     c = Segments.merge(b, 5 * 60)
@@ -159,11 +154,9 @@ def test_segments_merge_0():
 
     b = Segments(
         [
-            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=1)),
-            Seg(a + datetime.timedelta(minutes=3), a + datetime.timedelta(minutes=5)),
-            Seg(
-                a + datetime.timedelta(minutes=90), a + datetime.timedelta(minutes=105)
-            ),
+            Seg(a + timedelta(minutes=0), a + timedelta(minutes=1)),
+            Seg(a + timedelta(minutes=3), a + timedelta(minutes=5)),
+            Seg(a + timedelta(minutes=90), a + timedelta(minutes=105)),
         ]
     )
     c = Segments.merge(b, 0)
@@ -177,9 +170,9 @@ def test_segments_merge_1():
     a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
         [
-            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=1)),
-            Seg(a + datetime.timedelta(minutes=4), a + datetime.timedelta(minutes=5)),
-            Seg(a + datetime.timedelta(minutes=8), a + datetime.timedelta(minutes=9)),
+            Seg(a + timedelta(minutes=0), a + timedelta(minutes=1)),
+            Seg(a + timedelta(minutes=4), a + timedelta(minutes=5)),
+            Seg(a + timedelta(minutes=8), a + timedelta(minutes=9)),
         ]
     )
     c = Segments.merge(b, 0.01)
@@ -193,9 +186,9 @@ def test_segments_merge_2():
     a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
         [
-            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=8)),
-            Seg(a + datetime.timedelta(minutes=1), a + datetime.timedelta(minutes=9)),
-            Seg(a + datetime.timedelta(minutes=4), a + datetime.timedelta(minutes=5)),
+            Seg(a + timedelta(minutes=0), a + timedelta(minutes=8)),
+            Seg(a + timedelta(minutes=1), a + timedelta(minutes=9)),
+            Seg(a + timedelta(minutes=4), a + timedelta(minutes=5)),
         ]
     )
     # Segments look like this
@@ -212,9 +205,7 @@ def test_segments_merge_empty():
     assert len(c) == 0
 
     a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    b = Segments(
-        [Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=1))]
-    )
+    b = Segments([Seg(a + timedelta(minutes=0), a + timedelta(minutes=1))])
     c = Segments.merge(b, 5 * 60)
     assert len(c) == 1
 
@@ -223,26 +214,10 @@ def test_segments_merge_with_customrule():
     a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
         [
-            Seg(
-                a + datetime.timedelta(minutes=0),
-                a + datetime.timedelta(minutes=1),
-                {"my_key": 0},
-            ),
-            Seg(
-                a + datetime.timedelta(minutes=3),
-                a + datetime.timedelta(minutes=4),
-                {"my_key": 1},
-            ),
-            Seg(
-                a + datetime.timedelta(minutes=6),
-                a + datetime.timedelta(minutes=7),
-                {"my_key": 0},
-            ),
-            Seg(
-                a + datetime.timedelta(minutes=9),
-                a + datetime.timedelta(minutes=10),
-                {"my_key": 0},
-            ),
+            Seg(a + timedelta(minutes=0), a + timedelta(minutes=1), {"my_key": 0}),
+            Seg(a + timedelta(minutes=3), a + timedelta(minutes=4), {"my_key": 1}),
+            Seg(a + timedelta(minutes=6), a + timedelta(minutes=7), {"my_key": 0}),
+            Seg(a + timedelta(minutes=9), a + timedelta(minutes=10), {"my_key": 0}),
         ]
     )
     c = Segments.merge(b, 5 * 60, lambda x, y: x["my_key"] == y["my_key"])
@@ -257,12 +232,63 @@ def test_segments_remove_if_short():
     a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
         [
-            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=1)),
-            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=5)),
-            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=15)),
-            Seg(a + datetime.timedelta(minutes=0), a + datetime.timedelta(minutes=40)),
+            Seg(a + timedelta(minutes=0), a + timedelta(minutes=1)),
+            Seg(a + timedelta(minutes=0), a + timedelta(minutes=5)),
+            Seg(a + timedelta(minutes=0), a + timedelta(minutes=15)),
+            Seg(a + timedelta(minutes=0), a + timedelta(minutes=40)),
         ]
     )
     c = b.remove_if_shorter_than(10 * 60)
 
     assert len(c) == 2
+
+
+def test_segments_sub_0():
+    # Data prep
+    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # No overlap removes nothing
+    b = Segments([Seg(a + timedelta(minutes=0), a + timedelta(minutes=1))])
+    c = Segments([Seg(a + timedelta(minutes=8), a + timedelta(minutes=9))])
+    d = b - c
+    assert len(d) == 1
+    d = c - b
+    assert len(d) == 1
+
+    # Overlap can remove everything or a small part
+    b = Segments([Seg(a + timedelta(minutes=0), a + timedelta(minutes=9))])
+    c = Segments([Seg(a + timedelta(minutes=4), a + timedelta(minutes=5))])
+    d = copy.copy(b) - copy.copy(c)
+    assert len(d) == 2
+    d = copy.copy(c) - copy.copy(b)
+    assert len(d) == 0
+
+    # Partial overlap on the left half of the segment
+    b = Segments([Seg(a + timedelta(minutes=0), a + timedelta(minutes=10))])
+    c = Segments(
+        [Seg(a - timedelta(minutes=5), a + timedelta(minutes=5))]
+    )  # Overlaps left half
+    d = copy.copy(b) - copy.copy(c)
+    assert len(d) == 1
+    assert d[0] == Seg(
+        a + timedelta(minutes=5), a + timedelta(minutes=10)
+    )  # Remaining segment
+    d = copy.copy(c) - copy.copy(b)
+    assert len(d) == 1
+    assert d[0] == Seg(a - timedelta(minutes=5), a)  # Remaining segment
+
+    # Partial overlap on the right half of the segment
+    b = Segments([Seg(a + timedelta(minutes=0), a + timedelta(minutes=10))])
+    c = Segments(
+        [Seg(a + timedelta(minutes=5), a + timedelta(minutes=15))]
+    )  # Overlaps right half
+    d = copy.copy(b) - copy.copy(c)
+    assert len(d) == 1
+    assert d[0] == Seg(
+        a + timedelta(minutes=0), a + timedelta(minutes=5)
+    )  # Remaining segment
+    d = copy.copy(c) - copy.copy(b)
+    assert len(d) == 1
+    assert d[0] == Seg(
+        a + timedelta(minutes=10), a + timedelta(minutes=15)
+    )  # Remaining segment

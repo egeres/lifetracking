@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import datetime
 import hashlib
 import inspect
@@ -22,6 +23,49 @@ class Segments:
 
         # self.content = content # TODO, sort shouldn't actually be neccesary :[
         self.content: list[Seg] = sorted(content, key=lambda x: x.start)
+
+    def __copy__(self) -> Segments:
+        return Segments([copy.copy(seg) for seg in self.content])
+
+    def __sub__(self, other: Segments) -> Segments:
+        # Self and other must be sorted!
+        assert all(
+            seg.start <= seg.end for seg in self.content
+        ), "Segments must be ordered in time"
+        assert all(
+            seg.start <= seg.end for seg in other.content
+        ), "Segments must be ordered in time"
+
+        content = self.content
+        content_index = 0
+        while content_index < len(content):
+            s: Seg = content[content_index]
+            for t in other.content:
+                if t.overlaps(s):  # There is an overlap
+                    # t completely covers s
+                    if t.start <= s.start and t.end >= s.end:
+                        content.pop(content_index)
+                        content_index -= 1
+                        break
+                    # t covers the right side
+                    if t.end > s.end:
+                        s.end = t.start
+                        break
+                    # t covers the left side
+                    elif t.start < s.start:
+                        s.start = t.end
+                        break
+                    else:
+                        content.append(Seg(t.end, s.end, s.value))
+                        content = sorted(content, key=lambda x: x.start)
+                        # TODO: Benchmark the difference in speed, but needs
+                        # python >= 3.10
+                        # insort(content, Seg(t.end, s.end, s.value), key=lambda
+                        # x: x.start)
+                        s.end = t.start
+                        break
+            content_index += 1
+        return Segments(sorted(content))
 
     def _hashstr(self) -> str:
         return hashlib.md5(self.__class__.__name__.encode()).hexdigest()

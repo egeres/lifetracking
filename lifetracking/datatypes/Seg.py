@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import datetime
 import hashlib
 from typing import Any
@@ -21,11 +22,14 @@ class Seg:
     def overlaps(self, other: Seg) -> bool:
         """Returns true if the two segments overlap in time"""
         return (
-            (self.start <= other.end and self.start >= other.start)
-            or (self.end <= other.end and self.end >= other.start)
-            or (other.start <= self.end and other.start >= self.start)
-            or (other.end <= self.end and other.end >= self.start)
+            (self.start < other.end and self.start > other.start)
+            or (self.end < other.end and self.end > other.start)
+            or (other.start < self.end and other.start > self.start)
+            or (other.end < self.end and other.end > self.start)
         )
+
+    def __copy__(self):
+        return Seg(self.start, self.end, copy.copy(self.value))
 
     def __repr__(self) -> str:
         if self.value is None:
