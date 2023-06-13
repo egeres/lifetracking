@@ -6,15 +6,14 @@ import hashlib
 import os
 import warnings
 from abc import abstractmethod
-from typing import Any, Callable
+from typing import Callable
 
 import pandas as pd
-from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 
 from lifetracking.datatypes.Seg import Seg
-from lifetracking.graph.Node import Node
+from lifetracking.graph.Node import Node, Node_0child, Node_1child
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import export_pddataframe_to_lc_single, hash_method
 
@@ -59,16 +58,13 @@ class Node_pandas(Node[pd.DataFrame]):
         )
 
 
-class Node_pandas_generate(Node_pandas):
+class Node_pandas_generate(Node_0child, Node_pandas):
     """Created for debugging purposes and such"""
 
     def __init__(self, df: pd.DataFrame) -> None:
         assert isinstance(df, pd.DataFrame)
         super().__init__()
         self.df = df
-
-    def _get_children(self) -> list[Node]:
-        return []
 
     def _hashstr(self) -> str:
         # TODO: Decide if all static generators will be done in this way...
@@ -84,18 +80,8 @@ class Node_pandas_generate(Node_pandas):
             return df[t.start : t.end]
         return df
 
-    def _run_sequential(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> pd.DataFrame | None:
-        return self._operation(t)
 
-    def _make_prefect_graph(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[pd.DataFrame, Sync]:
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
-
-
-class Node_pandas_operation(Node_pandas):
+class Node_pandas_operation(Node_1child, Node_pandas):
     """Node to apply an operation to a pandas dataframe"""
 
     def __init__(
@@ -111,13 +97,14 @@ class Node_pandas_operation(Node_pandas):
         self.n0 = n0
         self.fn_operation = fn_operation
 
-    def _get_children(self) -> list[Node]:
-        return [self.n0]
-
     def _hashstr(self) -> str:
         return hashlib.md5(
             (super()._hashstr() + hash_method(self.fn_operation)).encode()
         ).hexdigest()
+
+    @property
+    def child(self) -> Node:
+        return self.n0
 
     def _operation(
         self,
@@ -126,24 +113,6 @@ class Node_pandas_operation(Node_pandas):
     ) -> pd.DataFrame:
         assert t is None or isinstance(t, Time_interval)
         return self.fn_operation(n0)
-
-    def _run_sequential(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> pd.DataFrame | None:
-        n0_out = self._get_value_from_context_or_run(self.n0, t, context)
-        if n0_out is None:
-            return None
-        return self._operation(n0_out, t)
-
-    def _make_prefect_graph(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[pd.DataFrame, Sync] | None:
-        n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
-        if n0_out is None:
-            return None
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
-            n0_out, t
-        )
 
 
 class Node_pandas_filter(Node_pandas_operation):
@@ -194,7 +163,7 @@ class Node_pandas_remove_close(Node_pandas_operation):
         )
 
 
-class Reader_pandas(Node_pandas):
+class Reader_pandas(Node_0child, Node_pandas):
     """Base class for reading pandas dataframes from files of varied formats"""
 
     @abstractmethod
@@ -233,9 +202,6 @@ class Reader_pandas(Node_pandas):
         self.path_dir = path_dir
         self.dated_name = dated_name
         self.column_date_index = column_date_index
-
-    def _get_children(self) -> list[Node]:
-        return []
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -336,16 +302,6 @@ class Reader_pandas(Node_pandas):
             df = df.sort_values(by=[self.column_date_index])
 
         return df
-
-    def _run_sequential(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> pd.DataFrame | None:
-        return self._operation(t)
-
-    def _make_prefect_graph(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[pd.DataFrame, Sync]:
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 
 
 class Reader_csvs(Reader_pandas):

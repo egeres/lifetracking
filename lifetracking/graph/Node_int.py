@@ -34,6 +34,9 @@ class Node_int_generate(Node_0child, Node_int):
     def _hashstr(self) -> str:
         return hashlib.md5((super()._hashstr() + str(self.value)).encode()).hexdigest()
 
+    def _available(self) -> bool:
+        return True
+
     def _operation(self, t: Time_interval | None = None) -> int:
         time.sleep(self.artificial_delay)
         return self.value
@@ -53,12 +56,12 @@ class Node_int_singleincrement(Node_1child, Node_int):
         self.n0 = n0
         self.artificial_delay = artificial_delay
 
+    def _hashstr(self) -> str:
+        return super()._hashstr()
+
     @property
     def child(self) -> Node:
         return self.n0
-
-    def _hashstr(self) -> str:
-        return super()._hashstr()
 
     def _operation(
         self, n0: int | PrefectFuture[int, Sync], t: Time_interval | None = None

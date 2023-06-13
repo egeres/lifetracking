@@ -203,9 +203,6 @@ class Node_0child(Node[T]):
     def _get_children(self) -> list[Node]:
         return []
 
-    def _available(self) -> bool:
-        return True
-
     def _run_sequential(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> T | None:

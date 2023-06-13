@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import dis
 import hashlib
 import os
 from typing import Any, Callable
@@ -9,12 +8,11 @@ from typing import Any, Callable
 import geopandas as gpd
 import pandas as pd
 from fiona.errors import DriverError
-from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 from shapely.geometry import Point, Polygon
 
-from lifetracking.graph.Node import Node
+from lifetracking.graph.Node import Node, Node_0child, Node_1child
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import hash_method
 
@@ -35,7 +33,7 @@ class Node_geopandas(Node[gpd.GeoDataFrame]):
 # TODO: Ok, so... does this count as duplicated code? Maybe I should do some
 # kind of template for operation nodes which then is implemented for
 # sub-classes...?
-class Node_geopandas_operation(Node_geopandas):
+class Node_geopandas_operation(Node_1child, Node_geopandas):
     def __init__(
         self,
         n0: Node_geopandas,
@@ -49,8 +47,9 @@ class Node_geopandas_operation(Node_geopandas):
         self.n0 = n0
         self.fn_operation = fn_operation
 
-    def _get_children(self) -> list[Node]:
-        return [self.n0]
+    @property
+    def child(self) -> Node:
+        return self.n0
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -65,34 +64,13 @@ class Node_geopandas_operation(Node_geopandas):
         assert t is None or isinstance(t, Time_interval)
         return self.fn_operation(n0)
 
-    def _run_sequential(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> gpd.GeoDataFrame | None:
-        n0_out = self._get_value_from_context_or_run(self.n0, t, context)
-        if n0_out is None:
-            return None
-        return self._operation(n0_out, t)
 
-    def _make_prefect_graph(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[gpd.GeoDataFrame, Sync] | None:
-        n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
-        if n0_out is None:
-            return None
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
-            n0_out, t
-        )
-
-
-class Reader_geojson(Node_geopandas):
+class Reader_geojson(Node_0child, Node_geopandas):
     def __init__(self, path_dir: str) -> None:
         if not os.path.isdir(path_dir):
             raise ValueError(f"{path_dir} is not a directory")
         super().__init__()
         self.path_dir = path_dir
-
-    def _get_children(self) -> list[Node]:
-        return []
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -129,18 +107,8 @@ class Reader_geojson(Node_geopandas):
                     print(f"Error reading {filename}")
         return pd.concat(to_return, axis=0)
 
-    def _run_sequential(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> gpd.GeoDataFrame | None:
-        return self._operation(t)
 
-    def _make_prefect_graph(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[gpd.GeoDataFrame, Sync]:
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
-
-
-class Label_geopandas(Node_geopandas):
+class Label_geopandas(Node_1child, Node_geopandas):
     """Adds an extra column according to your labels"""
 
     def __init__(
@@ -175,8 +143,9 @@ class Label_geopandas(Node_geopandas):
         )
         self.coords_polygs.crs = "EPSG:4326"
 
-    def _get_children(self) -> list[Node]:
-        return [self.n0]
+    @property
+    def child(self) -> Node:
+        return self.n0
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -211,25 +180,3 @@ class Label_geopandas(Node_geopandas):
         n0["label"] = n0.apply(get_label, axis=1)
 
         return n0
-
-    def _run_sequential(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> gpd.GeoDataFrame | None:
-        # Node is calculated if it's not in the context, then _operation is called
-        n0_out = self._get_value_from_context_or_run(self.n0, t, context)
-        if n0_out is None:
-            return None
-        return self._operation(
-            n0_out,
-            t,
-        )
-
-    def _make_prefect_graph(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[gpd.GeoDataFrame, Sync]:
-        # Node graph is calculated if it's not in the context, then _operation is called
-        n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
-            n0_out,
-            t,
-        )
