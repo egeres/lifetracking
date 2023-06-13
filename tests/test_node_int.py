@@ -19,6 +19,12 @@ def test_run_single_simple(a_val, b_val):
     o = c.run()
     assert o == a_val + b_val + 1
 
+    # We check the "childrenity" of the nodes
+    assert len(a.children) == 0
+    assert len(b.children) == 0
+    assert len(Node_int_singleincrement(b).children) == 1
+    assert len(c.children) == 2
+
 
 # Currently I'm not interested in testing the prefect integration with hypothesis
 # because it's too slow

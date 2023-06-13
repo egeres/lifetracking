@@ -8,6 +8,7 @@ from typing import Any, Callable, Generic, Iterable, TypeVar
 
 import pandas as pd
 from prefect import flow as prefect_flow
+from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
 from prefect.task_runners import ConcurrentTaskRunner
 from prefect.utilities.asyncutils import Sync
@@ -196,6 +197,61 @@ class Node(ABC, Generic[T]):
     def _children_are_available(self) -> bool:
         """Returns whether all the children are available"""
         return all([x._available() for x in self.children])
+
+
+class Node_0child(Node[T]):
+    def _get_children(self) -> list[Node]:
+        return []
+
+    def _available(self) -> bool:
+        return True
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> T | None:
+        return self._operation(t)
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[T | None, Sync]:
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
+
+
+class Node_1child(Node[T]):
+    @abstractmethod
+    def _operation(self, n0: Node, t: Time_interval | None) -> T | None:
+        """Main operation of the node"""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def child(self) -> Node:
+        pass
+
+    def _get_children(self) -> list[Node]:
+        return [self.child]
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> T | None:
+        # Node is calculated if it's not in the context, then _operation is called
+        n0_out = self._get_value_from_context_or_run(self.child, t, context)
+        if n0_out is None:
+            return None
+        return self._operation(
+            n0_out,
+            t,
+        )
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[T | None, Sync]:
+        # Node graph is calculated if it's not in the context, then _operation is called
+        n0_out = self._get_value_from_context_or_makegraph(self.child, t, context)
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
+            n0_out,
+            t,
+        )
 
 
 def run_multiple(
