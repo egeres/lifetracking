@@ -13,9 +13,10 @@ from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 
+from lifetracking.datatypes.Seg import Seg
 from lifetracking.graph.Node import Node
 from lifetracking.graph.Time_interval import Time_interval
-from lifetracking.utils import hash_method
+from lifetracking.utils import export_pddataframe_to_lc_single, hash_method
 
 
 # Actually, the value of fn should be:
@@ -34,6 +35,28 @@ class Node_pandas(Node[pd.DataFrame]):
 
     def filter(self, fn: Callable[[pd.Series], bool]) -> Node_pandas:
         return Node_pandas_filter(self, fn)
+
+    # TODO: Unify with the node for segments
+    def export_to_longcalendar(
+        self,
+        t: Time_interval | None,
+        fn: Callable[[pd.Series], str],
+        path_filename: str,
+        color: str | None = None,  # TODO: Callable support
+        opacity: float | None = None,  # TODO: Callable support
+    ):
+        assert isinstance(path_filename, str)
+        assert isinstance(opacity, float) or opacity is None
+
+        o = self.run(t)
+        assert o is not None
+        export_pddataframe_to_lc_single(
+            o,
+            fn,
+            path_filename=path_filename,
+            color=color,
+            opacity=opacity,
+        )
 
 
 class Node_pandas_generate(Node_pandas):

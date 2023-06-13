@@ -26,7 +26,6 @@ class Node(ABC, Generic[T]):
     def __init__(self):
         self.last_run_info: dict[str, Any] | None = None
         self.name: str | None = None
-        self.export: Callable | None = None
 
     def __repr__(self) -> str:
         if self.name is not None:

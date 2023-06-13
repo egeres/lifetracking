@@ -45,6 +45,35 @@ class Node_segments(Node[Segments]):
     def __sub__(self, other: Node_segments) -> Node_segments:
         return Node_segments_sub(self, [other])
 
+    def export_to_longcalendar(
+        self,
+        t: Time_interval | None,
+        path_filename: str,
+        hour_offset: float = 0.0,
+        opacity: float = 1.0,
+        tooltip: str | Callable[[Seg], str] | None = None,
+        color: str | Callable[[Seg], str] | None = None,
+        tooltip_shows_length: bool = False,
+    ):
+        assert isinstance(t, Time_interval) or t is None
+        assert isinstance(path_filename, str)
+        assert isinstance(hour_offset, float)
+        assert isinstance(opacity, float)
+        assert tooltip is None or isinstance(tooltip, str) or callable(tooltip)
+        assert color is None or isinstance(color, str) or callable(color)
+        assert isinstance(tooltip_shows_length, bool)
+
+        o = self.run(t)
+        assert o is not None
+        o.export_to_longcalendar(
+            path_filename=path_filename,
+            hour_offset=hour_offset,
+            opacity=opacity,
+            tooltip=tooltip,
+            color=color,
+            tooltip_shows_length=tooltip_shows_length,
+        )
+
 
 class Node_segments_operation(Node_segments):
     def __init__(

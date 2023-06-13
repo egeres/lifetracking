@@ -15,10 +15,8 @@ def export_pddataframe_to_lc_single(
     df: pd.DataFrame,
     fn: Callable[[pd.Series], str],
     path_filename: str,
-    # TODO: Callable support
-    color: str | None = None,
-    # TODO: Callable support
-    opacity: float | None = None,
+    color: str | None = None,  # TODO: Callable support
+    opacity: float | None = None,  # TODO: Callable support
 ):
     assert callable(fn), "fn must be callable"
     assert isinstance(df, pd.DataFrame)
