@@ -85,6 +85,10 @@ class Node(ABC, Generic[T]):
         assert isinstance(prefect, bool)
         assert t is None or isinstance(t, Time_interval)
 
+        # context is changed
+        if context is None:
+            context = {}
+
         # Prepare stuff
         self.last_run_info = {}
         t0 = time.time()
@@ -92,7 +96,7 @@ class Node(ABC, Generic[T]):
         # Actual run
         to_return: T | None = None
         if prefect:
-            to_return = self._run_prefect_graph(t)
+            to_return = self._run_prefect_graph(t, context)
         else:
             to_return = self._run_sequential(t, context)
 
@@ -106,7 +110,6 @@ class Node(ABC, Generic[T]):
             self.last_run_info["t_out"] = Time_interval(
                 min(to_return).start, max(to_return).end
             )
-
         if isinstance(to_return, (Segments, pd.DataFrame)):
             self.last_run_info["len"] = len(to_return)
         elif isinstance(to_return, int):
@@ -142,13 +145,13 @@ class Node(ABC, Generic[T]):
             # Nodes that took the most?
             print("")
 
-    def _run_prefect_graph(self, t=None) -> T | None:
+    def _run_prefect_graph(self, t=None, context=None) -> T | None:
         """Run the graph using prefect concurrently"""
 
         # A flow is created
         @prefect_flow(task_runner=ConcurrentTaskRunner(), name="run_prefect_graph")
         def flow():
-            return self._make_prefect_graph(t).result()
+            return self._make_prefect_graph(t, context).result()
 
         # Then is executed
         return flow()

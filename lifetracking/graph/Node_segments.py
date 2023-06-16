@@ -57,7 +57,7 @@ class Node_segments(Node[Segments]):
     ):
         assert isinstance(t, Time_interval) or t is None
         assert isinstance(path_filename, str)
-        assert isinstance(hour_offset, float)
+        assert isinstance(hour_offset, (float, int))
         assert isinstance(opacity, float)
         assert tooltip is None or isinstance(tooltip, str) or callable(tooltip)
         assert color is None or isinstance(color, str) or callable(color)

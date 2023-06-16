@@ -26,6 +26,14 @@ def test_run_single_simple(a_val, b_val):
     assert len(c.children) == 2
 
 
+def test_run_single_simple_test_iadd():
+    a = Node_int_generate(1)
+    b = Node_int_generate(1)
+    a += Node_int_singleincrement(b)
+    o = a.run()
+    assert o == 3
+
+
 # Currently I'm not interested in testing the prefect integration with hypothesis
 # because it's too slow
 def test_run_single_prefect():
