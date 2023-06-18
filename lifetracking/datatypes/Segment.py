@@ -12,6 +12,7 @@ from typing_extensions import Self
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.graph.Time_interval import Time_interval
+from lifetracking.utils import _lc_export_prepare_dir
 
 
 class Segments:
@@ -127,12 +128,11 @@ class Segments:
             if callable(tooltip):
                 x["tooltip"] = tooltip(s)
             else:
-                # x["tooltip"] = str(seg[tooltip])
                 x["tooltip"] = str(s[tooltip])
 
         # Tooltip length
-        # Jesus christ bro 🤦🏻‍♂️, just write another if inside and
-        # stop doing parkour, you're not raymond belle 🙄
+        # Jesus christ bro 🤦🏻‍♂️, just write another if inside and stop doing
+        # parkour, you're not raymond belle 🙄
         if tooltip_shows_length:
             if s.length_h() < 0.1:
                 x["tooltip"] = x.get("tooltip", "") + f" ({round(s.length_m(), 1)}m)"
@@ -140,49 +140,78 @@ class Segments:
                 x["tooltip"] = x.get("tooltip", "") + f" ({round(s.length_h(), 1)}h)"
             x["tooltip"] = x["tooltip"].strip()
 
-        # Color
-        if color is not None:
-            if callable(color):
-                x["color"] = color(s)
-            else:
-                # TODO: Shouldn't be per element, but per day at the
-                # config.json
-                x["color"] = color
-
-        # Opacity
-        if opacity != 1.0:
-            if callable(opacity):
-                x["opacity"] = opacity(s)
-            else:
-                x["opacity"] = opacity
+        # Color & opacity
+        if callable(color):
+            x["color"] = color(s)
+        if callable(opacity):
+            x["opacity"] = opacity(s)
 
     def export_to_longcalendar(
         self,
         path_filename: str,
         hour_offset: float = 0.0,
-        opacity: float = 1.0,
-        tooltip: str | Callable[[Seg], str] | None = None,
         color: str | Callable[[Seg], str] | None = None,
+        opacity: float | Callable[[Seg], float] = 1.0,
+        tooltip: str | Callable[[Seg], str] | None = None,
         tooltip_shows_length: bool = False,
     ) -> None:
         """Long calendar is a custom application of mine that I use to visualize
         my data."""
 
-        # Asserts n stuff
+        # Assertions
         assert isinstance(path_filename, str)
-        assert isinstance(hour_offset, (float, int))
-        assert isinstance(opacity, float)
-        assert isinstance(tooltip_shows_length, bool)
         if not path_filename.endswith(".json"):
             raise ValueError("path_filename must end with .json")
+        assert os.path.split(path_filename)[-1] != "config.json"
 
-        # If color is callable, it has one argument, the Seg itself
+        # Assertion of color, opacity and tooltip
         assert color is None or isinstance(color, str) or callable(color)
         assert (
             color is None
             or isinstance(color, str)
             or len(inspect.signature(color).parameters) == 1
         )
+        assert isinstance(opacity, float) or callable(opacity)
+        assert (
+            opacity is None
+            or isinstance(opacity, float)
+            or len(inspect.signature(opacity).parameters) == 1
+        )
+
+        # Other assertions
+        assert isinstance(hour_offset, (float, int))
+        assert isinstance(tooltip_shows_length, bool)
+        assert tooltip is None or isinstance(tooltip, str) or callable(tooltip)
+        assert (
+            tooltip is None
+            or isinstance(tooltip, str)
+            or len(inspect.signature(tooltip).parameters) == 1
+        )
+
+        # Dir setup
+        _lc_export_prepare_dir(path_filename)
+
+        # Changes at config.json
+        if isinstance(color, str) or isinstance(color, float):
+            # Data parsing
+            path_fil_config = os.path.join(
+                os.path.split(path_filename)[0], "config.json"
+            )
+            with open(path_fil_config) as f:
+                data = json.load(f)
+                assert isinstance(data, dict)
+                key_name = os.path.split(path_filename)[1].split(".")[0]
+                if key_name not in data["data"]:
+                    data["data"][key_name] = {}
+
+            # We write color and opacity
+            if isinstance(color, str):
+                data["data"][key_name]["color"] = f"{color}"
+            if isinstance(opacity, float) and opacity != 1.0:
+                data["data"][key_name]["opacity"] = opacity
+
+            with open(path_fil_config, "w") as f:
+                json.dump(data, f, indent=4)
 
         # Export itself
         to_export = []
@@ -204,10 +233,6 @@ class Segments:
                     color,
                     opacity,
                 )
-
-        # Export process
-        if not os.path.exists(os.path.split(path_filename)[0]):
-            os.makedirs(os.path.split(path_filename)[0])
         with open(path_filename, "w") as f:
             json.dump(to_export, f, indent=4, default=str)
 

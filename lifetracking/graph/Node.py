@@ -137,7 +137,7 @@ class Node(ABC, Generic[T]):
                 print("\t✨ t out   : ", self.last_run_info["t_out"])
                 # TODO: Besides this, the length of the output should be printed
             if "len" in self.last_run_info:
-                print("\t✨ Lenth   : ", self.last_run_info["len"])
+                print("\t✨ Length  : ", self.last_run_info["len"])
             # Print name if defined
             # print timespan input and output
             # TODO: Add how many nodes were executed
