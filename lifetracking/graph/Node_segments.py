@@ -521,11 +521,23 @@ class Node_segmentize_pandas_duration(Node_1child, Node_segments):
         # Segmentizing
         to_return = []
         for _, i in iterable:
-            d = i[self.name_column_date]
+            # Date is extracted
+            date_seg = i[self.name_column_date]
+
+            # Time delta is calculated
+            time_delta = i[self.name_column_duration]
+            if isinstance(time_delta, (float, int)):
+                time_delta = datetime.timedelta(seconds=time_delta)
+            elif isinstance(time_delta, datetime.timedelta):
+                pass
+            else:
+                raise NotImplementedError
+
+            # Seg is created
             to_return.append(
                 Seg(
-                    d,
-                    d + datetime.timedelta(seconds=i[self.name_column_duration]),
+                    date_seg,
+                    date_seg + time_delta,
                     None if self.segment_metadata is None else self.segment_metadata(i),
                 )
             )

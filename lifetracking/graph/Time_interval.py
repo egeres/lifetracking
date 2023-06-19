@@ -45,6 +45,9 @@ class Time_interval:
             + f",{self.end.strftime('%Y-%m-%d %H:%M')}>"
         )
 
+    def tz_convert(self, tz: datetime.tzinfo) -> Time_interval:
+        return Time_interval(self.start.astimezone(tz), self.end.astimezone(tz))
+
     def truncate(self, time_res: Time_resolution) -> Time_interval:
         if time_res == Time_resolution.HOUR:
             return Time_interval(

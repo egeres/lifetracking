@@ -129,9 +129,9 @@ class Node(ABC, Generic[T]):
             if "t_out" in self.last_run_info:
                 duration_t_out = self.last_run_info["t_out"].duration_days
                 if duration_t_out >= 365:
-                    duration_t_out = f"{round(duration_t_out/365, 2)} years"
+                    duration_t_out = f"{round(duration_t_out/365, 1)} years"
                 else:
-                    duration_t_out = f"{duration_t_out} days"
+                    duration_t_out = f"{round(duration_t_out, 1)} days"
 
             print("")
             print("Stats...", f"({self.name})" if self.name is not None else "")
@@ -144,7 +144,7 @@ class Node(ABC, Generic[T]):
             if "t_out" in self.last_run_info:
                 print("\t✨ t out   : ", self.last_run_info["t_out"])
             if duration_t_out is not None:
-                print("\t           : ", f"({duration_t_out})")
+                print("\t             ", f"({duration_t_out})")
             if "len" in self.last_run_info:
                 print("\t✨ Length  : ", self.last_run_info["len"])
             # Print name if defined

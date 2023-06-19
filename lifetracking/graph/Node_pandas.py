@@ -180,6 +180,7 @@ class Reader_pandas(Node_0child, Node_pandas):
         path_dir: str,
         dated_name: Callable[[str], datetime.datetime] | None = None,
         column_date_index: str | None = None,
+        time_zone: None | datetime.tzinfo = None,
     ) -> None:
         # We parse info that should be specified by the subclasses
         self.file_extension = self._gen_file_extension()
@@ -201,6 +202,7 @@ class Reader_pandas(Node_0child, Node_pandas):
         self.path_dir = path_dir
         self.dated_name = dated_name
         self.column_date_index = column_date_index
+        self.time_zone = time_zone
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -241,6 +243,8 @@ class Reader_pandas(Node_0child, Node_pandas):
             else:
                 try:
                     filename_date = dated_name(os.path.split(filename)[1])
+                    if isinstance(self.time_zone, datetime.tzinfo):
+                        filename_date = filename_date.astimezone(self.time_zone)
                     if t is not None and not (t.start <= filename_date <= t.end):
                         return True
                 except ValueError:
@@ -344,14 +348,21 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
         ).hexdigest()
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+        # Asserts
         assert t is None or isinstance(t, Time_interval)
+        assert os.path.exists(self.path_dir)
+
         to_return: list = []
         for dirname in os.listdir(self.path_dir):
             # Filter the folders we are interested in
             path_dir = os.path.join(self.path_dir, dirname)
             if not os.path.isdir(path_dir):
                 continue
+
             a = datetime.datetime.strptime(dirname, "%Y-%m-%d")
+            if t.start.tzinfo is not None:
+                a = a.replace(tzinfo=t.start.tzinfo)
+
             if t is not None and a not in t:
                 continue
 
