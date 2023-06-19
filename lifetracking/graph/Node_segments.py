@@ -131,9 +131,6 @@ class Node_segments_generate(Node_0child, Node_segments):
         super().__init__()
         self.value: Segments = value
 
-    # def _get_children(self) -> list[Node]:
-    #     return []
-
     def _hashstr(self):
         return hashlib.md5(
             (super()._hashstr() + self.value._hashstr()).encode()
@@ -148,16 +145,6 @@ class Node_segments_generate(Node_0child, Node_segments):
             return self.value
         else:
             return self.value[t]
-
-    # def _make_prefect_graph(
-    #     self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    # ) -> PrefectFuture[Segments, Sync]:
-    #     return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
-
-    # def _run_sequential(
-    #     self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    # ) -> Segments | None:
-    #     return self._operation(t)
 
 
 class Node_segments_add(Node_segments):

@@ -35,18 +35,14 @@ class Node_pandas(Node[pd.DataFrame]):
     def filter(self, fn: Callable[[pd.Series], bool]) -> Node_pandas:
         return Node_pandas_filter(self, fn)
 
-    # TODO: Unify with the node for segments
     def export_to_longcalendar(
         self,
         t: Time_interval | None,
-        fn: Callable[[pd.Series], str],
+        fn: Callable[[pd.Series], str],  # Specifies a way to get the "start"
         path_filename: str,
-        color: str | None = None,  # TODO: Callable support
-        opacity: float | None = None,  # TODO: Callable support
+        color: str | Callable[[pd.Series], str] | None = None,
+        opacity: float | Callable[[pd.Series], float] = 1.0,
     ):
-        assert isinstance(path_filename, str)
-        assert isinstance(opacity, float) or opacity is None
-
         o = self.run(t)
         assert o is not None
         export_pddataframe_to_lc_single(
@@ -56,6 +52,9 @@ class Node_pandas(Node[pd.DataFrame]):
             color=color,
             opacity=opacity,
         )
+
+    def remove_nans(self) -> Node_pandas:
+        return self.operation(lambda df: df.dropna())
 
 
 class Node_pandas_generate(Node_0child, Node_pandas):
