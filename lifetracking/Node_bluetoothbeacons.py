@@ -18,6 +18,7 @@ from lifetracking.graph.Node_segments import Node_segments
 from lifetracking.graph.Time_interval import Time_interval
 
 
+# REFACTOR Use Node_1child
 class Parse_BLE_info(Node_segments):
     class Config:
         def __init__(self, config) -> None:

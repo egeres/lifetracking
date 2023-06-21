@@ -3,20 +3,16 @@ from __future__ import annotations
 import datetime
 import hashlib
 import os
-from typing import Any
 
 import ankipandas
 import pandas as pd
-from prefect import task as prefect_task
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
 
-from lifetracking.graph.Node import Node
+from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Time_interval import Time_interval
 
 
-class Parse_anki_study(Node_pandas):
+class Parse_anki_study(Node_pandas, Node_0child):
     path_dir_datasource: str = os.path.join(
         os.path.expanduser("~"), "AppData", "Roaming", "Anki2"
     )
@@ -28,9 +24,6 @@ class Parse_anki_study(Node_pandas):
             raise ValueError(f"{path_dir} is not a directory")
         super().__init__()
         self.path_dir = path_dir
-
-    def _get_children(self) -> list[Node]:
-        return []
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -62,16 +55,6 @@ class Parse_anki_study(Node_pandas):
         return revisions[
             (revisions["timestamp"] >= t.start) & (revisions["timestamp"] <= t.end)
         ]
-
-    def _run_sequential(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> pd.DataFrame | None:
-        return self._operation(t)
-
-    def _make_prefect_graph(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[pd.DataFrame, Sync]:
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 
 
 class Parse_anki_creation(Parse_anki_study):
