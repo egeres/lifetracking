@@ -61,6 +61,8 @@ class Seg:
         return Seg(self.start - other, self.end - other, self.value)
 
     def __eq__(self, other: Seg) -> bool:
+        if not isinstance(other, Seg):
+            return False
         return (
             self.start == other.start
             and self.end == other.end
@@ -90,12 +92,13 @@ class Seg:
         """If a segment spans multiple days, split it into multiple segments,
         one per day."""
 
+        temp_start = self.start
         splits = []
-        while self.start < self.end:
+        while temp_start < self.end:
             next_day = datetime.datetime(
-                self.start.year,
-                self.start.month,
-                self.start.day,
+                temp_start.year,
+                temp_start.month,
+                temp_start.day,
                 tzinfo=self.end.tzinfo,
             ) + datetime.timedelta(days=1)
             remove_seconds = datetime.timedelta(seconds=1)
@@ -104,12 +107,12 @@ class Seg:
                 remove_seconds = datetime.timedelta(seconds=0)
             splits.append(
                 Seg(
-                    self.start,
+                    temp_start,
                     next_day - remove_seconds,
                     self.value,
                 )
             )
-            self.start = next_day
+            temp_start = next_day
         return splits
 
     def length_days(self) -> float:

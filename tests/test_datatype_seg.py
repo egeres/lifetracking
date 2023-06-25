@@ -1,3 +1,4 @@
+import copy
 import datetime
 from typing import Any
 
@@ -17,6 +18,7 @@ from hypothesis.strategies import (
 )
 
 from lifetracking.datatypes.Seg import Seg
+from lifetracking.graph.Time_interval import Time_interval
 
 
 def test_seg_repr():
@@ -65,6 +67,14 @@ def test_seg_sub():
         datetime.datetime(2021, 1, 1),
         datetime.datetime(2021, 1, 2),
     )
+
+    # Duh 🙄
+    assert a == a
+    assert a == copy.copy(a)
+    assert a != 1
+    assert a != [1, 2, 3]
+    assert a != "🤡"
+    assert a != {"A": "🐷"}
 
     # Remove 1 day
     b = a - datetime.timedelta(days=1)
@@ -192,3 +202,15 @@ def test_seg_overlap():
     e = Seg(datetime.datetime(2010, 3, 1), datetime.datetime(2010, 9, 1))
     assert e.overlaps(a)
     assert a.overlaps(e)
+
+
+def test_seg_intosegmentsperday():
+    a = Time_interval.today().to_seg()
+    b = copy.copy(a)
+    o = a.split_into_segments_per_day()
+
+    assert a == b
+    assert len(o) == 1
+    assert o[0].start == b.start
+    assert o[0].end == b.end
+    assert o[0].value == b.value
