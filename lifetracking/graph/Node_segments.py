@@ -74,6 +74,14 @@ class Node_segments(Node[Segments]):
             tooltip_shows_length=tooltip_shows_length,
         )
 
+    def plot_hours(
+        self,
+        t: Time_interval | None = None,
+    ):
+        o = self.run(t)
+        assert o is not None
+        o.plot_hours(t)
+
 
 class Node_segments_operation(Node_1child, Node_segments):
     def __init__(

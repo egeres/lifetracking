@@ -8,6 +8,8 @@ import json
 import os
 from typing import Any, Callable, overload
 
+import plotly.express as px
+import plotly.graph_objects as go
 from typing_extensions import Self
 
 from lifetracking.datatypes.Seg import Seg
@@ -289,3 +291,28 @@ class Segments:
         for seg in self.content:
             seg[property_name] = value
         return self
+
+    def plot_hours(
+        self,
+        t: Time_interval | None = None,
+    ) -> None:
+        if t is None:
+            a, b = self.min(), self.max()
+        else:
+            a, b = t.start, t.end
+
+        # REFACTOR : Extract this to a private method
+        c: list[float] = [0] * ((b - a).days + 1)
+        for s in self.content:
+            o = s.split_into_segments_per_day()
+            for j in o:
+                index = j.start.day - a.day
+                if index < 0 or index >= len(c):
+                    continue
+                c[index] += j.length_h()
+
+        # Plot itself
+        fig = px.line(x=list(range(len(c))), y=c)
+        fig.update_layout(template="plotly_dark")
+        fig.update_yaxes(range=[0, 24])
+        fig.show()
