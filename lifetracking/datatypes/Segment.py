@@ -8,6 +8,7 @@ import json
 import os
 from typing import Any, Callable, overload
 
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from typing_extensions import Self
@@ -295,24 +296,38 @@ class Segments:
     def plot_hours(
         self,
         t: Time_interval | None = None,
+        yaxes: tuple[float, float] = (0, 24),
+        smooth: int = 1,
+        xaxes_labels_as_days_ago: bool = True,
+        # TODO: Add annotations support
     ) -> None:
+        assert t is None or isinstance(t, Time_interval)
+        assert isinstance(yaxes, tuple)
+        assert isinstance(smooth, int) and smooth > 0
+
         if t is None:
             a, b = self.min(), self.max()
         else:
             a, b = t.start, t.end
 
-        # REFACTOR : Extract this to a private method
+        # REFACTOR : Extract this to a private method & test it
         c: list[float] = [0] * ((b - a).days + 1)
         for s in self.content:
             o = s.split_into_segments_per_day()
             for j in o:
-                index = j.start.day - a.day
+                index = (j.start - a).days
                 if index < 0 or index >= len(c):
                     continue
                 c[index] += j.length_h()
+        if smooth > 0:
+            c = np.convolve(c, np.ones(smooth) / smooth, mode="same").tolist()
 
         # Plot itself
         fig = px.line(x=list(range(len(c))), y=c)
-        fig.update_layout(template="plotly_dark")
-        fig.update_yaxes(range=[0, 24])
+        fig.update_layout(
+            template="plotly_dark",
+            margin=dict(l=0, r=0, t=0, b=0),  # Is this a good idea tho?
+        )
+        fig.update_yaxes(title_text="", range=yaxes)
+        fig.update_xaxes(title_text="")
         fig.show()

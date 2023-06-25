@@ -77,10 +77,20 @@ class Node_segments(Node[Segments]):
     def plot_hours(
         self,
         t: Time_interval | None = None,
+        yaxes: tuple[float, float] | None = None,
+        smooth: int = 1,
     ):
+        assert t is None or isinstance(t, Time_interval)
+        assert yaxes is None or isinstance(yaxes, tuple)
+        assert isinstance(smooth, int) and smooth > 0
+
         o = self.run(t)
         assert o is not None
-        o.plot_hours(t)
+        o.plot_hours(
+            t=t,
+            yaxes=yaxes,
+            smooth=smooth,
+        )
 
 
 class Node_segments_operation(Node_1child, Node_segments):

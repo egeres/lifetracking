@@ -8,7 +8,9 @@ import warnings
 from abc import abstractmethod
 from typing import Callable
 
+import numpy as np
 import pandas as pd
+import plotly.express as px
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 
@@ -55,6 +57,56 @@ class Node_pandas(Node[pd.DataFrame]):
 
     def remove_nans(self) -> Node_pandas:
         return self.operation(lambda df: df.dropna())
+
+    def plot_countbyday(
+        self,
+        t: Time_interval | None = None,
+        datetime_column_name: str | None = None,
+        smooth: int = 1,
+    ) -> None:
+        assert t is None or isinstance(t, Time_interval)
+
+        o = self.run(t)
+        assert o is not None
+
+        # Date stuff
+        # TODO: review the current approach of not always using the index
+        index_of_df_is_datetime = False
+        if isinstance(o.index, pd.DatetimeIndex):
+            index_of_df_is_datetime = True
+        if not index_of_df_is_datetime and datetime_column_name is None:
+            raise ValueError(
+                "The index of the dataframe is not a datetime index,"
+                " so you must specify the name of the datetime column"
+            )
+        time_col = o.index if index_of_df_is_datetime else o[datetime_column_name]
+        if time_col.dtype != "datetime64[ns]":
+            time_col = pd.to_datetime(time_col)
+
+        if t is None:
+            a, b = time_col.min(), time_col.max()
+        else:
+            a, b = t.start, t.end
+            time_col = time_col[(time_col >= a) & (time_col <= b)]
+
+        c: list[int] = [0] * ((b - a).days + 1)
+        for i in time_col:
+            index = (i - a).days
+            if index < 0 or index >= len(c):
+                continue
+            c[index] += 1
+        if smooth > 0:
+            c = np.convolve(c, np.ones(smooth) / smooth, mode="same").tolist()
+
+        # Plot itself
+        fig = px.line(x=list(range(len(c))), y=c)
+        fig.update_layout(
+            template="plotly_dark",
+            margin=dict(l=0, r=0, t=0, b=0),  # Is this a good idea tho?
+        )
+        fig.update_yaxes(title_text="")
+        fig.update_xaxes(title_text="")
+        fig.show()
 
 
 class Node_pandas_generate(Node_0child, Node_pandas):
