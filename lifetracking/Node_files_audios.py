@@ -4,7 +4,7 @@ import datetime
 import hashlib
 import os
 
-import librosa
+from pydub.utils import mediainfo
 
 from lifetracking.datatypes.Segment import Seg, Segments
 from lifetracking.graph.Node import Node_0child
@@ -27,7 +27,7 @@ class Reader_audios(Node_segments, Node_0child):
     @cache_singleargument("cache_audios_length")
     def _get_audio_length_in_s(filename: str) -> float | None:
         try:
-            return librosa.get_duration(filename=filename)
+            return float(mediainfo(filename)["duration"])
         except Exception as e:
             print(f"Error while reading {filename}: {e}")
             return None
