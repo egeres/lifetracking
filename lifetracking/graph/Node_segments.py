@@ -355,6 +355,7 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
         if df[self.name_column_time].dtype == "object":
             df[self.name_column_time] = pd.to_datetime(
                 df[self.name_column_time],
+                # infer_datetime_format=True,
                 # format="ISO8601",
                 # format="mixed",
             )

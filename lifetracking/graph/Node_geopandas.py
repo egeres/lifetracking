@@ -14,7 +14,7 @@ from shapely.geometry import Point, Polygon
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
 from lifetracking.graph.Time_interval import Time_interval
-from lifetracking.utils import hash_method
+from lifetracking.utils import export_pddataframe_to_lc_single, hash_method
 
 
 class Node_geopandas(Node[gpd.GeoDataFrame]):
@@ -28,6 +28,24 @@ class Node_geopandas(Node[gpd.GeoDataFrame]):
         ],
     ) -> Node_geopandas:
         return Node_geopandas_operation(self, f)
+
+    def export_to_longcalendar(
+        self,
+        t: Time_interval | None,
+        fn: Callable[[pd.Series], str],  # Specifies a way to get the "start"
+        path_filename: str,
+        color: str | Callable[[pd.Series], str] | None = None,
+        opacity: float | Callable[[pd.Series], float] = 1.0,
+    ):
+        o = self.run(t)
+        assert o is not None
+        export_pddataframe_to_lc_single(
+            o,
+            fn,
+            path_filename=path_filename,
+            color=color,
+            opacity=opacity,
+        )
 
 
 # TODO: Ok, so... does this count as duplicated code? Maybe I should do some
