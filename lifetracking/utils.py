@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import dis
 import hashlib
 import inspect
@@ -10,6 +11,10 @@ import tempfile
 from typing import Callable
 
 import pandas as pd
+import plotly.graph_objects as go
+from dateutil.parser import parse
+
+from lifetracking.graph.Time_interval import Time_interval
 
 
 def _lc_export_prepare_dir(path_filename: str) -> None:
@@ -171,3 +176,74 @@ def cache_singleargument(dirname: str) -> Callable:
         return wrapper
 
     return decorator
+
+
+def graph_udate_layout(fig, t: Time_interval | None):
+    c = fig.data[0].x
+    fig.update_layout(
+        template="plotly_dark",
+        margin=dict(l=0, r=0, t=0, b=0),  # Is this a good idea tho?
+        # To show it in "days ago"
+        xaxis=dict(
+            tickmode="array",
+            # tickvals = list(range(len(c))),
+            # ticktext = list(range(-len(c), 0))
+            tickvals=list(range(0, len(c), 30)),  # Tick every 30
+            ticktext=list(range(-len(c), 0, 30)),  # Tick every 30
+            # TODO: Actually, this should vary depending on the time scale
+        ),
+    )
+
+
+def graph_annotate_today(fig, t: Time_interval):
+    today = datetime.datetime.now()
+    days_diff = (today - t.start).days
+    if days_diff >= 0 and days_diff <= int(t.duration_days):
+        fig.add_shape(
+            type="line",
+            x0=days_diff,
+            x1=days_diff,
+            y0=0,
+            y1=1,
+            line={"color": "#a00"},
+            xref="x",
+            yref="y",
+        )
+
+
+def graph_annotate_annotations(fig, t: Time_interval, annotations: list | None):
+    assert isinstance(fig, go.Figure)
+    if annotations is None:
+        return
+
+    for i in annotations:
+        # Days diff
+        date = i["date"]
+        if isinstance(date, str):
+            date = parse(date)
+        assert isinstance(date, datetime.datetime)
+        days_diff = (date - t.start).days
+
+        if not (days_diff >= 0 and days_diff <= int(t.duration_days)):
+            continue
+
+        fig.add_shape(
+            type="line",
+            x0=days_diff,
+            x1=days_diff,
+            y0=0,
+            y1=1,
+            line={"color": "#aaa", "dash": "dash"},
+            xref="x",
+            yref="y",
+        )
+        if "title" in i:
+            fig.add_annotation(
+                x=days_diff,
+                y=0,
+                text=i["title"],
+                showarrow=False,
+                xref="x",
+                yref="y",
+                yshift=10,
+            )

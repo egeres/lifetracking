@@ -17,7 +17,13 @@ from prefect.utilities.asyncutils import Sync
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
 from lifetracking.graph.Time_interval import Time_interval
-from lifetracking.utils import export_pddataframe_to_lc_single, hash_method
+from lifetracking.utils import (
+    export_pddataframe_to_lc_single,
+    graph_annotate_annotations,
+    graph_annotate_today,
+    graph_udate_layout,
+    hash_method,
+)
 
 
 # Actually, the value of fn should be:
@@ -63,6 +69,7 @@ class Node_pandas(Node[pd.DataFrame]):
         t: Time_interval | None = None,
         datetime_column_name: str | None = None,
         smooth: int = 1,
+        annotations: list | None = None,
     ) -> None:
         assert t is None or isinstance(t, Time_interval)
 
@@ -87,6 +94,12 @@ class Node_pandas(Node[pd.DataFrame]):
             a, b = time_col.min(), time_col.max()
         else:
             a, b = t.start, t.end
+
+            if time_col.shape[0] > 0 and time_col.iloc[0].tzinfo != a.tzinfo:
+                # a.tzinfo = time_col.iloc[0].tzinfo
+                # b.tzinfo = time_col.iloc[0].tzinfo
+                a = a.replace(tzinfo=time_col.iloc[0].tzinfo)
+                b = b.replace(tzinfo=time_col.iloc[0].tzinfo)
             time_col = time_col[(time_col >= a) & (time_col <= b)]
 
         c: list[int] = [0] * ((b - a).days + 1)
@@ -100,12 +113,12 @@ class Node_pandas(Node[pd.DataFrame]):
 
         # Plot itself
         fig = px.line(x=list(range(len(c))), y=c)
-        fig.update_layout(
-            template="plotly_dark",
-            margin=dict(l=0, r=0, t=0, b=0),  # Is this a good idea tho?
-        )
+        graph_udate_layout(fig, t)
         fig.update_yaxes(title_text="")
         fig.update_xaxes(title_text="")
+        if t is not None:
+            graph_annotate_today(fig, t)
+            graph_annotate_annotations(fig, t, annotations)
         fig.show()
 
 

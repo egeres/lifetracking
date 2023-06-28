@@ -15,7 +15,12 @@ from typing_extensions import Self
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.graph.Time_interval import Time_interval
-from lifetracking.utils import _lc_export_prepare_dir
+from lifetracking.utils import (
+    _lc_export_prepare_dir,
+    graph_annotate_annotations,
+    graph_annotate_today,
+    graph_udate_layout,
+)
 
 
 class Segments:
@@ -299,7 +304,7 @@ class Segments:
         yaxes: tuple[float, float] = (0, 24),
         smooth: int = 1,
         xaxes_labels_as_days_ago: bool = True,
-        # TODO: Add annotations support
+        annotations: list | None = None,
     ) -> None:
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(yaxes, tuple)
@@ -324,10 +329,10 @@ class Segments:
 
         # Plot itself
         fig = px.line(x=list(range(len(c))), y=c)
-        fig.update_layout(
-            template="plotly_dark",
-            margin=dict(l=0, r=0, t=0, b=0),  # Is this a good idea tho?
-        )
+        graph_udate_layout(fig, t)
         fig.update_yaxes(title_text="", range=yaxes)
         fig.update_xaxes(title_text="")
+        if t is not None:
+            graph_annotate_today(fig, t)
+            graph_annotate_annotations(fig, t, annotations)
         fig.show()
