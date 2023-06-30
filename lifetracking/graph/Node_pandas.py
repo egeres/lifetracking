@@ -20,6 +20,7 @@ from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import (
     export_pddataframe_to_lc_single,
     graph_annotate_annotations,
+    graph_annotate_title,
     graph_annotate_today,
     graph_udate_layout,
     hash_method,
@@ -100,6 +101,7 @@ class Node_pandas(Node[pd.DataFrame]):
         datetime_column_name: str | None = None,
         smooth: int = 1,
         annotations: list | None = None,
+        title: str | None = None,
     ) -> None:
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(smooth, int) and smooth >= 0
@@ -138,6 +140,7 @@ class Node_pandas(Node[pd.DataFrame]):
         fig.update_yaxes(title_text="")
         fig.update_xaxes(title_text="")
         if t is not None:
+            graph_annotate_title(fig, self.name, (fig_min, fig_max))
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
         fig.show()

@@ -13,6 +13,8 @@ from typing import Callable
 import pandas as pd
 import plotly.graph_objects as go
 from dateutil.parser import parse
+from IPython.display import display
+from ipywidgets import HTML
 
 from lifetracking.graph.Time_interval import Time_interval
 
@@ -196,10 +198,17 @@ def graph_udate_layout(
             ticktext=list(range(-len(c), 0, 30)),  # Tick every 30
             # TODO: Actually, this should vary depending on the time scale
         ),
+        "legend": {
+            "font": {
+                "family": "JetBrains Mono",
+            }
+        },
     }
 
-    if len(fig.data) > 1 and fig.layout.showlegend:
-        newlayout["margin"]["r"] = 300
+    if len(fig.data) > 1 and (
+        fig.layout.showlegend is not False or fig.layout.showlegend is None
+    ):
+        newlayout["margin"]["r"] = 250
 
     fig.update_layout(**newlayout)
 
@@ -260,7 +269,7 @@ def graph_annotate_annotations(
             x1=days_diff,
             y0=fig_min,
             y1=fig_max,
-            line={"color": "#aaa", "dash": "dash"},
+            line={"color": "#aaa", "dash": "dash", "width": 1},
             xref="x",
             yref="y",
         )
@@ -278,7 +287,7 @@ def graph_annotate_annotations(
 
 def graph_annotate_title(
     fig: go.Figure,
-    title: str,
+    title: str | None,
     minx_maxy: tuple[float, float],
 ):
     """Write a lable on the top left corner"""
@@ -287,17 +296,32 @@ def graph_annotate_title(
     assert isinstance(title, str)
     assert isinstance(minx_maxy, tuple)
 
+    # css = """
+    # %%html
+    # <style>
+    # @font-face {
+    #     font-family: 'JetBrains Mono';
+    #     src: url(
+    # 'C:/Github/lifetracking_pipelines/Assets/JetBrainsMono-Regular.ttf'
+    # ) format('truetype');
+    # }
+    # </style>
+    # """
+    # display(HTML(css))
+
+    if title is None:
+        return
+
     fig.add_annotation(
-        x=minx_maxy[0] + 10,
-        y=minx_maxy[1],
+        xref="paper",
+        yref="paper",
+        x=0.05,
+        y=0.9,
         text=title,
         showarrow=False,
-        xref="x",
-        yref="y",
         font=dict(
-            size=30,
+            family="JetBrains Mono",
+            size=20,
         ),
-        align="left",
-        bgcolor="#171717",
     )
     return fig

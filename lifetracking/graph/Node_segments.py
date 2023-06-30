@@ -93,6 +93,7 @@ class Node_segments(Node[Segments]):
             yaxes=yaxes,
             smooth=smooth,
             annotations=annotations,
+            title=self.name,
         )
 
 

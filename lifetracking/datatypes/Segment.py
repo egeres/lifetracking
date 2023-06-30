@@ -18,6 +18,7 @@ from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import (
     _lc_export_prepare_dir,
     graph_annotate_annotations,
+    graph_annotate_title,
     graph_annotate_today,
     graph_udate_layout,
 )
@@ -328,6 +329,7 @@ class Segments:
         yaxes: tuple[float, float] | None = (0, 24),
         smooth: int = 1,
         annotations: list | None = None,
+        title: str | None = None,
     ) -> None:
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(yaxes, tuple) or yaxes is None
@@ -345,6 +347,7 @@ class Segments:
         fig.update_yaxes(title_text="", range=yaxes)
         fig.update_xaxes(title_text="")
         if t is not None:
+            graph_annotate_title(fig, title, (fig_min, fig_max))
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
         fig.show()
