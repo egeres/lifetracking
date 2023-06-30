@@ -318,20 +318,19 @@ class Segments:
                 if index < 0 or index >= len(c):
                     continue
                 c[index] += j.length_h()
-        if smooth > 0:
+        if smooth > 1:
             c = np.convolve(c, np.ones(smooth) / smooth, mode="same").tolist()
         return c
 
     def plot_hours(
         self,
         t: Time_interval | None = None,
-        yaxes: tuple[float, float] = (0, 24),
+        yaxes: tuple[float, float] | None = (0, 24),
         smooth: int = 1,
-        xaxes_labels_as_days_ago: bool = True,
         annotations: list | None = None,
     ) -> None:
         assert t is None or isinstance(t, Time_interval)
-        assert isinstance(yaxes, tuple)
+        assert isinstance(yaxes, tuple) or yaxes is None
         assert isinstance(smooth, int) and smooth > 0
 
         # Data

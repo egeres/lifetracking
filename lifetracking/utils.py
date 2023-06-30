@@ -178,13 +178,17 @@ def cache_singleargument(dirname: str) -> Callable:
     return decorator
 
 
-def graph_udate_layout(fig, t: Time_interval | None):
+def graph_udate_layout(
+    fig: go.Figure,
+    t: Time_interval | None,
+):
     c = fig.data[0].x
-    fig.update_layout(
-        template="plotly_dark",
-        margin=dict(l=0, r=0, t=0, b=0),  # Is this a good idea tho?
+
+    newlayout = {
+        "template": "plotly_dark",
+        "margin": dict(l=0, r=0, t=0, b=0),  # Is this a good idea tho?
         # To show it in "days ago"
-        xaxis=dict(
+        "xaxis": dict(
             tickmode="array",
             # tickvals = list(range(len(c))),
             # ticktext = list(range(-len(c), 0))
@@ -192,11 +196,19 @@ def graph_udate_layout(fig, t: Time_interval | None):
             ticktext=list(range(-len(c), 0, 30)),  # Tick every 30
             # TODO: Actually, this should vary depending on the time scale
         ),
-    )
+    }
+
+    if len(fig.data) > 1 and fig.layout.showlegend:
+        newlayout["margin"]["r"] = 300
+
+    fig.update_layout(**newlayout)
+
+    # if fixed_right_margin:
+    #     fig.layout.margin.r = 300
 
 
 def graph_annotate_today(
-    fig,
+    fig: go.Figure,
     t: Time_interval,
     minmax: tuple[float, float] | None = None,
 ):
@@ -218,7 +230,7 @@ def graph_annotate_today(
 
 
 def graph_annotate_annotations(
-    fig,
+    fig: go.Figure,
     t: Time_interval,
     annotations: list | None,
     minmax: tuple[float, float] | None = None,
@@ -262,3 +274,30 @@ def graph_annotate_annotations(
                 yref="y",
                 yshift=10,
             )
+
+
+def graph_annotate_title(
+    fig: go.Figure,
+    title: str,
+    minx_maxy: tuple[float, float],
+):
+    """Write a lable on the top left corner"""
+
+    assert isinstance(fig, go.Figure)
+    assert isinstance(title, str)
+    assert isinstance(minx_maxy, tuple)
+
+    fig.add_annotation(
+        x=minx_maxy[0] + 10,
+        y=minx_maxy[1],
+        text=title,
+        showarrow=False,
+        xref="x",
+        yref="y",
+        font=dict(
+            size=30,
+        ),
+        align="left",
+        bgcolor="#171717",
+    )
+    return fig
