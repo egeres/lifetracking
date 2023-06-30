@@ -79,10 +79,12 @@ class Node_segments(Node[Segments]):
         t: Time_interval | None = None,
         yaxes: tuple[float, float] | None = None,
         smooth: int = 1,
+        annotations: list | None = None,
     ):
         assert t is None or isinstance(t, Time_interval)
         assert yaxes is None or isinstance(yaxes, tuple)
         assert isinstance(smooth, int) and smooth > 0
+        assert isinstance(annotations, list) or annotations is None
 
         o = self.run(t)
         assert o is not None
@@ -90,6 +92,7 @@ class Node_segments(Node[Segments]):
             t=t,
             yaxes=yaxes,
             smooth=smooth,
+            annotations=annotations,
         )
 
 

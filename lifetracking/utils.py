@@ -195,7 +195,13 @@ def graph_udate_layout(fig, t: Time_interval | None):
     )
 
 
-def graph_annotate_today(fig, t: Time_interval):
+def graph_annotate_today(
+    fig,
+    t: Time_interval,
+    minmax: tuple[float, float] | None = None,
+):
+    fig_min, fig_max = (0, 1) if minmax is None else minmax
+
     today = datetime.datetime.now()
     days_diff = (today - t.start).days
     if days_diff >= 0 and days_diff <= int(t.duration_days):
@@ -203,15 +209,20 @@ def graph_annotate_today(fig, t: Time_interval):
             type="line",
             x0=days_diff,
             x1=days_diff,
-            y0=0,
-            y1=1,
+            y0=fig_min,
+            y1=fig_max,
             line={"color": "#a00"},
             xref="x",
             yref="y",
         )
 
 
-def graph_annotate_annotations(fig, t: Time_interval, annotations: list | None):
+def graph_annotate_annotations(
+    fig,
+    t: Time_interval,
+    annotations: list | None,
+    minmax: tuple[float, float] | None = None,
+):
     assert isinstance(fig, go.Figure)
     if annotations is None:
         return
@@ -227,12 +238,16 @@ def graph_annotate_annotations(fig, t: Time_interval, annotations: list | None):
         if not (days_diff >= 0 and days_diff <= int(t.duration_days)):
             continue
 
+        fig_min, fig_max = (0, 1) if minmax is None else minmax
+        if fig_min > 0:
+            fig_min = 0
+
         fig.add_shape(
             type="line",
             x0=days_diff,
             x1=days_diff,
-            y0=0,
-            y1=1,
+            y0=fig_min,
+            y1=fig_max,
             line={"color": "#aaa", "dash": "dash"},
             xref="x",
             yref="y",
@@ -240,7 +255,7 @@ def graph_annotate_annotations(fig, t: Time_interval, annotations: list | None):
         if "title" in i:
             fig.add_annotation(
                 x=days_diff,
-                y=0,
+                y=fig_min,
                 text=i["title"],
                 showarrow=False,
                 xref="x",

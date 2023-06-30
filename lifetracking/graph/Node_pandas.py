@@ -64,6 +64,36 @@ class Node_pandas(Node[pd.DataFrame]):
     def remove_nans(self) -> Node_pandas:
         return self.operation(lambda df: df.dropna())
 
+    def _plot_countbyday_generatedata(
+        self,
+        t: Time_interval | None,
+        time_col: pd.Series,
+        smooth: int,
+    ) -> list[int]:
+        # We calculate a, b and cut time_col
+        if t is None:
+            a, b = time_col.min(), time_col.max()
+        else:
+            a, b = t.start, t.end
+            if time_col.shape[0] > 0 and time_col.iloc[0].tzinfo != a.tzinfo:
+                # a.tzinfo = time_col.iloc[0].tzinfo
+                # b.tzinfo = time_col.iloc[0].tzinfo
+                a = a.replace(tzinfo=time_col.iloc[0].tzinfo)
+                b = b.replace(tzinfo=time_col.iloc[0].tzinfo)
+            time_col = time_col[(time_col >= a) & (time_col <= b)]
+
+        # Actual list generation
+        c: list[int] = [0] * ((b - a).days + 1)
+        for i in time_col:
+            index = (i - a).days
+            if index < 0 or index >= len(c):
+                continue
+            c[index] += 1
+        if smooth > 0:
+            c = np.convolve(c, np.ones(smooth) / smooth, mode="same").tolist()
+
+        return c
+
     def plot_countbyday(
         self,
         t: Time_interval | None = None,
@@ -72,12 +102,14 @@ class Node_pandas(Node[pd.DataFrame]):
         annotations: list | None = None,
     ) -> None:
         assert t is None or isinstance(t, Time_interval)
+        assert isinstance(smooth, int) and smooth >= 0
+        assert isinstance(annotations, list) or annotations is None
 
         o = self.run(t)
         assert o is not None
 
         # Date stuff
-        # TODO: review the current approach of not always using the index
+        # TODO: review the current approach of not always using the index 🙄
         index_of_df_is_datetime = False
         if isinstance(o.index, pd.DatetimeIndex):
             index_of_df_is_datetime = True
@@ -90,35 +122,24 @@ class Node_pandas(Node[pd.DataFrame]):
         if time_col.dtype != "datetime64[ns]":
             time_col = pd.to_datetime(time_col)
 
-        if t is None:
-            a, b = time_col.min(), time_col.max()
-        else:
-            a, b = t.start, t.end
+        # Data
+        c = self._plot_countbyday_generatedata(
+            t,
+            time_col,
+            smooth,
+        )
 
-            if time_col.shape[0] > 0 and time_col.iloc[0].tzinfo != a.tzinfo:
-                # a.tzinfo = time_col.iloc[0].tzinfo
-                # b.tzinfo = time_col.iloc[0].tzinfo
-                a = a.replace(tzinfo=time_col.iloc[0].tzinfo)
-                b = b.replace(tzinfo=time_col.iloc[0].tzinfo)
-            time_col = time_col[(time_col >= a) & (time_col <= b)]
-
-        c: list[int] = [0] * ((b - a).days + 1)
-        for i in time_col:
-            index = (i - a).days
-            if index < 0 or index >= len(c):
-                continue
-            c[index] += 1
-        if smooth > 0:
-            c = np.convolve(c, np.ones(smooth) / smooth, mode="same").tolist()
-
-        # Plot itself
+        # Plot
+        fig_min, fig_max = min(c), max(c)
+        if fig_min > 0:
+            fig_min = 0
         fig = px.line(x=list(range(len(c))), y=c)
         graph_udate_layout(fig, t)
         fig.update_yaxes(title_text="")
         fig.update_xaxes(title_text="")
         if t is not None:
-            graph_annotate_today(fig, t)
-            graph_annotate_annotations(fig, t, annotations)
+            graph_annotate_today(fig, t, (fig_min, fig_max))
+            graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
         fig.show()
 
 

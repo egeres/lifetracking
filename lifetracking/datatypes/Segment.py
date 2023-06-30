@@ -298,6 +298,30 @@ class Segments:
             seg[property_name] = value
         return self
 
+    def _plot_hours_generatedata(
+        self,
+        t: Time_interval | None,
+        smooth: int,
+    ) -> list[float]:
+        # a, b calculation
+        if t is None:
+            a, b = self.min(), self.max()
+        else:
+            a, b = t.start, t.end
+
+        # Data itself
+        c: list[float] = [0] * ((b - a).days + 1)
+        for s in self.content:
+            o = s.split_into_segments_per_day()
+            for j in o:
+                index = (j.start - a).days
+                if index < 0 or index >= len(c):
+                    continue
+                c[index] += j.length_h()
+        if smooth > 0:
+            c = np.convolve(c, np.ones(smooth) / smooth, mode="same").tolist()
+        return c
+
     def plot_hours(
         self,
         t: Time_interval | None = None,
@@ -310,29 +334,18 @@ class Segments:
         assert isinstance(yaxes, tuple)
         assert isinstance(smooth, int) and smooth > 0
 
-        if t is None:
-            a, b = self.min(), self.max()
-        else:
-            a, b = t.start, t.end
+        # Data
+        c = self._plot_hours_generatedata(t, smooth)
 
-        # REFACTOR : Extract this to a private method & test it
-        c: list[float] = [0] * ((b - a).days + 1)
-        for s in self.content:
-            o = s.split_into_segments_per_day()
-            for j in o:
-                index = (j.start - a).days
-                if index < 0 or index >= len(c):
-                    continue
-                c[index] += j.length_h()
-        if smooth > 0:
-            c = np.convolve(c, np.ones(smooth) / smooth, mode="same").tolist()
-
-        # Plot itself
+        # Plot
+        fig_min, fig_max = (0, 24) if yaxes is None else yaxes
+        if fig_min > 0:
+            fig_min = 0
         fig = px.line(x=list(range(len(c))), y=c)
         graph_udate_layout(fig, t)
         fig.update_yaxes(title_text="", range=yaxes)
         fig.update_xaxes(title_text="")
         if t is not None:
-            graph_annotate_today(fig, t)
-            graph_annotate_annotations(fig, t, annotations)
+            graph_annotate_today(fig, t, (fig_min, fig_max))
+            graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
         fig.show()
