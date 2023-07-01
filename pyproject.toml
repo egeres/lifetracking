@@ -20,6 +20,7 @@ ffmpeg-python = "^0.2.0"
 meteostat = "^1.6.5"
 pydub = "^0.25.1"
 plotly = "^5.15.0"
+ipywidgets = "^8.0.6"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.3.1"
