@@ -12,14 +12,14 @@ from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 
 from lifetracking.datatypes.Segment import Seg, Segments
-from lifetracking.graph.Node import Node
+from lifetracking.graph.Node import Node, Node_1child
 from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Node_segments import Node_segments
 from lifetracking.graph.Time_interval import Time_interval
 
 
 # REFACTOR Use Node_1child
-class Parse_BLE_info(Node_segments):
+class Parse_BLE_info(Node_1child, Node_segments):
     class Config:
         def __init__(self, config) -> None:
             if isinstance(config, str):
@@ -41,9 +41,6 @@ class Parse_BLE_info(Node_segments):
         self.n0 = n0
         self.config = self.Config(config)
 
-    def _get_children(self) -> set[Node]:
-        return {self.n0}
-
     def _hashstr(self) -> str:
         return hashlib.md5(
             (
@@ -51,7 +48,7 @@ class Parse_BLE_info(Node_segments):
             ).encode()
         ).hexdigest()
 
-    def _operation_skip_Certain_columns(
+    def _operation_skip_certain_columns(
         self, column_name: str, config: Config, df: pd.DataFrame
     ) -> bool:
         if column_name not in config.config:
@@ -78,7 +75,7 @@ class Parse_BLE_info(Node_segments):
 
         to_return = []
         for column_name in list(df.columns):
-            if self._operation_skip_Certain_columns(column_name, config, df):
+            if self._operation_skip_certain_columns(column_name, config, df):
                 continue
 
             # Pre-data
@@ -114,25 +111,3 @@ class Parse_BLE_info(Node_segments):
             to_return.extend(segments)
 
         return Segments(to_return)
-
-    def _run_sequential(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> Segments | None:
-        # Node is calculated if it's not in the context, then _operation is called
-        n0_out = self._get_value_from_context_or_run(self.n0, t, context)
-        if n0_out is None:
-            return None
-        return self._operation(n0_out, self.config, t)
-
-    def _make_prefect_graph(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[Segments, Sync] | None:
-        # Node is calculated if it's not in the context, then _operation is called
-        n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
-        if n0_out is None:
-            return None
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
-            n0_out,
-            self.config,
-            t,
-        )

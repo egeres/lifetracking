@@ -5,6 +5,7 @@ import hashlib
 import os
 
 from pydub.utils import mediainfo
+from rich import print
 
 from lifetracking.datatypes.Segment import Seg, Segments
 from lifetracking.graph.Node import Node_0child
@@ -29,7 +30,7 @@ class Reader_audios(Node_segments, Node_0child):
         try:
             return float(mediainfo(filename)["duration"])
         except Exception as e:
-            print(f"Error while reading {filename}: {e}")
+            print(f"[red]Error while reading {filename}: {e}")
             return None
 
     def _get_plausible_files(self, path_dir: str) -> list[str]:

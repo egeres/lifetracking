@@ -10,6 +10,7 @@ import pandas as pd
 from fiona.errors import DriverError
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
+from rich import print
 from shapely.geometry import Point, Polygon
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
@@ -122,7 +123,7 @@ class Reader_geojson(Node_0child, Node_geopandas):
                         )
                     )
                 except DriverError:
-                    print(f"Error reading {filename}")
+                    print(f"[red]Error reading {filename}")
         return pd.concat(to_return, axis=0)
 
 

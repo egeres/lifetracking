@@ -13,6 +13,7 @@ import pandas as pd
 import plotly.express as px
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
+from rich import print
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
@@ -373,9 +374,9 @@ class Reader_pandas(Node_0child, Node_pandas):
                     self.reading_method(os.path.join(self.path_dir, filename))
                 )
             except pd.errors.ParserError:
-                print(f"Error reading {filename}")
+                print(f"[red]Error reading {filename}")
             except ValueError:
-                print(f"Error reading {filename} (value)")
+                print(f"[red]Error reading {filename} (value)")
 
         # Hehe, will I concat?? ╰(*°▽°*)╯
         if len(to_return) == 0:
@@ -465,7 +466,7 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
                             pd.read_csv(os.path.join(self.path_dir, dirname, sub_file))
                         )
                     except pd.errors.ParserError:
-                        print(f"Error reading {sub_file}")
+                        print(f"[red]Error reading {sub_file}")
                     break
 
         return pd.concat(to_return, axis=0)

@@ -31,7 +31,7 @@ class Segments:
             seg.start <= seg.end for seg in content
         ), "Segments must be ordered in time"
 
-        # self.content = content # TODO, sort shouldn't actually be neccesary :[
+        # self.content = content # TODO : sort shouldn't actually be neccesary :[
         self.content: list[Seg] = sorted(content, key=lambda x: x.start)
 
     def __copy__(self) -> Segments:
@@ -309,6 +309,12 @@ class Segments:
             a, b = self.min(), self.max()
         else:
             a, b = t.start, t.end
+
+        # TODO_4: Do something about tz infos pls 🥺
+        if len(self.content) > 0:
+            if a.tzinfo is None:
+                a = a.replace(tzinfo=self.content[0].start.tzinfo)
+                b = b.replace(tzinfo=self.content[0].start.tzinfo)
 
         # Data itself
         c: list[float] = [0] * ((b - a).days + 1)
