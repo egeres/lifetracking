@@ -142,7 +142,7 @@ class Node_pandas(Node[pd.DataFrame]):
         fig.update_yaxes(title_text="")
         fig.update_xaxes(title_text="")
         if t is not None:
-            graph_annotate_title(fig, self.name, (fig_min, fig_max))
+            graph_annotate_title(fig, self.name)
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
         return fig

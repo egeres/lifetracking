@@ -184,7 +184,7 @@ def graph_udate_layout(
     fig: go.Figure,
     t: Time_interval | None,
 ):
-    c = fig.data[0].x
+    # c = fig.data[0].x
 
     newlayout = {
         "template": "plotly_dark",
@@ -194,8 +194,8 @@ def graph_udate_layout(
             tickmode="array",
             # tickvals = list(range(len(c))),
             # ticktext = list(range(-len(c), 0))
-            tickvals=list(range(0, len(c), 30)),  # Tick every 30
-            ticktext=list(range(-len(c), 0, 30)),  # Tick every 30
+            # tickvals=list(range(0, len(c), 30)),  # Tick every 30
+            # ticktext=list(range(-len(c), 0, 30)),  # Tick every 30
             # TODO: Actually, this should vary depending on the time scale
         ),
         "legend": {
@@ -205,7 +205,17 @@ def graph_udate_layout(
         },
     }
 
-    if len(fig.data) > 1 and (
+    if isinstance(fig.data[0].x[0], datetime.datetime):
+        pass
+    elif isinstance(fig.data[0].x[0], int):
+        c = fig.data[0].x
+        newlayout["xaxis"]["tickvals"] = list(range(0, len(c), 30))
+        newlayout["xaxis"]["ticktext"] = list(range(-len(c), 0, 30))
+
+    if len(fig.data) == 1:
+        # Hide legend
+        newlayout["showlegend"] = False
+    elif len(fig.data) > 1 and (
         fig.layout.showlegend is not False or fig.layout.showlegend is None
     ):
         newlayout["margin"]["r"] = 250
@@ -288,13 +298,11 @@ def graph_annotate_annotations(
 def graph_annotate_title(
     fig: go.Figure,
     title: str | None,
-    minx_maxy: tuple[float, float],
 ):
     """Write a lable on the top left corner"""
 
     assert isinstance(fig, go.Figure)
     assert isinstance(title, str)
-    assert isinstance(minx_maxy, tuple)
 
     # css = """
     # %%html
