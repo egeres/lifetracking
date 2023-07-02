@@ -3,7 +3,6 @@ import os
 import socket
 
 import pytest
-from dateutil import parser
 
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.Node_activitywatch import Parse_activitywatch
@@ -37,13 +36,7 @@ def test_node_aw_0():
     o = a.run(t)
     assert o is not None
     assert o.shape[0] > 0
-    assert (
-        t.duration_days
-        > (
-            parser.parse(max(o.timestamp)) - parser.parse(min(o.timestamp))
-        ).total_seconds()
-        / 86400
-    )
+    assert t.duration_days > (max(o.index) - min(o.index)).total_seconds() / 86400
 
     prev_shape = o.shape[0]
     b = a.filter(lambda x: x["app"] in ["firefox.exe"])

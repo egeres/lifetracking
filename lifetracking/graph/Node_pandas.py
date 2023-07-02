@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import dis
 import hashlib
 import os
 import warnings
@@ -16,7 +15,6 @@ from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 from rich import print
 
-from lifetracking.datatypes.Seg import Seg
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import (
@@ -335,6 +333,12 @@ class Reader_pandas(Node_0child, Node_pandas):
         assert isinstance(path_dir, str)
         assert isinstance(column_date_index, (str, type(None)))
         if not path_dir.endswith(self.file_extension):
+            if dated_name is None:
+                warnings.warn(
+                    "No dated_name function provided,"
+                    " so the files will not be filtered by date",
+                    stacklevel=2,
+                )
             if not os.path.exists(path_dir):
                 raise ValueError(f"{path_dir} does not exist")
         else:
@@ -373,24 +377,17 @@ class Reader_pandas(Node_0child, Node_pandas):
         self,
         t: Time_interval | None,
         filename: str,
-        dated_name: Callable[[str], datetime.datetime] | None = None,
+        dated_name: Callable[[str], datetime.datetime],
     ) -> bool:
         if t is not None:
-            if dated_name is None:
-                warnings.warn(
-                    "No dated_name function provided,"
-                    " so the files will not be filtered by date",
-                    stacklevel=2,
-                )
-            else:
-                try:
-                    filename_date = dated_name(os.path.split(filename)[1])
-                    if isinstance(self.time_zone, datetime.tzinfo):
-                        filename_date = filename_date.astimezone(self.time_zone)
-                    if t is not None and not (t.start <= filename_date <= t.end):
-                        return True
-                except ValueError:
+            try:
+                filename_date = dated_name(os.path.split(filename)[1])
+                if isinstance(self.time_zone, datetime.tzinfo):
+                    filename_date = filename_date.astimezone(self.time_zone)
+                if t is not None and not (t.start <= filename_date <= t.end):
                     return True
+            except ValueError:
+                return True
 
         return False
 
@@ -418,7 +415,9 @@ class Reader_pandas(Node_0child, Node_pandas):
         to_return: list = []
         for filename in files_to_read:
             # Filter by date
-            if self._operation_filter_by_date(t, filename, self.dated_name):
+            if self.dated_name is not None and self._operation_filter_by_date(
+                t, filename, self.dated_name
+            ):
                 continue
 
             # Read
@@ -445,7 +444,11 @@ class Reader_pandas(Node_0child, Node_pandas):
 
         # If the user specifies a date column, use it to filter the t
         if self.column_date_index is not None:
-            df[self.column_date_index] = pd.to_datetime(df[self.column_date_index])
+            df[self.column_date_index] = pd.to_datetime(
+                df[self.column_date_index],
+                # infer_datetime_format=True,
+                format="mixed",
+            )
             # df = df.set_index(self.column_date_index) # Hums.....
             if t is not None:
                 # TODO: Remove this after refactors of tzinfo

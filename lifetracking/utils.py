@@ -13,8 +13,6 @@ from typing import Callable
 import pandas as pd
 import plotly.graph_objects as go
 from dateutil.parser import parse
-from IPython.display import display
-from ipywidgets import HTML
 
 from lifetracking.graph.Time_interval import Time_interval
 

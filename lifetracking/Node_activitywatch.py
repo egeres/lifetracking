@@ -3,7 +3,6 @@ from __future__ import annotations
 import datetime
 import hashlib
 from operator import itemgetter
-from typing import Any
 
 import pandas as pd
 import requests
@@ -99,4 +98,7 @@ class Parse_activitywatch(Node_pandas, Node_0child):
             | x["data"]  # 🙄 Ugh, dumb or genius?
             for x in out
         ]
-        return pd.DataFrame(out)
+        df = pd.DataFrame(out)
+        df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed")
+        df.set_index("timestamp", inplace=True)
+        return df

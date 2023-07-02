@@ -6,7 +6,8 @@ import hashlib
 import inspect
 import json
 import os
-from bisect import insort  # TODO: Python 3.11 because of key=
+
+# from bisect import insort  # TODO: Python 3.11 because of key=
 from typing import Any, Callable, overload
 
 import numpy as np

@@ -5,6 +5,7 @@ import hashlib
 from functools import reduce
 from typing import Any, Callable
 
+import numpy as np
 import pandas as pd
 from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
@@ -336,14 +337,11 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
         min_count: int = 1,
         # TODO: Next line is unused
         segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
-        name_column_time: str | None = None,
     ) -> None:
         # assert isinstance(n0, Node_pandas) TODO: Merge with geopandas or something
-        assert isinstance(name_column_time, str) or name_column_time is None
         assert isinstance(min_count, int)
         super().__init__()
         self.n0 = n0
-        self.name_column_time = name_column_time
         self.time_to_split_in_mins = time_to_split_in_mins
         self.min_count = min_count
 
@@ -351,7 +349,6 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
         return hashlib.md5(
             (
                 super()._hashstr()
-                + self.name_column_time
                 + str(self.time_to_split_in_mins)
                 + str(self.min_count)
             ).encode()
@@ -370,29 +367,16 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
 
         # Variable loading
         df: pd.DataFrame = n0  # type: ignore
-
-        if not isinstance(df.index, pd.DatetimeIndex):
-            if df[self.name_column_time].dtype == "object":
-                df[self.name_column_time] = pd.to_datetime(
-                    df[self.name_column_time],
-                    # infer_datetime_format=True,
-                    # format="ISO8601",
-                    # format="mixed",
-                )
+        assert isinstance(df, pd.DataFrame)
+        assert isinstance(df.index, pd.DatetimeIndex)
 
         # Pre
         to_return = []
         time_delta = pd.Timedelta(minutes=self.time_to_split_in_mins)
         count = 1
-
-        if not isinstance(df.index, pd.DatetimeIndex):
-            start = df[self.name_column_time].iloc[0]
-            end = df[self.name_column_time].iloc[0]
-            it = df[self.name_column_time].iloc[1:]
-        else:
-            start = df.index[0]
-            end = df.index[-1]
-            it = df.index[1:]
+        start = df.index[0]
+        end = df.index[0]
+        it = df.index[1:]
 
         # Segmentizing
         for i in it:
@@ -419,18 +403,15 @@ class Node_segmentize_pandas(Node_1child, Node_segments):
         self,
         n0: Node_pandas,
         config: Any,
-        name_column_time: str,
         time_to_split_in_mins: float = 5.0,
         min_count: int = 1,
         segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
     ) -> None:
         # assert isinstance(n0, Node_pandas) TODO: Merge with geopandas or something
-        assert isinstance(name_column_time, str)
         assert isinstance(min_count, int)
         super().__init__()
         self.n0 = n0
         self.config = config
-        self.name_column_time = name_column_time
         self.time_to_split_in_mins = time_to_split_in_mins
         self.min_count = min_count
 
@@ -442,7 +423,6 @@ class Node_segmentize_pandas(Node_1child, Node_segments):
             (
                 super()._hashstr()
                 + str(self.config)
-                + self.name_column_time
                 + str(self.time_to_split_in_mins)
                 + str(self.min_count)
             ).encode()
@@ -463,25 +443,22 @@ class Node_segmentize_pandas(Node_1child, Node_segments):
         column_to_process = self.config[0]
         values_of_interest = self.config[1]
         df: pd.DataFrame = n0  # type: ignore
-        if df[self.name_column_time].dtype == "object":
-            df[self.name_column_time] = pd.to_datetime(
-                df[self.name_column_time],
-                format="ISO8601",
-                # format="mixed",
-            )
 
         # Filtering
         df = df[df[column_to_process].isin(values_of_interest)]
+        assert isinstance(df, pd.DataFrame)
+        assert isinstance(df.index, pd.DatetimeIndex)
 
         # Pre
         to_return = []
         time_delta = pd.Timedelta(minutes=self.time_to_split_in_mins)
         count = 1
-        start = df[self.name_column_time].iloc[0]
-        end = df[self.name_column_time].iloc[0]
+        start = df.index[0]
+        end = df.index[0]
+        it = df.index[1:]
 
         # Segmentizing
-        for i in df[self.name_column_time].iloc[1:]:
+        for i in it:
             current_time = i
             if (current_time - end) < time_delta:
                 count += 1
@@ -505,26 +482,22 @@ class Node_segmentize_pandas_duration(Node_1child, Node_segments):
     def __init__(
         self,
         n0: Node_pandas,
-        name_column_date: str,
         name_column_duration: str,
         segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
     ) -> None:
-        assert isinstance(name_column_date, str)
         assert isinstance(name_column_duration, str)
         assert segment_metadata is None or callable(segment_metadata)
         super().__init__()
         self.n0 = n0
-        self.name_column_date = name_column_date
         self.name_column_duration = name_column_duration
         self.segment_metadata = segment_metadata
 
     def _hashstr(self) -> str:
         return hashlib.md5(
             (
-                # TODO: Missing self.segment_metadata
                 super()._hashstr()
-                + str(self.name_column_date)
                 + str(self.name_column_duration)
+                # TODO: Missing self.segment_metadata
             ).encode()
         ).hexdigest()
 
@@ -540,56 +513,36 @@ class Node_segmentize_pandas_duration(Node_1child, Node_segments):
         # TODO: t is doing nothing? :[
         assert t is None or isinstance(t, Time_interval)
 
+        # Stuff
         df: pd.DataFrame = n0  # type: ignore
+        assert isinstance(df.index, pd.DatetimeIndex)
+        iterable = df.iterrows()
 
-        # Small preprocessing
-        # TODO: After datetime index refactors this should be removed
-        if not isinstance(df.index, pd.DatetimeIndex):
-            if df[self.name_column_date].dtype == "object":
-                df[self.name_column_date] = pd.to_datetime(
-                    df[self.name_column_date],
-                    format="ISO8601",
-                    # format="mixed",
-                )
-
-        # TODO: Is iterrows really needed? Add tests first then remove if possible
-        # TODO: Measure if there is an actual performance increase on this
-        if self.segment_metadata is None:
-            iterable = df[[self.name_column_date, self.name_column_duration]].iterrows()
-        else:
-            iterable = df.iterrows()
         # TODO: Could this be removed by always ensuring an ordering in the dates?
         if len(df) > 1:
             if (
                 df.iloc[0][self.name_column_duration]
                 > df.iloc[1][self.name_column_duration]
             ):
-                iterable = reversed(list(iterable))
+                # iterable = reversed(list(iterable))
+                iterable = df[::-1].iterrows()
 
         # Segmentizing
         to_return = []
         for n, i in iterable:
-            # Date is extracted
-            # TODO: After datetime index refactors this should be removed
-            if not isinstance(df.index, pd.DatetimeIndex):
-                date_of_seg = i[self.name_column_date]
-            else:
-                date_of_seg = n
-
             # Time delta is calculated
             time_delta = i[self.name_column_duration]
-            if isinstance(time_delta, (float, int)):
-                time_delta = datetime.timedelta(seconds=time_delta)
-            elif isinstance(time_delta, datetime.timedelta):
-                pass
+            if isinstance(time_delta, (float, int, np.number)):
+                time_delta = datetime.timedelta(seconds=float(time_delta))
             else:
                 raise NotImplementedError
+            assert isinstance(time_delta, datetime.timedelta)
 
             # Seg is created
             to_return.append(
                 Seg(
-                    date_of_seg,
-                    date_of_seg + time_delta,
+                    n,
+                    n + time_delta,
                     None if self.segment_metadata is None else self.segment_metadata(i),
                 )
             )
@@ -597,6 +550,7 @@ class Node_segmentize_pandas_duration(Node_1child, Node_segments):
 
 
 # TODO: Probs should refactor w/ the above n stuff
+# TEST
 class Node_segmentize_pandas_startend(Node_1child, Node_segments):
     """Our df has a start and end column, we want to segmentize it creating a
     Segments with Seg objects according to these"""
@@ -604,26 +558,22 @@ class Node_segmentize_pandas_startend(Node_1child, Node_segments):
     def __init__(
         self,
         n0: Node_pandas,
-        name_column_start: str,
         name_column_end: str,
         segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
     ) -> None:
-        assert isinstance(name_column_start, str)
         assert isinstance(name_column_end, str)
         assert segment_metadata is None or callable(segment_metadata)
         super().__init__()
         self.n0 = n0
-        self.name_column_start = name_column_start
         self.name_column_end = name_column_end
         self.segment_metadata = segment_metadata
 
     def _hashstr(self) -> str:
         return hashlib.md5(
             (
-                # TODO: Missing self.segment_metadata
                 super()._hashstr()
-                + str(self.name_column_start)
                 + str(self.name_column_end)
+                # TODO: Missing self.segment_metadata
             ).encode()
         ).hexdigest()
 
@@ -639,33 +589,31 @@ class Node_segmentize_pandas_startend(Node_1child, Node_segments):
         assert t is None or isinstance(t, Time_interval)
 
         df: pd.DataFrame = n0  # type: ignore
+        assert isinstance(df, pd.DataFrame)
+        assert isinstance(df.index, pd.DatetimeIndex)
 
-        # Small preprocessing
-        if df[self.name_column_start].dtype == "object":
-            df[self.name_column_start] = pd.to_datetime(
-                df[self.name_column_start],
-                # format="ISO8601",
-                # format="mixed",
-            )
+        # Pre
         if df[self.name_column_end].dtype == "object":
             df[self.name_column_end] = pd.to_datetime(df[self.name_column_end])
-
-        # TODO: Measure if there is an actual performance increase on this
+        # TODO: Measure if there is an actual performance increase on this,
+        # basically, the optimization says "if I don't have a method that needs
+        # the full row into, only iterate over the column of interest", is it
+        # worth it, or negligible?
         if self.segment_metadata is None:
-            iterable = df[[self.name_column_start, self.name_column_end]].iterrows()
+            iterable = df[self.name_column_end].iterrows()
         else:
             iterable = df.iterrows()
         # TODO: Could this be removed by always ensuring an ordering in the dates?
         if len(df) > 0:
-            if df.iloc[0][self.name_column_start] > df.iloc[1][self.name_column_start]:
-                iterable = reversed(list(iterable))
+            if df.index[0] > df.index[1]:
+                iterable = df[::-1].iterrows()
 
         # Segmentizing
         to_return = []
-        for _, i in iterable:
+        for n, i in iterable:
             to_return.append(
                 Seg(
-                    i[self.name_column_start],
+                    n,
                     i[self.name_column_end],
                     None if self.segment_metadata is None else self.segment_metadata(i),
                 )

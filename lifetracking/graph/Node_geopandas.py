@@ -85,11 +85,18 @@ class Node_geopandas_operation(Node_1child, Node_geopandas):
 
 
 class Reader_geojson(Node_0child, Node_geopandas):
-    def __init__(self, path_dir: str) -> None:
+    def __init__(
+        self,
+        path_dir: str,
+        column_date_index: str | None = None,
+    ) -> None:
+        assert isinstance(path_dir, str)
+        assert column_date_index is None or isinstance(column_date_index, str)
         if not os.path.isdir(path_dir):
             raise ValueError(f"{path_dir} is not a directory")
         super().__init__()
         self.path_dir = path_dir
+        self.column_date_index = column_date_index
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -124,7 +131,16 @@ class Reader_geojson(Node_0child, Node_geopandas):
                     )
                 except DriverError:
                     print(f"[red]Error reading {filename}")
-        return pd.concat(to_return, axis=0)
+        df = pd.concat(to_return, axis=0)
+        if self.column_date_index is not None:
+            # Parse to datetime
+            df[self.column_date_index] = pd.to_datetime(
+                df[self.column_date_index],
+                format="mixed",
+            )
+            # Set as index
+            df = df.set_index(self.column_date_index)
+        return df
 
 
 class Label_geopandas(Node_1child, Node_geopandas):
