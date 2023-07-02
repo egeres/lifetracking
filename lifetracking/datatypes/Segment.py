@@ -336,7 +336,7 @@ class Segments:
         smooth: int = 1,
         annotations: list | None = None,
         title: str | None = None,
-    ) -> None:
+    ) -> go.Figure:
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(yaxes, tuple) or yaxes is None
         assert isinstance(smooth, int) and smooth > 0
@@ -356,4 +356,4 @@ class Segments:
             graph_annotate_title(fig, title, (fig_min, fig_max))
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
-        fig.show()
+        return fig

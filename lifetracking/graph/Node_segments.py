@@ -96,6 +96,10 @@ class Node_segments(Node[Segments]):
             title=self.name,
         )
 
+    # TODO_4: Segments: plot_count_by_day
+    def plot_count_by_day(self):
+        raise NotImplementedError
+
 
 class Node_segments_operation(Node_1child, Node_segments):
     def __init__(

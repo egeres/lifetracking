@@ -11,6 +11,7 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 from rich import print
@@ -103,7 +104,7 @@ class Node_pandas(Node[pd.DataFrame]):
         smooth: int = 1,
         annotations: list | None = None,
         title: str | None = None,
-    ) -> None:
+    ) -> go.Figure:
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(smooth, int) and smooth >= 0
         assert isinstance(annotations, list) or annotations is None
@@ -144,7 +145,37 @@ class Node_pandas(Node[pd.DataFrame]):
             graph_annotate_title(fig, self.name, (fig_min, fig_max))
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
-        fig.show()
+        return fig
+
+    def plot_columns(
+        self,
+        t: Time_interval | None,
+        columns: str | list[str],
+        resample: str | None = None,
+    ):
+        # Start
+        assert t is None or isinstance(t, Time_interval)
+        assert isinstance(columns, str) or isinstance(columns, list)
+        if isinstance(columns, str):
+            columns = [columns]
+
+        # df
+        df = self.run(t)
+        assert df is not None
+        assert isinstance(df, pd.DataFrame)
+        assert isinstance(df.index, pd.DatetimeIndex)
+
+        # Resample
+        if resample is not None:
+            df = df.resample(resample).mean()
+
+        # Plot
+        fig = px.line(df[columns])
+        graph_udate_layout(fig, t)
+        graph_annotate_title(fig, (self.name or "???") + " : " + "+".join(columns))
+        #     graph_annotate_today(fig, t, (fig_min, fig_max))
+        #     graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
+        return fig
 
 
 class Node_pandas_generate(Node_0child, Node_pandas):
