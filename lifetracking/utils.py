@@ -60,11 +60,11 @@ def _lc_export_prepare_dir(path_filename: str) -> None:
 
 def export_pddataframe_to_lc_single(
     df: pd.DataFrame,
-    fn: Callable[[pd.Series], str],  # Specifies a way to get the "start"
     path_filename: str,
     # hour_offset: float = 0.0,
     color: str | Callable[[pd.Series], str] | None = None,
     opacity: float | Callable[[pd.Series], float] = 1.0,
+    fn: Callable[[pd.Series], str] | None = None,  # Specifies a way to get the "start"
     # No tooltip here!
 ):
     """Long calendar is a custom application of mine that I use to visualize
@@ -92,7 +92,7 @@ def export_pddataframe_to_lc_single(
 
     # Other assertions
     assert isinstance(df, pd.DataFrame)
-    assert callable(fn), "fn must be callable"
+    # assert callable(fn), "fn must be callable"
 
     # Dir setup
     _lc_export_prepare_dir(path_filename)
@@ -120,12 +120,16 @@ def export_pddataframe_to_lc_single(
     # Export itself
     to_export = []
     base_dict = {}
-    for _, i in df.iterrows():
+    for n, i in df.iterrows():
         if isinstance(color, Callable):
             base_dict["color"] = color(i)
         if isinstance(opacity, Callable):
             base_dict["opacity"] = opacity(i)
-        to_export.append({"start": fn(i)} | base_dict)
+
+        if isinstance(n, pd.Timestamp) and fn is None:
+            to_export.append({"start": n} | base_dict)
+        else:
+            to_export.append({"start": fn(i)} | base_dict)
     with open(path_filename, "w") as f:
         json.dump(to_export, f, indent=4, default=str)
 

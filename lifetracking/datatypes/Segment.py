@@ -6,6 +6,7 @@ import hashlib
 import inspect
 import json
 import os
+from bisect import insort  # TODO: Python 3.11 because of key=
 from typing import Any, Callable, overload
 
 import numpy as np
@@ -121,6 +122,7 @@ class Segments:
         return max(seg.end for seg in self.content)
 
     def __add__(self, other: Segments) -> Segments:
+        # TODO: After coverage has been extended, test if this could be removed
         return Segments(sorted(other.content + self.content))
 
     def _export_to_longcalendar_edit_dict(

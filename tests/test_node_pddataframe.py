@@ -53,8 +53,8 @@ def test_node_pddataframe_removeifclose():
             {"datetime": t + datetime.timedelta(minutes=999)},
         ]
     )
-    a = Node_pandas_generate(df)
-    b = Node_pandas_remove_close(a, "datetime", datetime.timedelta(minutes=2))
+    a = Node_pandas_generate(df, datetime_column="datetime")
+    b = Node_pandas_remove_close(a, datetime.timedelta(minutes=2))
 
     o = b.run()
     assert o is not None

@@ -49,19 +49,20 @@ class Node_pandas(Node[pd.DataFrame]):
     def export_to_longcalendar(
         self,
         t: Time_interval | None,
-        fn: Callable[[pd.Series], str],  # Specifies a way to get the "start"
         path_filename: str,
         color: str | Callable[[pd.Series], str] | None = None,
         opacity: float | Callable[[pd.Series], float] = 1.0,
+        fn: Callable[[pd.Series], str]
+        | None = None,  # Specifies a way to get the "start"
     ):
         o = self.run(t)
         assert o is not None
         export_pddataframe_to_lc_single(
             o,
-            fn,
             path_filename=path_filename,
             color=color,
             opacity=opacity,
+            fn=fn,
         )
 
     def remove_nans(self) -> Node_pandas:
@@ -181,9 +182,14 @@ class Node_pandas(Node[pd.DataFrame]):
 class Node_pandas_generate(Node_0child, Node_pandas):
     """Created for debugging purposes and such"""
 
-    def __init__(self, df: pd.DataFrame) -> None:
+    def __init__(self, df: pd.DataFrame, datetime_column: str | None = None) -> None:
         assert isinstance(df, pd.DataFrame)
+        # assert isinstance(df.index, pd.DatetimeIndex)
+        assert datetime_column is None or datetime_column in df.columns
+
         super().__init__()
+        if datetime_column is not None:
+            df.set_index(datetime_column, inplace=True)
         self.df = df
 
     def _hashstr(self) -> str:
@@ -250,35 +256,50 @@ class Node_pandas_remove_close(Node_pandas_operation):
     @staticmethod
     def _remove_dupe_rows_df(
         df: pd.DataFrame,
-        column_name: str,
         max_time: int | float | datetime.timedelta,
+        column_name: str | None = None,
     ):
-        if isinstance(max_time, datetime.timedelta):
-            max_time = max_time.total_seconds() / 60.0
-        if df[column_name].dtype != "datetime64[ns]":
-            df[column_name] = pd.to_datetime(df[column_name])
-        df = df.sort_values(by=[column_name])
-        df["time_diff"] = df[column_name].diff()
+        # if isinstance(max_time, datetime.timedelta):
+        #     max_time = max_time.total_seconds() / 60.0
+
+        if isinstance(max_time, (int, float)):
+            max_time = datetime.timedelta(minutes=max_time)
+
+        if column_name is None and isinstance(df.index, pd.DatetimeIndex):
+            # Deduplicate based on index
+            df = df.sort_index()
+            df["time_diff"] = df.index.to_series().diff()
+        else:
+            if df[column_name].dtype != "datetime64[ns]":
+                df[column_name] = pd.to_datetime(df[column_name])
+            df = df.sort_values(by=[column_name])
+            df["time_diff"] = df[column_name].diff()
+
         mask = df["time_diff"].isnull() | (
-            df["time_diff"].dt.total_seconds() / 60.0 >= max_time
+            # df["time_diff"].dt.total_seconds() >= max_time
+            df["time_diff"]
+            >= max_time
         )
         return df[mask].drop(columns=["time_diff"])
 
     def __init__(
         self,
         n0: Node_pandas,
-        column_name: str,
         max_time: int | float | datetime.timedelta,
+        column_name: str | None = None,
     ):
+        """Max time is assumed to be in minutes if an int or float is given"""
+
         assert isinstance(n0, Node_pandas)
-        assert isinstance(column_name, str)
         assert isinstance(max_time, (int, float, datetime.timedelta))
+        assert column_name is None or isinstance(column_name, str)
+
         super().__init__(
             n0,
             lambda df: self._remove_dupe_rows_df(
                 df,  # type: ignore
-                column_name,
                 max_time,
+                column_name,
             ),
         )
 
@@ -373,9 +394,10 @@ class Reader_pandas(Node_0child, Node_pandas):
 
         return False
 
-    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        assert t is None or isinstance(t, Time_interval)
-
+    def _operation_load_raw_data(
+        self,
+        t: Time_interval | None,
+    ):
         # Get files
         files_to_read = (
             [self.path_dir]
@@ -414,17 +436,32 @@ class Reader_pandas(Node_0child, Node_pandas):
             return pd.DataFrame()
         df = pd.concat(to_return, axis=0)
 
+        return df
+
+    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+        assert t is None or isinstance(t, Time_interval)
+
+        df = self._operation_load_raw_data(t)
+
         # If the user specifies a date column, use it to filter the t
         if self.column_date_index is not None:
             df[self.column_date_index] = pd.to_datetime(df[self.column_date_index])
             # df = df.set_index(self.column_date_index) # Hums.....
             if t is not None:
+                # TODO: Remove this after refactors of tzinfo
+                if t.start.tzinfo is None and df[self.column_date_index].iloc[0].tzinfo:
+                    t.start = t.start.replace(
+                        tzinfo=df[self.column_date_index].iloc[0].tzinfo
+                    )
+                    t.end = t.end.replace(
+                        tzinfo=df[self.column_date_index].iloc[0].tzinfo
+                    )
+
                 df = df[
                     (df[self.column_date_index] >= t.start)
                     & (df[self.column_date_index] <= t.end)
                 ]
-            df = df.sort_values(by=[self.column_date_index])
-
+            df.set_index(self.column_date_index, inplace=True)
         return df
 
 

@@ -13,6 +13,7 @@ from prefect.utilities.asyncutils import Sync
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.datatypes.Segment import Segments
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
+from lifetracking.graph.Node_cache import Node_cache
 from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import hash_method
@@ -524,12 +525,14 @@ class Node_segmentize_pandas_duration(Node_1child, Node_segments):
         df: pd.DataFrame = n0  # type: ignore
 
         # Small preprocessing
-        if df[self.name_column_date].dtype == "object":
-            df[self.name_column_date] = pd.to_datetime(
-                df[self.name_column_date],
-                format="ISO8601",
-                # format="mixed",
-            )
+        # TODO: After datetime index refactors this should be removed
+        if not isinstance(df.index, pd.DatetimeIndex):
+            if df[self.name_column_date].dtype == "object":
+                df[self.name_column_date] = pd.to_datetime(
+                    df[self.name_column_date],
+                    format="ISO8601",
+                    # format="mixed",
+                )
 
         # TODO: Is iterrows really needed? Add tests first then remove if possible
         # TODO: Measure if there is an actual performance increase on this
@@ -547,9 +550,13 @@ class Node_segmentize_pandas_duration(Node_1child, Node_segments):
 
         # Segmentizing
         to_return = []
-        for _, i in iterable:
+        for n, i in iterable:
             # Date is extracted
-            date_seg = i[self.name_column_date]
+            # TODO: After datetime index refactors this should be removed
+            if not isinstance(df.index, pd.DatetimeIndex):
+                date_of_seg = i[self.name_column_date]
+            else:
+                date_of_seg = n
 
             # Time delta is calculated
             time_delta = i[self.name_column_duration]
@@ -563,8 +570,8 @@ class Node_segmentize_pandas_duration(Node_1child, Node_segments):
             # Seg is created
             to_return.append(
                 Seg(
-                    date_seg,
-                    date_seg + time_delta,
+                    date_of_seg,
+                    date_of_seg + time_delta,
                     None if self.segment_metadata is None else self.segment_metadata(i),
                 )
             )
