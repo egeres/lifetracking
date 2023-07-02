@@ -27,9 +27,7 @@ def test_node_anki_study():
     o = a.run(t)
     assert o is not None
     assert o.shape[0] > 0
-    assert (
-        t.duration_days > (max(o.timestamp) - min(o.timestamp)).total_seconds() / 86400
-    )
+    assert t.duration_days > (max(o.index) - min(o.index)).total_seconds() / 86400
 
 
 @pytest.mark.skipif(
@@ -41,6 +39,4 @@ def test_node_anki_create():
     o = a.run(t)
     assert o is not None
     assert o.shape[0] > 0
-    assert (
-        t.duration_days > (max(o.timestamp) - min(o.timestamp)).total_seconds() / 86400
-    )
+    assert t.duration_days > (max(o.index) - min(o.index)).total_seconds() / 86400

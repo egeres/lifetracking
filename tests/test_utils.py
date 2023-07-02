@@ -99,8 +99,8 @@ def test_export_pddataframe_to_lc_single():
     with tempfile.TemporaryDirectory() as path_dir:
         export_pddataframe_to_lc_single(
             df,
-            lambda x: x["time"],
             os.path.join(path_dir, "out.json"),
             color="#F00",
             opacity=0.5,
+            fn=lambda x: x["time"],
         )

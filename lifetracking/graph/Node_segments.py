@@ -29,6 +29,14 @@ class Node_segments(Node[Segments]):
     ) -> Node_segments:
         return Node_segments_operation(self, fn)  # type: ignore
 
+    # TODO_3
+    # def filter(self):
+    #     ...
+
+    # TODO_3
+    # def filter(self, fn: Callable[[pd.Series], bool]) -> Node_pandas:
+    #     return Node_segment_filter(self, fn)
+
     def merge(
         self,
         time_to_mergue_s: float,
@@ -324,13 +332,14 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
     def __init__(
         self,
         n0: Node_pandas,
-        name_column_time: str,
         time_to_split_in_mins: float = 5.0,
         min_count: int = 1,
+        # TODO: Next line is unused
         segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
+        name_column_time: str | None = None,
     ) -> None:
         # assert isinstance(n0, Node_pandas) TODO: Merge with geopandas or something
-        assert isinstance(name_column_time, str)
+        assert isinstance(name_column_time, str) or name_column_time is None
         assert isinstance(min_count, int)
         super().__init__()
         self.n0 = n0
@@ -361,23 +370,32 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
 
         # Variable loading
         df: pd.DataFrame = n0  # type: ignore
-        if df[self.name_column_time].dtype == "object":
-            df[self.name_column_time] = pd.to_datetime(
-                df[self.name_column_time],
-                # infer_datetime_format=True,
-                # format="ISO8601",
-                # format="mixed",
-            )
+
+        if not isinstance(df.index, pd.DatetimeIndex):
+            if df[self.name_column_time].dtype == "object":
+                df[self.name_column_time] = pd.to_datetime(
+                    df[self.name_column_time],
+                    # infer_datetime_format=True,
+                    # format="ISO8601",
+                    # format="mixed",
+                )
 
         # Pre
         to_return = []
         time_delta = pd.Timedelta(minutes=self.time_to_split_in_mins)
         count = 1
-        start = df[self.name_column_time].iloc[0]
-        end = df[self.name_column_time].iloc[0]
+
+        if not isinstance(df.index, pd.DatetimeIndex):
+            start = df[self.name_column_time].iloc[0]
+            end = df[self.name_column_time].iloc[0]
+            it = df[self.name_column_time].iloc[1:]
+        else:
+            start = df.index[0]
+            end = df.index[-1]
+            it = df.index[1:]
 
         # Segmentizing
-        for i in df[self.name_column_time].iloc[1:]:
+        for i in it:
             current_time = i
             if (current_time - end) < time_delta:
                 count += 1

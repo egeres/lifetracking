@@ -49,12 +49,14 @@ class Parse_anki_study(Node_pandas, Node_0child):
             lambda x: datetime.datetime.fromtimestamp(x)
         )
 
+        # Set index
+        revisions["timestamp"] = pd.to_datetime(revisions["timestamp"])
+        revisions = revisions.set_index("timestamp")
+
         # We filter by time interval
         if t is None:
             return revisions
-        return revisions[
-            (revisions["timestamp"] >= t.start) & (revisions["timestamp"] <= t.end)
-        ]
+        return revisions[(revisions.index >= t.start) & (revisions.index <= t.end)]
 
 
 class Parse_anki_creation(Parse_anki_study):
@@ -73,7 +75,10 @@ class Parse_anki_creation(Parse_anki_study):
             lambda x: datetime.datetime.fromtimestamp(x)
         )
 
+        cards["timestamp"] = pd.to_datetime(cards["timestamp"])
+        cards = cards.set_index("timestamp")
+
         # We filter by time interval
         if t is None:
             return cards
-        return cards[(cards["timestamp"] >= t.start) & (cards["timestamp"] <= t.end)]
+        return cards[(cards.index >= t.start) & (cards.index <= t.end)]

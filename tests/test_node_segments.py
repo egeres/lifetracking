@@ -318,7 +318,7 @@ def test_node_segments_segmentize_by_density_0():
     )
 
     a = Node_pandas_generate(df)
-    b = Node_segmentize_pandas_by_density(a, "time")
+    b = Node_segmentize_pandas_by_density(a, name_column_time="time")
 
     o = b.run()
     assert o is not None
