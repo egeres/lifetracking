@@ -319,7 +319,7 @@ class Reader_pandas(Node_0child, Node_pandas):
         self,
         path_dir: str,
         dated_name: Callable[[str], datetime.datetime] | None = None,
-        column_date_index: str | None = None,
+        column_date_index: str | Callable | None = None,
         time_zone: None | datetime.tzinfo = None,
     ) -> None:
         # We parse info that should be specified by the subclasses
@@ -495,9 +495,11 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
         self,
         path_dir: str,
         criteria_to_select_file: Callable[[str], bool],
+        column_date_index: str | None | Callable = None,
     ) -> None:
         super().__init__(path_dir)
         self.criteria_to_select_file = criteria_to_select_file
+        self.column_date_index = column_date_index
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -507,6 +509,23 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
                 + hash_method(self.criteria_to_select_file)
             ).encode()
         ).hexdigest()
+
+    def _operation_generate_df(self, list_of_df) -> pd.DataFrame:
+        # If to_return is empty, return an empty dataframe
+        if len(list_of_df) == 0:
+            return pd.DataFrame()
+
+        # df
+        df = pd.concat(list_of_df, axis=0)
+
+        # set index or something
+        if isinstance(self.column_date_index, str):
+            df.set_index(self.column_date_index, inplace=True)
+        elif callable(self.column_date_index):
+            df = self.column_date_index(df)
+
+        # Return
+        return df
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         # Asserts
@@ -540,4 +559,4 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
                         print(f"[red]Error reading {sub_file}")
                     break
 
-        return pd.concat(to_return, axis=0)
+        return self._operation_generate_df(to_return)

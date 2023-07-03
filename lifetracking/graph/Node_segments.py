@@ -449,6 +449,9 @@ class Node_segmentize_pandas(Node_1child, Node_segments):
         assert isinstance(df, pd.DataFrame)
         assert isinstance(df.index, pd.DatetimeIndex)
 
+        if df.empty:
+            return Segments([])
+
         # Pre
         to_return = []
         time_delta = pd.Timedelta(minutes=self.time_to_split_in_mins)
@@ -604,7 +607,7 @@ class Node_segmentize_pandas_startend(Node_1child, Node_segments):
         else:
             iterable = df.iterrows()
         # TODO: Could this be removed by always ensuring an ordering in the dates?
-        if len(df) > 0:
+        if len(df) > 1:
             if df.index[0] > df.index[1]:
                 iterable = df[::-1].iterrows()
 
