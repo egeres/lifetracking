@@ -193,20 +193,14 @@ def graph_udate_layout(
     fig: go.Figure,
     t: Time_interval | None,
 ):
-    # c = fig.data[0].x
+    # No money no honey
+    if len(fig.data) == 0:
+        return
 
+    # Base
     newlayout = {
         "template": "plotly_dark",
         "margin": dict(l=0, r=0, t=0, b=0),  # Is this a good idea tho?
-        # To show it in "days ago"
-        "xaxis": dict(
-            tickmode="array",
-            # tickvals = list(range(len(c))),
-            # ticktext = list(range(-len(c), 0))
-            # tickvals=list(range(0, len(c), 30)),  # Tick every 30
-            # ticktext=list(range(-len(c), 0, 30)),  # Tick every 30
-            # TODO: Actually, this should vary depending on the time scale
-        ),
         "legend": {
             "font": {
                 "family": "JetBrains Mono",
@@ -214,13 +208,33 @@ def graph_udate_layout(
         },
     }
 
-    if len(fig.data) == 0:
-        return
-
+    # x ticks
     if isinstance(fig.data[0].x[0], datetime.datetime):
-        pass
+        if (max(fig.data[0].x) - min(fig.data[0].x)).days > 40:
+            # Month display
+            fig.update_xaxes(
+                tickformat="%b",
+                dtick="M1",
+                ticklabelmode="period",
+                ticks="outside",
+                # tickformat = "%Y-%m-%d",
+                # tickangle = -45,
+            )
+        else:
+            # Week display starting on monday
+            first_date = min(fig.data[0].x)
+            first_monday = first_date - pd.DateOffset(days=(first_date.weekday()))
+            fig.update_xaxes(
+                tickformat="%Y-%m-%d",
+                dtick="604800000",  # one week in milliseconds
+                tick0=first_monday,
+                ticks="outside",
+            )
     elif isinstance(fig.data[0].x[0], int):
         c = fig.data[0].x
+        if "xaxis" not in newlayout:
+            newlayout["xaxis"] = {}
+        newlayout["xaxis"]["tickmode"] = "array"
         newlayout["xaxis"]["tickvals"] = list(range(0, len(c), 30))
         newlayout["xaxis"]["ticktext"] = list(range(-len(c), 0, 30))
     else:
