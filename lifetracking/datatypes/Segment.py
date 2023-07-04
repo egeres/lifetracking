@@ -364,7 +364,8 @@ class Segments:
         fig.update_yaxes(title_text="", range=yaxes)
         fig.update_xaxes(title_text="")
         if t is not None:
-            graph_annotate_title(fig, title)
+            if isinstance(title, str):
+                graph_annotate_title(fig, title)
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
         return fig

@@ -99,6 +99,8 @@ class Parse_activitywatch(Node_pandas, Node_0child):
             for x in out
         ]
         df = pd.DataFrame(out)
+        if len(df) == 0:
+            return df
         df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed")
         df.set_index("timestamp", inplace=True)
         return df

@@ -519,6 +519,8 @@ class Node_segmentize_pandas_duration(Node_1child, Node_segments):
 
         # Stuff
         df: pd.DataFrame = n0  # type: ignore
+        if df.shape[0] == 0:
+            return Segments([])
         assert isinstance(df.index, pd.DatetimeIndex)
         iterable = df.iterrows()
 

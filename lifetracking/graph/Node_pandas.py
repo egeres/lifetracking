@@ -219,6 +219,8 @@ class Node_pandas_operation(Node_1child, Node_pandas):
         t: Time_interval | None = None,
     ) -> pd.DataFrame:
         assert t is None or isinstance(t, Time_interval)
+        if len(n0) == 0:
+            return n0
         return self.fn_operation(n0)
 
 

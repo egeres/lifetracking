@@ -214,6 +214,9 @@ def graph_udate_layout(
         },
     }
 
+    if len(fig.data) == 0:
+        return
+
     if isinstance(fig.data[0].x[0], datetime.datetime):
         pass
     elif isinstance(fig.data[0].x[0], int):
