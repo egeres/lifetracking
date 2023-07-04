@@ -33,7 +33,6 @@ class Node_geopandas(Node[gpd.GeoDataFrame]):
     def export_to_longcalendar(
         self,
         t: Time_interval | None,
-        fn: Callable[[pd.Series], str],  # Specifies a way to get the "start"
         path_filename: str,
         color: str | Callable[[pd.Series], str] | None = None,
         opacity: float | Callable[[pd.Series], float] = 1.0,
@@ -42,7 +41,6 @@ class Node_geopandas(Node[gpd.GeoDataFrame]):
         assert o is not None
         export_pddataframe_to_lc_single(
             o,
-            fn,
             path_filename=path_filename,
             color=color,
             opacity=opacity,

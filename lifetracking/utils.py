@@ -8,7 +8,7 @@ import json
 import os
 import pickle
 import tempfile
-from typing import Callable
+from typing import Any, Callable
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -56,17 +56,42 @@ def _lc_export_prepare_dir(path_filename: str) -> None:
         json.dump(data, f, indent=4)
 
 
+def _lc_export_configchanges(
+    path_filename: str,
+    color: str | Any,
+    opacity: float | Any,
+) -> None:
+    """Takes a path like .../data/meditation.json"""
+
+    if isinstance(color, str) or isinstance(opacity, float):
+        # Data parsing
+        path_fil_config = os.path.join(os.path.split(path_filename)[0], "config.json")
+        with open(path_fil_config) as f:
+            data = json.load(f)
+            assert isinstance(data, dict)
+            key_name = os.path.split(path_filename)[1].split(".")[0]
+            if key_name not in data["data"]:
+                data["data"][key_name] = {}
+
+        # We write color and opacity
+        if isinstance(color, str):
+            data["data"][key_name]["color"] = f"{color}"
+        if isinstance(opacity, float) and opacity != 1.0:
+            data["data"][key_name]["opacity"] = opacity
+
+        with open(path_fil_config, "w") as f:
+            json.dump(data, f, indent=4)
+
+
 def export_pddataframe_to_lc_single(
     df: pd.DataFrame,
     path_filename: str,
-    # hour_offset: float = 0.0,
+    # hour_offset: float = 0.0, # TODO_1
     color: str | Callable[[pd.Series], str] | None = None,
     opacity: float | Callable[[pd.Series], float] = 1.0,
-    fn: Callable[[pd.Series], str] | None = None,  # Specifies a way to get the "start"
-    # No tooltip here!
 ):
-    """Long calendar is a custom application of mine that I use to visualize
-    my data."""
+    """Long calendar is a custom application of mine that I use to visualize my
+    data. No tooltip support is intentional!"""
 
     # Assertions
     assert isinstance(path_filename, str)
@@ -90,30 +115,12 @@ def export_pddataframe_to_lc_single(
 
     # Other assertions
     assert isinstance(df, pd.DataFrame)
-    # assert callable(fn), "fn must be callable"
 
     # Dir setup
     _lc_export_prepare_dir(path_filename)
 
     # Changes at config.json
-    if isinstance(color, str) or isinstance(color, float):
-        # Data parsing
-        path_fil_config = os.path.join(os.path.split(path_filename)[0], "config.json")
-        with open(path_fil_config) as f:
-            data = json.load(f)
-            assert isinstance(data, dict)
-            key_name = os.path.split(path_filename)[1].split(".")[0]
-            if key_name not in data["data"]:
-                data["data"][key_name] = {}
-
-        # We write color and opacity
-        if isinstance(color, str):
-            data["data"][key_name]["color"] = f"{color}"
-        if isinstance(opacity, float) and opacity != 1.0:
-            data["data"][key_name]["opacity"] = opacity
-
-        with open(path_fil_config, "w") as f:
-            json.dump(data, f, indent=4)
+    _lc_export_configchanges(path_filename, color, opacity)
 
     # Export itself
     to_export = []
@@ -124,10 +131,10 @@ def export_pddataframe_to_lc_single(
         if isinstance(opacity, Callable):
             base_dict["opacity"] = opacity(i)
 
-        if isinstance(n, pd.Timestamp) and fn is None:
+        if isinstance(n, pd.Timestamp):
             to_export.append({"start": n} | base_dict)
         else:
-            to_export.append({"start": fn(i)} | base_dict)
+            raise ValueError
     with open(path_filename, "w") as f:
         json.dump(to_export, f, indent=4, default=str)
 
@@ -213,6 +220,8 @@ def graph_udate_layout(
         c = fig.data[0].x
         newlayout["xaxis"]["tickvals"] = list(range(0, len(c), 30))
         newlayout["xaxis"]["ticktext"] = list(range(-len(c), 0, 30))
+    else:
+        raise ValueError
 
     if len(fig.data) == 1:
         # Hide legend
@@ -224,24 +233,28 @@ def graph_udate_layout(
 
     fig.update_layout(**newlayout)
 
-    # if fixed_right_margin:
-    #     fig.layout.margin.r = 300
-
 
 def graph_annotate_today(
     fig: go.Figure,
     t: Time_interval,
     minmax: tuple[float, float] | None = None,
 ):
-    fig_min, fig_max = (0, 1) if minmax is None else minmax
+    # Min max
+    fig_min, fig_max = (0, 1) if minmax is None else (min(0, minmax[0]), minmax[1])
 
-    today = datetime.datetime.now()
+    # Today
+    today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    # TODO: At some point, decide upon tzinfo's
+    if t.start.tzinfo is not None:
+        today = today.astimezone(t.start.tzinfo)
+
+    # Plot or not
     days_diff = (today - t.start).days
     if days_diff >= 0 and days_diff <= int(t.duration_days):
         fig.add_shape(
             type="line",
-            x0=days_diff,
-            x1=days_diff,
+            x0=today,
+            x1=today,
             y0=fig_min,
             y1=fig_max,
             line={"color": "#a00"},
@@ -266,19 +279,19 @@ def graph_annotate_annotations(
         if isinstance(date, str):
             date = parse(date)
         assert isinstance(date, datetime.datetime)
+        if t.start.tzinfo is not None:
+            date = date.astimezone(t.start.tzinfo)
         days_diff = (date - t.start).days
 
         if not (days_diff >= 0 and days_diff <= int(t.duration_days)):
             continue
 
-        fig_min, fig_max = (0, 1) if minmax is None else minmax
-        if fig_min > 0:
-            fig_min = 0
+        fig_min, fig_max = (0, 1) if minmax is None else (min(0, minmax[0]), minmax[1])
 
         fig.add_shape(
             type="line",
-            x0=days_diff,
-            x1=days_diff,
+            x0=date,
+            x1=date,
             y0=fig_min,
             y1=fig_max,
             line={"color": "#aaa", "dash": "dash", "width": 1},
@@ -287,7 +300,7 @@ def graph_annotate_annotations(
         )
         if "title" in i:
             fig.add_annotation(
-                x=days_diff,
+                x=date,
                 y=fig_min,
                 text=i["title"],
                 showarrow=False,
@@ -331,7 +344,7 @@ def graph_annotate_title(
         showarrow=False,
         font=dict(
             family="JetBrains Mono",
-            size=20,
+            size=16,
         ),
     )
     return fig

@@ -11,6 +11,7 @@ import os
 from typing import Any, Callable, overload
 
 import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from typing_extensions import Self
@@ -117,9 +118,13 @@ class Segments:
         return len(self.content)
 
     def min(self) -> datetime.datetime:
+        # TODO_3: Refactor, self.content is a pandas dataframe or an index of
+        # datetimes instead of a list we have to iterate
         return min(seg.start for seg in self.content)
 
     def max(self) -> datetime.datetime:
+        # TODO_3: Refactor, self.content is a pandas dataframe or an index of
+        # datetimes instead of a list we have to iterate
         return max(seg.end for seg in self.content)
 
     def __add__(self, other: Segments) -> Segments:
@@ -349,9 +354,12 @@ class Segments:
 
         # Plot
         fig_min, fig_max = (0, 24) if yaxes is None else yaxes
-        if fig_min > 0:
-            fig_min = 0
-        fig = px.line(x=list(range(len(c))), y=c)
+        fig_index = (
+            t.to_datetimeindex()
+            if t is not None
+            else pd.date_range(self.min(), self.max(), freq="D")
+        )
+        fig = px.line(x=fig_index, y=c)
         graph_udate_layout(fig, t)
         fig.update_yaxes(title_text="", range=yaxes)
         fig.update_xaxes(title_text="")

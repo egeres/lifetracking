@@ -65,15 +65,12 @@ class Parse_BLE_info(Node_1child, Node_segments):
         self,
         n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
         t: Time_interval | None = None,
-        # config: Config | None = None,
     ) -> Segments:
         assert n0 is not None
-        # assert config is not None
         assert t is None or isinstance(t, Time_interval)
 
         df: pd.DataFrame = n0  # type: ignore
         df.replace(9999.0, np.nan, inplace=True)
-        # df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed")
 
         to_return = []
         for column_name in list(df.columns):

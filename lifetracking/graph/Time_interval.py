@@ -4,6 +4,7 @@ import datetime
 from enum import Enum, auto
 from typing import Iterable
 
+import pandas as pd
 from typing_extensions import Self
 
 from lifetracking.datatypes.Seg import Seg
@@ -113,6 +114,9 @@ class Time_interval:
 
     def to_seg(self) -> Seg:
         return Seg(self.start, self.end)
+
+    def to_datetimeindex(self) -> pd.DatetimeIndex:
+        return pd.date_range(self.start, self.end, freq="D")
 
     def iterate_over_interval(
         self, resolution: Time_resolution = Time_resolution.DAY

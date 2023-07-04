@@ -95,6 +95,7 @@ def test_export_pddataframe_to_lc_single():
             {"time": d + datetime.timedelta(minutes=3), "label": "A"},
         ]
     )
+    df = df.set_index("time")
 
     with tempfile.TemporaryDirectory() as path_dir:
         export_pddataframe_to_lc_single(
@@ -102,5 +103,4 @@ def test_export_pddataframe_to_lc_single():
             os.path.join(path_dir, "out.json"),
             color="#F00",
             opacity=0.5,
-            fn=lambda x: x["time"],
         )

@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
@@ -90,7 +91,7 @@ class Node_segments(Node[Segments]):
         yaxes: tuple[float, float] | None = None,
         smooth: int = 1,
         annotations: list | None = None,
-    ):
+    ) -> go.Figure:
         assert t is None or isinstance(t, Time_interval)
         assert yaxes is None or isinstance(yaxes, tuple)
         assert isinstance(smooth, int) and smooth > 0
@@ -98,7 +99,7 @@ class Node_segments(Node[Segments]):
 
         o = self.run(t)
         assert o is not None
-        o.plot_hours(
+        return o.plot_hours(
             t=t,
             yaxes=yaxes,
             smooth=smooth,
@@ -449,7 +450,7 @@ class Node_segmentize_pandas(Node_1child, Node_segments):
         assert isinstance(df, pd.DataFrame)
         assert isinstance(df.index, pd.DatetimeIndex)
 
-        if df.empty:
+        if df.shape[0] == 0:
             return Segments([])
 
         # Pre

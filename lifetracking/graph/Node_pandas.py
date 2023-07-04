@@ -50,8 +50,6 @@ class Node_pandas(Node[pd.DataFrame]):
         path_filename: str,
         color: str | Callable[[pd.Series], str] | None = None,
         opacity: float | Callable[[pd.Series], float] = 1.0,
-        fn: Callable[[pd.Series], str]
-        | None = None,  # Specifies a way to get the "start"
     ):
         o = self.run(t)
         assert o is not None
@@ -60,7 +58,6 @@ class Node_pandas(Node[pd.DataFrame]):
             path_filename=path_filename,
             color=color,
             opacity=opacity,
-            fn=fn,
         )
 
     def remove_nans(self) -> Node_pandas:
@@ -69,7 +66,7 @@ class Node_pandas(Node[pd.DataFrame]):
     def _plot_countbyday_generatedata(
         self,
         t: Time_interval | None,
-        time_col: pd.Series,
+        time_col: pd.DatetimeIndex,
         smooth: int,
     ) -> list[int]:
         # We calculate a, b and cut time_col
@@ -77,11 +74,11 @@ class Node_pandas(Node[pd.DataFrame]):
             a, b = time_col.min(), time_col.max()
         else:
             a, b = t.start, t.end
-            if time_col.shape[0] > 0 and time_col.iloc[0].tzinfo != a.tzinfo:
+            if time_col.shape[0] > 0 and time_col[0].tzinfo != a.tzinfo:
                 # a.tzinfo = time_col.iloc[0].tzinfo
                 # b.tzinfo = time_col.iloc[0].tzinfo
-                a = a.replace(tzinfo=time_col.iloc[0].tzinfo)
-                b = b.replace(tzinfo=time_col.iloc[0].tzinfo)
+                a = a.replace(tzinfo=time_col[0].tzinfo)
+                b = b.replace(tzinfo=time_col[0].tzinfo)
             time_col = time_col[(time_col >= a) & (time_col <= b)]
 
         # Actual list generation
@@ -99,7 +96,6 @@ class Node_pandas(Node[pd.DataFrame]):
     def plot_countbyday(
         self,
         t: Time_interval | None = None,
-        datetime_column_name: str | None = None,
         smooth: int = 1,
         annotations: list | None = None,
         title: str | None = None,
@@ -110,38 +106,25 @@ class Node_pandas(Node[pd.DataFrame]):
 
         o = self.run(t)
         assert o is not None
-
-        # Date stuff
-        # TODO: review the current approach of not always using the index 🙄
-        index_of_df_is_datetime = False
-        if isinstance(o.index, pd.DatetimeIndex):
-            index_of_df_is_datetime = True
-        if not index_of_df_is_datetime and datetime_column_name is None:
-            raise ValueError(
-                "The index of the dataframe is not a datetime index,"
-                " so you must specify the name of the datetime column"
-            )
-        time_col = o.index if index_of_df_is_datetime else o[datetime_column_name]
-        if time_col.dtype != "datetime64[ns]":
-            time_col = pd.to_datetime(time_col)
+        assert isinstance(o.index, pd.DatetimeIndex)
 
         # Data
         c = self._plot_countbyday_generatedata(
             t,
-            time_col,
+            o.index,
             smooth,
         )
 
         # Plot
-        fig_min, fig_max = min(c), max(c)
-        if fig_min > 0:
-            fig_min = 0
-        fig = px.line(x=list(range(len(c))), y=c)
+        fig_min, fig_max = min(0, min(c)), max(c)
+        fig_index = t.to_datetimeindex() if t is not None else o.index
+        fig = px.line(x=fig_index, y=c)
         graph_udate_layout(fig, t)
         fig.update_yaxes(title_text="")
         fig.update_xaxes(title_text="")
         if t is not None:
-            graph_annotate_title(fig, self.name)
+            if isinstance(self.name, str):
+                graph_annotate_title(fig, self.name)
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
         return fig
@@ -257,8 +240,14 @@ class Node_pandas_remove_close(Node_pandas_operation):
         max_time: int | float | datetime.timedelta,
         column_name: str | None = None,
     ):
-        # if isinstance(max_time, datetime.timedelta):
-        #     max_time = max_time.total_seconds() / 60.0
+        if df.shape[0] == 0:
+            return df
+
+        # Maybe this should be temporary?
+        assert isinstance(df.index, pd.DatetimeIndex)
+        assert isinstance(df, pd.DataFrame)
+        assert isinstance(df.index, pd.DatetimeIndex)
+        assert isinstance(column_name, str) or column_name is None
 
         if isinstance(max_time, (int, float)):
             max_time = datetime.timedelta(minutes=max_time)
@@ -267,11 +256,15 @@ class Node_pandas_remove_close(Node_pandas_operation):
             # Deduplicate based on index
             df = df.sort_index()
             df["time_diff"] = df.index.to_series().diff()
-        else:
+        elif column_name is not None:
             if df[column_name].dtype != "datetime64[ns]":
                 df[column_name] = pd.to_datetime(df[column_name])
             df = df.sort_values(by=[column_name])
             df["time_diff"] = df[column_name].diff()
+        else:
+            raise ValueError(
+                "Either column_name must be given or the index must be a DatetimeIndex"
+            )
 
         mask = df["time_diff"].isnull() | (
             # df["time_diff"].dt.total_seconds() >= max_time
@@ -406,9 +399,12 @@ class Reader_pandas(Node_0child, Node_pandas):
 
         # Sort the files by the name if self.dated_name is not None
         if self.dated_name is not None:
+            # The fn thing is to shush pylance/mypy
+            fn = self.dated_name
+            assert callable(fn)
             files_to_read = sorted(
                 files_to_read,
-                key=lambda x: self.dated_name(os.path.split(x)[1]),
+                key=lambda x: fn(os.path.split(x)[1]),
             )
 
         # Load them
@@ -441,6 +437,9 @@ class Reader_pandas(Node_0child, Node_pandas):
         assert t is None or isinstance(t, Time_interval)
 
         df = self._operation_load_raw_data(t)
+
+        if df.shape[0] == 0:
+            return df
 
         # If the user specifies a date column, use it to filter the t
         if self.column_date_index is not None:
@@ -540,7 +539,7 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
                 continue
 
             a = datetime.datetime.strptime(dirname, "%Y-%m-%d")
-            if t.start.tzinfo is not None:
+            if t is not None and t.start.tzinfo is not None:
                 a = a.replace(tzinfo=t.start.tzinfo)
 
             if t is not None and a not in t:
