@@ -5,12 +5,14 @@ import hashlib
 import os
 import warnings
 from abc import abstractmethod
-from typing import Callable
+from functools import reduce
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 from rich import print
@@ -159,6 +161,58 @@ class Node_pandas(Node[pd.DataFrame]):
         #     graph_annotate_today(fig, t, (fig_min, fig_max))
         #     graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
         return fig
+
+    def __add__(self, other: Node_pandas) -> Node_pandas:
+        return Node_pandas_add([self, other])
+
+
+class Node_pandas_add(Node_pandas):
+    def __init__(self, value: list[Node_pandas]) -> None:
+        super().__init__()
+        self.value: list[Node_pandas] = value
+
+    def _get_children(self) -> list[Node_pandas]:
+        return self.value
+
+    def _hashstr(self):
+        return hashlib.md5(
+            (super()._hashstr() + "".join([v._hashstr() for v in self.value])).encode()
+        ).hexdigest()
+
+    def _operation(
+        self,
+        value: list[pd.DataFrame | PrefectFuture[pd.DataFrame, Sync]],
+        t: Time_interval | None = None,
+    ) -> pd.DataFrame:
+        # TODO: t is not used
+
+        # Return a concatenation of all the dataframes
+        return pd.concat(value)
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[pd.DataFrame, Sync]:
+        n_out = [
+            self._get_value_from_context_or_makegraph(n, t, context) for n in self.value
+        ]
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
+            n_out,
+            t=t,
+        )
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> pd.DataFrame | None:
+        n_out = [self._get_value_from_context_or_run(n, t, context) for n in self.value]
+        return self._operation(
+            n_out,
+            t=t,
+        )
+
+    def __add__(self, other: Node_pandas) -> Node_pandas:
+        """This node keeps eating other nodes if you add them"""
+        self.value.append(other)
+        return self
 
 
 class Node_pandas_generate(Node_0child, Node_pandas):

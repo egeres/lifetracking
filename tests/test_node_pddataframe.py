@@ -144,3 +144,15 @@ def test_node_pddataframe_readdata_1(file_format: str):
 
 
 # TODO: Test the above with `column_date_index`
+
+
+def test_node_pddataframe_add_0():
+    df_a = pd.DataFrame([{"a": 0}, {"a": 1}, {"a": 2}])
+    a = Node_pandas_generate(df_a)
+    df_b = pd.DataFrame([{"a": 3}, {"a": 4}, {"a": 5}])
+    b = Node_pandas_generate(df_b)
+    c = a + b
+
+    o = c.run()
+    assert o is not None
+    assert o.shape == (6, 1)
