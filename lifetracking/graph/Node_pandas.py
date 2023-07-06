@@ -35,6 +35,7 @@ class Node_pandas(Node[pd.DataFrame]):
     def __init__(self) -> None:
         super().__init__()
 
+    # TODO_2: Confusing name with _operation, rename
     def operation(
         self,
         fn: Callable[[pd.DataFrame], pd.DataFrame],
@@ -123,7 +124,7 @@ class Node_pandas(Node[pd.DataFrame]):
         fig.update_yaxes(title_text="")
         fig.update_xaxes(title_text="")
         if t is not None:
-            if isinstance(self.name, str):
+            if isinstance(getattr(self, "name", None), str):
                 graph_annotate_title(fig, self.name)
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
@@ -163,6 +164,7 @@ class Node_pandas(Node[pd.DataFrame]):
 class Node_pandas_generate(Node_0child, Node_pandas):
     """Created for debugging purposes and such"""
 
+    # TODO_2: Can take callable in the init on top of a regular df
     def __init__(self, df: pd.DataFrame, datetime_column: str | None = None) -> None:
         assert isinstance(df, pd.DataFrame)
         # assert isinstance(df.index, pd.DatetimeIndex)
@@ -466,6 +468,8 @@ class Reader_pandas(Node_0child, Node_pandas):
                     & (df[self.column_date_index] <= t.end)
                 ]
             df.set_index(self.column_date_index, inplace=True)
+            df.sort_index(inplace=True)
+
         return df
 
 
@@ -561,3 +565,57 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
                     break
 
         return self._operation_generate_df(to_return)
+
+
+class Reader_filecreation(Node_0child, Node_pandas):
+    # DOCS: This one should be easy :)
+
+    def __init__(
+        self,
+        path_dir: str,
+        fn: Callable[[pd.Series], pd.Series],
+        valid_extensions: list[str] | str | None = None,
+    ):
+        assert os.path.exists(path_dir)
+        assert callable(fn)
+
+        self.path_dir = path_dir
+        self.fn = fn
+        self.valid_extensions: list[str] = []
+        if isinstance(valid_extensions, str):
+            self.valid_extensions = [valid_extensions]
+        assert isinstance(self.valid_extensions, list)
+
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (
+                # TODO_2: Add hash of fn
+                super()._hashstr()
+                + str(self.path_dir)
+                + str(self.valid_extensions)
+            ).encode()
+        ).hexdigest()
+
+    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+        assert t is None or isinstance(t, Time_interval)
+
+        # df
+        files = os.listdir(self.path_dir)
+        df = pd.DataFrame({"filename": files})
+
+        # Remove the ones that do not end with the valid extensions
+        if len(self.valid_extensions) > 0:
+            df = df[
+                df["filename"].apply(lambda x: x.endswith(tuple(self.valid_extensions)))
+            ]
+
+        # Date
+        df["date"] = df["filename"].apply(self.fn)
+        df = df.dropna(subset=["date"])
+        df = df.set_index("date")
+
+        # t filtering
+        if t is not None:
+            df = df[df.index >= t.start]
+            df = df[df.index <= t.end]
+        return df

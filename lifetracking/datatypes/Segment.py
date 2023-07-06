@@ -209,7 +209,7 @@ class Segments:
         _lc_export_prepare_dir(path_filename)
 
         # Changes at config.json
-        if isinstance(color, str) or isinstance(color, float):
+        if isinstance(color, str) or isinstance(opacity, float):
             # Data parsing
             path_fil_config = os.path.join(
                 os.path.split(path_filename)[0], "config.json"
@@ -223,12 +223,12 @@ class Segments:
 
             # We write color and opacity
             if isinstance(color, str):
-                data["data"][key_name]["color"] = f"{color}"
+                data["data"][key_name]["color"] = str(color)
             if isinstance(opacity, float) and opacity != 1.0:
                 data["data"][key_name]["opacity"] = opacity
 
             with open(path_fil_config, "w") as f:
-                json.dump(data, f, indent=4)
+                json.dump(data, f, indent=4, default=str)
 
         # Export itself
         to_export = []
