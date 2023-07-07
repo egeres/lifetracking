@@ -114,9 +114,18 @@ class Node_pandas(Node[pd.DataFrame]):
         if stackgroup is None:
             df["count"] = 0
             df_resampled = df.resample("D").count()
-            fig = px.line(df_resampled, y="count")
-            fig_min = df_resampled["count"].min()
-            fig_max = df_resampled["count"].max()
+
+            if smooth <= 1:
+                fig = px.line(df_resampled, y="count")
+                fig_min = df_resampled["count"].min()
+                fig_max = df_resampled["count"].max()
+            else:
+                df_resampled["smoothed_count"] = (
+                    df_resampled["count"].rolling(window=smooth, center=True).mean()
+                )
+                fig = px.line(df_resampled, y="smoothed_count")
+                fig_min = df_resampled["smoothed_count"].min()
+                fig_max = df_resampled["smoothed_count"].max()
 
         elif isinstance(stackgroup, str):
             df_norm = df.copy()
@@ -147,19 +156,10 @@ class Node_pandas(Node[pd.DataFrame]):
                     )
                 )
             fig.update_layout(hovermode="x unified")
+            total_counts = df_grouped.sum(axis=1)
+            fig_min = total_counts.min()
+            fig_max = total_counts.max()
 
-            fig_min = (
-                df.groupby([df.index.date])
-                .size()
-                .reset_index(name="counts")["counts"]
-                .min()
-            )
-            fig_max = (
-                df.groupby([df.index.date])
-                .size()
-                .reset_index(name="counts")["counts"]
-                .max()
-            )
         else:
             raise ValueError
 
