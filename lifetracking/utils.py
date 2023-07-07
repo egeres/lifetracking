@@ -209,7 +209,9 @@ def graph_udate_layout(
     }
 
     # x ticks
-    if isinstance(fig.data[0].x[0], datetime.datetime):
+    if len(fig.data[0].x) > 0 and isinstance(
+        fig.data[0].x[0], (datetime.datetime, datetime.date)
+    ):
         if (max(fig.data[0].x) - min(fig.data[0].x)).days > 40:
             # Month display
             fig.update_xaxes(
@@ -230,15 +232,13 @@ def graph_udate_layout(
                 tick0=first_monday,
                 ticks="outside",
             )
-    elif isinstance(fig.data[0].x[0], int):
+    elif len(fig.data[0].x) > 0 and isinstance(fig.data[0].x[0], int):
         c = fig.data[0].x
         if "xaxis" not in newlayout:
             newlayout["xaxis"] = {}
         newlayout["xaxis"]["tickmode"] = "array"
         newlayout["xaxis"]["tickvals"] = list(range(0, len(c), 30))
         newlayout["xaxis"]["ticktext"] = list(range(-len(c), 0, 30))
-    else:
-        raise ValueError
 
     if len(fig.data) == 1:
         # Hide legend

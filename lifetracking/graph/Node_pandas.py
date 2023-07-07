@@ -5,7 +5,6 @@ import hashlib
 import os
 import warnings
 from abc import abstractmethod
-from functools import reduce
 from typing import Any, Callable
 
 import numpy as np
@@ -101,27 +100,69 @@ class Node_pandas(Node[pd.DataFrame]):
         t: Time_interval | None = None,
         smooth: int = 1,
         annotations: list | None = None,
-        title: str | None = None,
+        title: str | None = None,  # TODO_1: Make title work!
+        stackgroup: str | None = None,
     ) -> go.Figure:
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(smooth, int) and smooth >= 0
         assert isinstance(annotations, list) or annotations is None
 
-        o = self.run(t)
-        assert o is not None
-        assert isinstance(o.index, pd.DatetimeIndex)
+        df = self.run(t)
+        assert df is not None
+        assert isinstance(df.index, pd.DatetimeIndex)
 
-        # Data
-        c = self._plot_countbyday_generatedata(
-            t,
-            o.index,
-            smooth,
-        )
+        if stackgroup is None:
+            df["count"] = 0
+            df_resampled = df.resample("D").count()
+            fig = px.line(df_resampled, y="count")
+            fig_min = df_resampled["count"].min()
+            fig_max = df_resampled["count"].max()
 
-        # Plot
-        fig_min, fig_max = min(0, min(c)), max(c)
-        fig_index = t.to_datetimeindex() if t is not None else o.index
-        fig = px.line(x=fig_index, y=c)
+        elif isinstance(stackgroup, str):
+            df_norm = df.copy()
+            df_norm.index = df_norm.index.normalize()
+
+            df_grouped = (
+                df_norm.groupby([df_norm.index, stackgroup])
+                .size()
+                .unstack(fill_value=0)
+            )
+            df_grouped = df_grouped.resample("D").asfreq().fillna(0)
+
+            if smooth > 1:
+                for col in df_grouped.columns:
+                    df_grouped[col] = np.convolve(
+                        df_grouped[col], np.ones(smooth) / smooth, mode="same"
+                    )
+
+            fig = go.Figure()
+            for col in df_grouped.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_grouped.index,
+                        y=df_grouped[col],
+                        stackgroup="one",
+                        name=col,
+                        fill="tonexty",
+                    )
+                )
+            fig.update_layout(hovermode="x unified")
+
+            fig_min = (
+                df.groupby([df.index.date])
+                .size()
+                .reset_index(name="counts")["counts"]
+                .min()
+            )
+            fig_max = (
+                df.groupby([df.index.date])
+                .size()
+                .reset_index(name="counts")["counts"]
+                .max()
+            )
+        else:
+            raise ValueError
+
         graph_udate_layout(fig, t)
         fig.update_yaxes(title_text="")
         fig.update_xaxes(title_text="")
@@ -225,6 +266,8 @@ class Node_pandas_generate(Node_0child, Node_pandas):
         assert datetime_column is None or datetime_column in df.columns
 
         super().__init__()
+        # TODO_2: Add support for the case that this already has a datetime
+        # index 😣
         if datetime_column is not None:
             df.set_index(datetime_column, inplace=True)
         self.df = df
