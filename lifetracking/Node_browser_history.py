@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from typing import Any
 
 import pandas as pd
 from browser_history.browsers import (
@@ -15,16 +14,13 @@ from browser_history.browsers import (
     Safari,
     Vivaldi,
 )
-from prefect import task as prefect_task
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
 
-from lifetracking.graph.Node import Node
+from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Time_interval import Time_interval
 
 
-class Parse_browserhistory(Node_pandas):
+class Parse_browserhistory(Node_pandas, Node_0child):
     def __init__(self) -> None:
         super().__init__()
         self.browsers = [
@@ -39,9 +35,6 @@ class Parse_browserhistory(Node_pandas):
         ]
         if not os.name == "nt":
             self.browsers.append(Safari())
-
-    def _get_children(self) -> list[Node]:
-        return []
 
     def _hashstr(self) -> str:
         return super()._hashstr()
@@ -81,13 +74,3 @@ class Parse_browserhistory(Node_pandas):
         df = pd.concat(dfs_to_concat)
 
         return df
-
-    def _run_sequential(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> pd.DataFrame | None:
-        return self._operation(t)
-
-    def _make_prefect_graph(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[pd.DataFrame, Sync]:
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)

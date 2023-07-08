@@ -3,34 +3,34 @@ from __future__ import annotations
 import datetime
 import hashlib
 import os
-from typing import Any
 
 import ffmpeg
-from prefect import task as prefect_task
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
 
 from lifetracking.datatypes.Segment import Seg, Segments
-from lifetracking.graph.Node import Node
+from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_segments import Node_segments
 from lifetracking.graph.Time_interval import Time_interval
+from lifetracking.utils import cache_singleargument
 
 
-class Reader_videos(Node_segments):
-    def __init__(self, path_dir: str) -> None:
+class Reader_videos(Node_segments, Node_0child):
+    def __init__(
+        self,
+        path_dir: str,
+        # TODO: Add filename_date_pattern or
+        # option for os.stat(filename).st_ctime
+        filename_date_pattern=None,
+    ) -> None:
         super().__init__()
         if not os.path.isdir(path_dir):
             raise ValueError(f"{path_dir} is not a directory")
         self.path_dir = path_dir
 
-    def _get_children(self) -> list[Node]:
-        return []
-
     def _hashstr(self) -> str:
         return hashlib.md5((super()._hashstr() + self.path_dir).encode()).hexdigest()
 
-    # TODO add cache_hash to this
     @staticmethod
+    @cache_singleargument("cache_videos_length")
     def _get_video_length_in_s(filename: str) -> float | None:
         """Warning, has cache decorator"""
         vid = ffmpeg.probe(filename)
@@ -93,13 +93,3 @@ class Reader_videos(Node_segments):
                 )
             )
         return Segments(to_return)
-
-    def _run_sequential(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> Segments | None:
-        return self._operation(t)
-
-    def _make_prefect_graph(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[Segments, Sync]:
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)

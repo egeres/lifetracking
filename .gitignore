@@ -12,3 +12,7 @@ sketches/
 .hypothesis/
 
 .coverage
+
+desktop.ini
+
+cov.xml

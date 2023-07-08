@@ -3,26 +3,19 @@ from __future__ import annotations
 import datetime
 import hashlib
 from operator import itemgetter
-from typing import Any
 
 import pandas as pd
 import requests
-from prefect import task as prefect_task
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
 
-from lifetracking.graph.Node import Node
+from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Time_interval import Time_interval
 
 
-class Parse_activitywatch(Node_pandas):
+class Parse_activitywatch(Node_pandas, Node_0child):
     def __init__(self, bucket_name: str) -> None:
         super().__init__()
         self.bucket_name = bucket_name
-
-    def _get_children(self) -> list[Node]:
-        return []
 
     def _hashstr(self) -> str:
         return hashlib.md5((super()._hashstr() + self.bucket_name).encode()).hexdigest()
@@ -105,14 +98,9 @@ class Parse_activitywatch(Node_pandas):
             | x["data"]  # 🙄 Ugh, dumb or genius?
             for x in out
         ]
-        return pd.DataFrame(out)
-
-    def _run_sequential(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> pd.DataFrame | None:
-        return self._operation(t)
-
-    def _make_prefect_graph(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[pd.DataFrame, Sync]:
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
+        df = pd.DataFrame(out)
+        if len(df) == 0:
+            return df
+        df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed")
+        df.set_index("timestamp", inplace=True)
+        return df
