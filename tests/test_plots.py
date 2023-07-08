@@ -80,6 +80,11 @@ def test_plot_pd_columns_0():
     )
     a = Node_pandas_generate(df, datetime_column="datetime")
     a.name = "🤔"
+    annotations = [
+        {"date": "2001-05-10", "title": "A"},
+        {"date": "2001-05-15", "title": "B"},
+        {"date": "2001-05-20", "title": "C"},
+    ]
 
     # Plot 0
     t = Time_interval.last_n_days(2)
@@ -93,8 +98,12 @@ def test_plot_pd_columns_0():
     fig = a.plot_columns(t, "thing")
     assert fig is not None
 
+    # Plot 2
+    t = Time_interval.last_n_days(2)
+    fig = a.plot_columns(t, "thing", annotations=annotations)
 
-def test_plot_seg():
+
+def test_plot_seg_0():
     a = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
         [
@@ -114,4 +123,17 @@ def test_plot_seg():
     t.start = t.start + timedelta(days=40)
     t.end = t.end + timedelta(days=40)
     fig = b.plot_hours(t)
+    assert fig is not None
+
+
+def test_plot_seg_1():
+    a = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    b = Segments(
+        [
+            Seg(a + timedelta(minutes=0), a + timedelta(minutes=8), {"type": "a"}),
+            Seg(a + timedelta(minutes=1), a + timedelta(minutes=9), {"type": "b"}),
+        ]
+    )
+    t = Time_interval.last_n_days(2)
+    fig = b.plot_hours(t, stackgroup="type")
     assert fig is not None

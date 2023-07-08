@@ -193,10 +193,6 @@ def graph_udate_layout(
     fig: go.Figure,
     t: Time_interval | None,
 ):
-    # No money no honey
-    if len(fig.data) == 0:
-        return
-
     # Base
     newlayout = {
         "template": "plotly_dark",
@@ -208,37 +204,44 @@ def graph_udate_layout(
         },
     }
 
-    # x ticks
-    if len(fig.data[0].x) > 0 and isinstance(
-        fig.data[0].x[0], (datetime.datetime, datetime.date)
+    days_span = None
+    if (
+        len(fig.data) > 0
+        and len(fig.data[0].x) > 0
+        and isinstance(fig.data[0].x[0], (datetime.datetime, datetime.date))
     ):
-        if (max(fig.data[0].x) - min(fig.data[0].x)).days > 40:
-            # Month display
-            fig.update_xaxes(
-                tickformat="%b",
-                dtick="M1",
-                ticklabelmode="period",
-                ticks="outside",
-                # tickformat = "%Y-%m-%d",
-                # tickangle = -45,
-            )
-        else:
-            # Week display starting on monday
-            first_date = min(fig.data[0].x)
-            first_monday = first_date - pd.DateOffset(days=(first_date.weekday()))
-            fig.update_xaxes(
-                tickformat="%Y-%m-%d",
-                dtick="604800000",  # one week in milliseconds
-                tick0=first_monday,
-                ticks="outside",
-            )
-    elif len(fig.data[0].x) > 0 and isinstance(fig.data[0].x[0], int):
-        c = fig.data[0].x
-        if "xaxis" not in newlayout:
-            newlayout["xaxis"] = {}
-        newlayout["xaxis"]["tickmode"] = "array"
-        newlayout["xaxis"]["tickvals"] = list(range(0, len(c), 30))
-        newlayout["xaxis"]["ticktext"] = list(range(-len(c), 0, 30))
+        days_span = (max(fig.data[0].x) - min(fig.data[0].x)).days
+    elif t is not None:
+        days_span = (t.end - t.start).days
+
+    # x ticks
+    if days_span is None:
+        pass
+    elif days_span > 50:
+        # Month display
+        fig.update_xaxes(
+            tickformat="%b",
+            dtick="M1",
+            ticklabelmode="period",
+            ticks="outside",
+        )
+    elif days_span > 15:
+        # Week display (starting on monday)
+        first_date = min(fig.data[0].x)
+        first_monday = first_date - pd.DateOffset(days=(first_date.weekday()))
+        fig.update_xaxes(
+            tickformat="%Y-%m-%d",
+            dtick="604800000",  # one week in milliseconds
+            tick0=first_monday,
+            ticks="outside",
+        )
+    else:
+        # Day display
+        fig.update_xaxes(
+            tickformat="%d",
+            dtick="86400000",  # one day in milliseconds
+            ticks="outside",
+        )
 
     if len(fig.data) == 1:
         # Hide legend
@@ -257,7 +260,8 @@ def graph_annotate_today(
     minmax: tuple[float, float] | None = None,
 ):
     # Min max
-    fig_min, fig_max = (0, 1) if minmax is None else (min(0, minmax[0]), minmax[1])
+    # fig_min, fig_max = (0, 1) if minmax is None else (min(0, minmax[0]), minmax[1])
+    fig_min, fig_max = (0, 1) if minmax is None else (minmax[0], minmax[1])
 
     # Today
     today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -303,7 +307,9 @@ def graph_annotate_annotations(
         if not (days_diff >= 0 and days_diff <= int(t.duration_days)):
             continue
 
-        fig_min, fig_max = (0, 1) if minmax is None else (min(0, minmax[0]), minmax[1])
+        # fig_min, fig_max = (0, 1) if minmax is None else
+        # (min(0, minmax[0]), minmax[1])
+        fig_min, fig_max = (0, 1) if minmax is None else (minmax[0], minmax[1])
 
         fig.add_shape(
             type="line",
@@ -311,14 +317,18 @@ def graph_annotate_annotations(
             x1=date,
             y0=fig_min,
             y1=fig_max,
-            line={"color": "#aaa", "dash": "dash", "width": 1},
+            line={
+                "color": i.get("color", "#aaa"),
+                "dash": "dash",
+                "width": 1,
+            },
             xref="x",
             yref="y",
         )
         if "title" in i:
             fig.add_annotation(
                 x=date,
-                y=fig_min,
+                y=fig_max,
                 text=i["title"],
                 showarrow=False,
                 xref="x",
@@ -334,7 +344,7 @@ def graph_annotate_title(
     """Write a lable on the top left corner"""
 
     assert isinstance(fig, go.Figure)
-    assert isinstance(title, str)
+    assert isinstance(title, str) or title is None
 
     # css = """
     # %%html
@@ -350,7 +360,7 @@ def graph_annotate_title(
     # display(HTML(css))
 
     if title is None:
-        return
+        return fig
 
     fig.add_annotation(
         xref="paper",

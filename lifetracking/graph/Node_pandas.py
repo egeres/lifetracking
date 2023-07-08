@@ -166,9 +166,8 @@ class Node_pandas(Node[pd.DataFrame]):
         graph_udate_layout(fig, t)
         fig.update_yaxes(title_text="")
         fig.update_xaxes(title_text="")
+        graph_annotate_title(fig, getattr(self, "name", None))
         if t is not None:
-            if isinstance(getattr(self, "name", None), str):
-                graph_annotate_title(fig, self.name)
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
         return fig
@@ -178,6 +177,9 @@ class Node_pandas(Node[pd.DataFrame]):
         t: Time_interval | None,
         columns: str | list[str],
         resample: str | None = None,
+        smooth: int = 1,  # TODO_2: Make smooth work!
+        annotations: list | None = None,
+        # title: str | None = None,  # TODO_1: Make title work!
     ):
         # Start
         assert t is None or isinstance(t, Time_interval)
@@ -189,18 +191,39 @@ class Node_pandas(Node[pd.DataFrame]):
         df = self.run(t)
         assert df is not None
         assert isinstance(df, pd.DataFrame)
-        assert isinstance(df.index, pd.DatetimeIndex)
+        assert df.empty or isinstance(df.index, pd.DatetimeIndex)
+
+        # Return empty figure
+        if df.empty:
+            fig = go.Figure()
+            graph_udate_layout(fig, t)
+            graph_annotate_title(fig, (self.name or "???") + " : " + "+".join(columns))
+            fig_min, fig_max = 0, 1
+            if t is not None:
+                graph_annotate_today(fig, t, (fig_min, fig_max))
+                graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
+            return fig
 
         # Resample
         if resample is not None:
             df = df.resample(resample).mean()
+            # Remove NaNs?
+            df = df.dropna()
+
+        # fig_min, fig_max = min(0, float(df[columns].min())), float(df[columns].max())
+        fig_min, fig_max = df[columns[0]].min(), df[columns[0]].max()
 
         # Plot
         fig = px.line(df[columns])
         graph_udate_layout(fig, t)
         graph_annotate_title(fig, (self.name or "???") + " : " + "+".join(columns))
-        #     graph_annotate_today(fig, t, (fig_min, fig_max))
-        #     graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
+
+        if t is not None:
+            # if isinstance(getattr(self, "name", None), str):
+            #     graph_annotate_title(fig, self.name)
+            graph_annotate_today(fig, t, (fig_min, fig_max))
+            graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
+
         return fig
 
     def __add__(self, other: Node_pandas) -> Node_pandas:

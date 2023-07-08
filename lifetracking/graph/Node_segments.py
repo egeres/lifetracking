@@ -91,6 +91,7 @@ class Node_segments(Node[Segments]):
         yaxes: tuple[float, float] | None = None,
         smooth: int = 1,
         annotations: list | None = None,
+        stackgroup: str | None = None,
     ) -> go.Figure:
         assert t is None or isinstance(t, Time_interval)
         assert yaxes is None or isinstance(yaxes, tuple)
@@ -105,6 +106,7 @@ class Node_segments(Node[Segments]):
             smooth=smooth,
             annotations=annotations,
             title=self.name,
+            stackgroup=stackgroup,
         )
 
     # TODO_4: Segments: plot_count_by_day

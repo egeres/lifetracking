@@ -310,6 +310,7 @@ class Segments:
     def _plot_hours_generatedata(
         self,
         t: Time_interval | None,
+        data: list[Seg],
         smooth: int,
     ) -> list[float]:
         # a, b calculation
@@ -319,14 +320,19 @@ class Segments:
             a, b = t.start, t.end
 
         # TODO_4: Do something about tz infos pls 🥺
-        if len(self.content) > 0:
+        # if len(self.content) > 0:
+        #     if a.tzinfo is None:
+        #         a = a.replace(tzinfo=self.content[0].start.tzinfo)
+        #         b = b.replace(tzinfo=self.content[0].start.tzinfo)
+        if len(data) > 0:
             if a.tzinfo is None:
-                a = a.replace(tzinfo=self.content[0].start.tzinfo)
-                b = b.replace(tzinfo=self.content[0].start.tzinfo)
+                a = a.replace(tzinfo=data[0].start.tzinfo)
+                b = b.replace(tzinfo=data[0].start.tzinfo)
 
         # Data itself
         c: list[float] = [0] * ((b - a).days + 1)
-        for s in self.content:
+        # for s in self.content:
+        for s in data:
             o = s.split_into_segments_per_day()
             for j in o:
                 index = (j.start - a).days
@@ -337,6 +343,27 @@ class Segments:
             c = np.convolve(c, np.ones(smooth) / smooth, mode="same").tolist()
         return c
 
+    def _plot_hours_generatedata_with_stackgroup(
+        self,
+        t: Time_interval | None,
+        smooth: int,
+        stackgroup: str,
+    ) -> dict[str, list[float]]:
+        # Uniques
+        unique_categories = set()
+        for s in self.content:
+            unique_categories.add(s[stackgroup])
+
+        # Return
+        to_return = {}
+        for category in unique_categories:
+            to_return[category] = self._plot_hours_generatedata(
+                t,
+                [s for s in self.content if s[stackgroup] == category],
+                smooth,
+            )
+        return to_return
+
     def plot_hours(
         self,
         t: Time_interval | None = None,
@@ -344,28 +371,51 @@ class Segments:
         smooth: int = 1,
         annotations: list | None = None,
         title: str | None = None,
+        stackgroup: str | None = None,
     ) -> go.Figure:
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(yaxes, tuple) or yaxes is None
         assert isinstance(smooth, int) and smooth > 0
 
-        # Data
-        c = self._plot_hours_generatedata(t, smooth)
+        # Pre
+        fig_min, fig_max = (0, 24) if yaxes is None else yaxes
 
         # Plot
-        fig_min, fig_max = (0, 24) if yaxes is None else yaxes
-        fig_index = (
-            t.to_datetimeindex()
-            if t is not None
-            else pd.date_range(self.min(), self.max(), freq="D")
-        )
-        fig = px.line(x=fig_index, y=c)
+        if stackgroup is None:
+            c = self._plot_hours_generatedata(t, self.content, smooth)
+            fig_index = (
+                t.to_datetimeindex()
+                if t is not None
+                else pd.date_range(self.min(), self.max(), freq="D")
+            )
+            fig = px.line(x=fig_index, y=c)
+        else:
+            c = self._plot_hours_generatedata_with_stackgroup(t, smooth, stackgroup)
+            fig_index = (
+                t.to_datetimeindex()
+                if t is not None
+                else pd.date_range(self.min(), self.max(), freq="D")
+            )
+            df = pd.DataFrame(c, index=fig_index)
+            fig = go.Figure()
+            for col in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df.index,
+                        y=df[col],
+                        stackgroup="one",
+                        fill="tonexty",
+                        name=col,
+                    )
+                )
+            fig.update_layout(hovermode="x unified")
+
+        # Fig format
         graph_udate_layout(fig, t)
         fig.update_yaxes(title_text="", range=yaxes)
         fig.update_xaxes(title_text="")
+        graph_annotate_title(fig, title)
         if t is not None:
-            if isinstance(title, str):
-                graph_annotate_title(fig, title)
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
         return fig

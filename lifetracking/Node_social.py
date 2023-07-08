@@ -14,6 +14,8 @@ from lifetracking.graph.Time_interval import Time_interval
 
 # TEST
 # DOCS
+# TODO_2: Warning if it finds a chat with "null" name in a resul.json file
+# TODO_2 Some short of "id"-"name" mapping for the chats
 class Social_telegram(Node_pandas, Node_0child):
     def __init__(
         self,
