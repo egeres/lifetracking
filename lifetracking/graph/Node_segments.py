@@ -92,14 +92,16 @@ class Node_segments(Node[Segments]):
         smooth: int = 1,
         annotations: list | None = None,
         stackgroup: str | None = None,
-    ) -> go.Figure:
+    ) -> go.Figure | None:
         assert t is None or isinstance(t, Time_interval)
         assert yaxes is None or isinstance(yaxes, tuple)
         assert isinstance(smooth, int) and smooth > 0
         assert isinstance(annotations, list) or annotations is None
 
         o = self.run(t)
-        assert o is not None
+        if o is None:
+            return None
+        assert isinstance(o, Segments)
         return o.plot_hours(
             t=t,
             yaxes=yaxes,

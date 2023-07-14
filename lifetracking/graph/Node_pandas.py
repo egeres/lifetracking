@@ -102,13 +102,14 @@ class Node_pandas(Node[pd.DataFrame]):
         annotations: list | None = None,
         title: str | None = None,  # TODO_1: Make title work!
         stackgroup: str | None = None,
-    ) -> go.Figure:
+    ) -> go.Figure | None:
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(smooth, int) and smooth >= 0
         assert isinstance(annotations, list) or annotations is None
 
         df = self.run(t)
-        assert df is not None
+        if df is None:
+            return None
         assert isinstance(df.index, pd.DatetimeIndex)
 
         if stackgroup is None:
@@ -180,7 +181,7 @@ class Node_pandas(Node[pd.DataFrame]):
         smooth: int = 1,  # TODO_2: Make smooth work!
         annotations: list | None = None,
         # title: str | None = None,  # TODO_1: Make title work!
-    ):
+    ) -> go.Figure | None:
         # Start
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(columns, str) or isinstance(columns, list)
@@ -189,7 +190,8 @@ class Node_pandas(Node[pd.DataFrame]):
 
         # df
         df = self.run(t)
-        assert df is not None
+        if df is None:
+            return None
         assert isinstance(df, pd.DataFrame)
         assert df.empty or isinstance(df.index, pd.DatetimeIndex)
 
@@ -456,11 +458,6 @@ class Reader_pandas(Node_0child, Node_pandas):
                     " so the files will not be filtered by date",
                     stacklevel=2,
                 )
-            if not os.path.exists(path_dir):
-                raise ValueError(f"{path_dir} does not exist")
-        else:
-            if not os.path.isfile(path_dir):
-                raise ValueError(f"{path_dir} is not a file")
         super().__init__()
         self.path_dir = path_dir
         self.dated_name = dated_name
@@ -480,6 +477,7 @@ class Reader_pandas(Node_0child, Node_pandas):
         else:
             return (
                 os.path.isdir(self.path_dir)
+                and os.path.exists(self.path_dir)
                 and len(
                     [
                         i

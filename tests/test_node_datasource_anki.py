@@ -40,3 +40,9 @@ def test_node_anki_create():
     assert o is not None
     assert o.shape[0] > 0
     assert t.duration_days > (max(o.index) - min(o.index)).total_seconds() / 86400
+
+
+def test_node_anki_dir_does_not_exist():
+    a = Parse_anki_creation("/this_anki_folder_does_not_exist")
+    o = a.run(Time_interval.today())
+    assert o is None

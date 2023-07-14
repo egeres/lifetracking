@@ -17,9 +17,13 @@ from lifetracking.utils import cache_singleargument
 class Reader_audios(Node_segments, Node_0child):
     def __init__(self, path_dir: str) -> None:
         super().__init__()
-        if not os.path.isdir(path_dir):
-            raise ValueError(f"{path_dir} is not a directory")
         self.path_dir = path_dir
+
+    def _available(self) -> bool:
+        return (
+            os.path.exists(self.path_dir)
+            and len(self._get_plausible_files(self.path_dir)) > 0
+        )
 
     def _hashstr(self) -> str:
         return hashlib.md5((super()._hashstr() + self.path_dir).encode()).hexdigest()
@@ -39,8 +43,6 @@ class Reader_audios(Node_segments, Node_0child):
             # File processing
             filename = os.path.join(path_dir, i)
             if not os.path.isfile(filename):
-                continue
-            if "desktop.ini" in filename:
                 continue
             if not (
                 filename.endswith(".mp3")

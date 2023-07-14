@@ -1,8 +1,10 @@
 import datetime
+import json
 import os
 import tempfile
 
 import pandas as pd
+import plotly.graph_objects as go
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -156,3 +158,36 @@ def test_node_pddataframe_add_0():
     o = c.run()
     assert o is not None
     assert o.shape == (6, 1)
+
+
+def test_node_pddataframe_readjson_0():
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        t = datetime.datetime.now()
+        b = [
+            {"datetime": t + datetime.timedelta(minutes=0)},
+            {"datetime": t + datetime.timedelta(minutes=1)},
+            {"datetime": t + datetime.timedelta(minutes=2)},
+            {"datetime": t + datetime.timedelta(minutes=3)},
+            {"datetime": t + datetime.timedelta(minutes=4)},
+            {"datetime": t + datetime.timedelta(minutes=999)},
+        ]
+        filename = os.path.join(tmpdirname, "test.json")
+        with open(filename, "w") as f:
+            json.dump(b, f, indent=4, default=str)
+        a = Reader_jsons(filename, column_date_index="datetime")
+        o = a.run()
+
+        assert isinstance(o, pd.DataFrame)
+        assert o.shape == (6, 0)
+
+        o = a.plot_countbyday()
+        assert isinstance(o, go.Figure)
+
+
+def test_node_pddataframe_readjson_1():
+    a = Reader_jsons("/This_file_does_not_exist.json", column_date_index="datetime")
+    o = a.run()
+    assert o is None
+
+    o = a.plot_countbyday()
+    assert o is None

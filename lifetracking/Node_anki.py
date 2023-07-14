@@ -22,8 +22,6 @@ class Parse_anki_study(Node_pandas, Node_0child):
     def __init__(self, path_dir: str | None = None) -> None:
         if path_dir is None:
             path_dir = self.path_dir_datasource
-        if not os.path.isdir(path_dir):
-            raise ValueError(f"{path_dir} is not a directory")
         super().__init__()
         self.path_dir = path_dir
 
@@ -33,7 +31,7 @@ class Parse_anki_study(Node_pandas, Node_0child):
         ).hexdigest()
 
     def _available(self) -> bool:
-        return os.path.exists(self.path_file_anki)
+        return os.path.exists(self.path_dir)
 
     def _get_raw_data(self, path_file, return_dict):
         col = ankipandas.Collection(path_file)

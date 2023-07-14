@@ -114,6 +114,8 @@ class Node(ABC, Generic[T]):
             self.last_run_info["len"] = len(to_return)
         elif isinstance(to_return, int):
             self.last_run_info["len"] = 1
+        elif to_return is None:
+            self.last_run_info["len"] = None
         else:
             raise NotImplementedError
 
@@ -218,6 +220,8 @@ class Node_0child(Node[T]):
     def _run_sequential(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> T | None:
+        if not self._available():
+            return None
         return self._operation(t)
 
     def _make_prefect_graph(
