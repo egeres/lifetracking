@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+import multiprocessing
 import os
 
 import ankipandas
@@ -16,6 +17,7 @@ class Parse_anki_study(Node_pandas, Node_0child):
     path_dir_datasource: str = os.path.join(
         os.path.expanduser("~"), "AppData", "Roaming", "Anki2"
     )
+    path_file_anki = os.path.join(path_dir_datasource, "User 1", "collection.anki2")
 
     def __init__(self, path_dir: str | None = None) -> None:
         if path_dir is None:
@@ -31,17 +33,25 @@ class Parse_anki_study(Node_pandas, Node_0child):
         ).hexdigest()
 
     def _available(self) -> bool:
-        return os.path.exists(self.path_dir)
+        return os.path.exists(self.path_file_anki)
+
+    def _get_raw_data(self, path_file, return_dict):
+        col = ankipandas.Collection(path_file)
+        return_dict[0] = col.cards[["cdeck"]].copy()
+        return_dict[1] = col.revs.copy()
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         # Data gathering
-        col = ankipandas.Collection(
-            os.path.join(self.path_dir, "User 1", "collection.anki2")
+        manager = multiprocessing.Manager()
+        return_dict = manager.dict()
+        p = multiprocessing.Process(
+            target=self._get_raw_data, args=(self.path_file_anki, return_dict)
         )
-        revisions = col.revs.copy()
+        p.start()
+        p.join()
+        cards = return_dict.values()[0]
+        revisions = return_dict.values()[1]
 
-        # We add the deck name
-        cards = col.cards[["cdeck"]]
         revisions = revisions.join(cards, on="cid")
         # Date parsing
         revisions["timestamp"] = revisions.index / 1e3
@@ -60,12 +70,20 @@ class Parse_anki_study(Node_pandas, Node_0child):
 
 
 class Parse_anki_creation(Parse_anki_study):
+    def _get_raw_data(self, path_file, return_dict) -> pd.DataFrame:
+        col = ankipandas.Collection(path_file)
+        return_dict[0] = col.cards.copy()
+
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         # Data gathering
-        col = ankipandas.Collection(
-            os.path.join(self.path_dir, "User 1", "collection.anki2")
+        manager = multiprocessing.Manager()
+        return_dict = manager.dict()
+        p = multiprocessing.Process(
+            target=self._get_raw_data, args=(self.path_file_anki, return_dict)
         )
-        cards = col.cards.copy()
+        p.start()
+        p.join()
+        cards = return_dict.values()[0]
 
         # Rename deck column
         cards = cards.rename(columns={"cdeck": "deck"})
