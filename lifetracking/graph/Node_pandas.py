@@ -694,7 +694,6 @@ class Reader_filecreation(Node_0child, Node_pandas):
         fn: Callable[[pd.Series], pd.Series],
         valid_extensions: list[str] | str | None = None,
     ):
-        assert os.path.exists(path_dir)
         assert callable(fn)
 
         self.path_dir = path_dir
@@ -703,6 +702,9 @@ class Reader_filecreation(Node_0child, Node_pandas):
         if isinstance(valid_extensions, str):
             self.valid_extensions = [valid_extensions]
         assert isinstance(self.valid_extensions, list)
+
+    def _available(self) -> bool:
+        return os.path.exists(self.path_dir)
 
     def _hashstr(self) -> str:
         return hashlib.md5(

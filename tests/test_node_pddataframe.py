@@ -13,6 +13,7 @@ from lifetracking.graph.Node_pandas import (
     Node_pandas_generate,
     Node_pandas_remove_close,
     Reader_csvs,
+    Reader_filecreation,
     Reader_jsons,
 )
 from lifetracking.graph.Time_interval import Time_interval
@@ -190,4 +191,39 @@ def test_node_pddataframe_readjson_1():
     assert o is None
 
     o = a.plot_countbyday()
+    assert o is None
+
+
+def test_node_pddataframe_filecreation_0():
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        filename = os.path.join(tmpdirname, "2020-05-30.txt")
+        with open(filename, "w") as _:
+            pass
+        filename = os.path.join(tmpdirname, "2019-05-30.txt")
+        with open(filename, "w") as _:
+            pass
+
+        a = Reader_filecreation(
+            tmpdirname,
+            lambda x: pd.to_datetime(
+                x.split(".")[0],
+                format="%Y-%m-%d",
+            ),
+        )
+        o = a.run()
+
+        assert isinstance(o, pd.DataFrame)
+        assert o.shape == (2, 1)
+
+
+def test_node_pddataframe_filecreation_1():
+    a = Reader_filecreation(
+        "/this_dir_does_not_exist",
+        lambda x: pd.to_datetime(
+            x.split(".")[0],
+            format="%Y-%m-%d",
+        ),
+    )
+    o = a.run()
+
     assert o is None
