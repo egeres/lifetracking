@@ -8,9 +8,11 @@ import pickle
 from functools import reduce
 from typing import Any, TypeVar
 
+import pandas as pd
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 
+from lifetracking.datatypes.Segment import Segments
 from lifetracking.graph.Node import Node
 from lifetracking.graph.Node_int import Node_int
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
@@ -19,6 +21,11 @@ T = TypeVar("T")
 
 
 class Node_cache(Node[T]):
+    """Cache for nodes, meant to be subclassed for type hints!!
+
+    Small note, "resolution" is stored as an int, but its an enum
+    """
+
     def __init__(
         self,
         n0: Node[T],
@@ -51,18 +58,20 @@ class Node_cache(Node[T]):
         t: Time_interval | None = None,
         context: dict | None = None,
         prefect=False,
-    ):
-        # Cache folder management
+    ) -> T | None:
+        # Cache dir management
         hash_node = self.hash_tree()
+        if self.name is not None:
+            hash_node += "_" + self.name.replace(" ", "-")
         path_dir_cache = os.path.join(self.path_dir_caches, hash_node)
         if not os.path.isdir(path_dir_cache):
             os.makedirs(path_dir_cache)
 
         # Cache validation
         path_fil_cache = os.path.join(path_dir_cache, "cache.json")
-        cache_is_valid = self._validate_cache(path_fil_cache, hash_node, t)
+        cache_is_valid = self._is_cache_valid(path_fil_cache, hash_node, t)
 
-        # We make a cache
+        # We have nothing? -> Make cache
         if not cache_is_valid:
             return self._save_cache(
                 t,
@@ -73,7 +82,7 @@ class Node_cache(Node[T]):
                 prefect,
             )
 
-        # We load what we can from a currently existing cache
+        # We have something? -> Load what we can and recompute anything missing
         else:
             return self._load_cache(
                 t,
@@ -90,12 +99,19 @@ class Node_cache(Node[T]):
     def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture[T, Sync]:
         return self._operation(self.n0, t, context, prefect=True)
 
-    def _validate_cache(
+    def _is_cache_valid(
         self,
-        path_fil_cache,
-        hash_node,
-        t,
+        path_fil_cache: str,
+        hash_node: str,
+        t: Time_interval | None,
     ) -> bool:
+        """Can we use this cache?"""
+
+        assert self.resolution is not None
+        assert isinstance(path_fil_cache, str)
+        assert isinstance(hash_node, str)
+        assert isinstance(t, Time_interval) or t is None
+
         if not os.path.exists(path_fil_cache):
             return False
         try:
@@ -135,6 +151,7 @@ class Node_cache(Node[T]):
         context: dict | None = None,
         prefect: bool = False,
     ):
+        print("Saving cache...")
         path_fil_cache = os.path.join(path_dir_cache, "cache.json")
 
         cache_info = {
@@ -154,6 +171,10 @@ class Node_cache(Node[T]):
                 return None
         else:
             raise NotImplementedError
+
+        # No data, no cache saving!
+        if len(o.content) == 0:
+            return o
 
         # We save the data
         cache_info["start"] = o.min()
@@ -229,7 +250,7 @@ class Node_cache(Node[T]):
 
         return o
 
-    def _slices_to_get_rename_this(
+    def _gather_existing_slices(
         self,
         input_slices: list[Time_interval],
         path_dir_cache: str,
@@ -269,7 +290,7 @@ class Node_cache(Node[T]):
                     raise NotImplementedError
         return to_return
 
-    def _slices_to_compute_rename_this(
+    def _compute_nonexistent_slices(
         self,
         input_slices: list[Time_interval],
         path_dir_cache: str,
@@ -323,13 +344,48 @@ class Node_cache(Node[T]):
                         "data_count": len(o),
                     }
 
-            # Saving the metadata
-            # cache_info["start"] = # TODO: Finish this
-            # cache_info["end"] = # TODO: Finish this
             with open(path_fil_cache, "w") as f:
                 json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
 
         return to_return
+
+    def _update_metadata_bounds(
+        self,
+        generated_data: list[T],
+        path_dir_cache: str,
+    ) -> None:
+        assert isinstance(generated_data, list)
+        assert isinstance(path_dir_cache, str)
+
+        if len(generated_data) == 0:
+            return
+
+        path_fil_cache = os.path.join(path_dir_cache, "cache.json")
+        with open(path_fil_cache) as f:
+            cache_info = json.load(f)
+
+        pre = [min(x).start for x in generated_data if len(x.content) > 0]
+        if len(pre) > 0:
+            start_time = cache_info["start"]
+            if isinstance(start_time, str):
+                start_time = datetime.datetime.fromisoformat(start_time)
+            min_pre = min(pre)
+            if isinstance(min_pre, pd.Timestamp):
+                min_pre = min_pre.to_pydatetime()
+            cache_info["start"] = min(min_pre, start_time)
+
+        pre = [max(x).end for x in generated_data if len(x.content) > 0]
+        if len(pre) > 0:
+            time_end = cache_info["end"]
+            if isinstance(time_end, str):
+                time_end = datetime.datetime.fromisoformat(time_end)
+            max_pre = max(pre)
+            if isinstance(max_pre, pd.Timestamp):
+                max_pre = max_pre.to_pydatetime()
+            cache_info["end"] = max(max_pre, time_end)
+
+        with open(path_fil_cache, "w") as f:
+            json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
 
     def _load_cache(
         self,
@@ -339,8 +395,8 @@ class Node_cache(Node[T]):
         hash_node: str,
         context: dict | None = None,
         prefect: bool = False,
-    ):
-        to_return = []
+    ) -> T | None:
+        to_return: list[T] = []
 
         # Cache data loading
         path_fil_cache = os.path.join(path_dir_cache, "cache.json")
@@ -354,11 +410,11 @@ class Node_cache(Node[T]):
 
         # Slices gonna slice
         slices_to_get, slices_to_compute = t_cache.get_overlap_innerouter(t)
-        to_return += self._slices_to_get_rename_this(
+        to_return += self._gather_existing_slices(
             slices_to_get,
             path_dir_cache,
         )
-        to_return += self._slices_to_compute_rename_this(
+        to_return += self._compute_nonexistent_slices(
             slices_to_compute,
             path_dir_cache,
             prefect,
@@ -367,4 +423,10 @@ class Node_cache(Node[T]):
             context,
         )
 
-        return reduce(lambda x, y: x + y, to_return)
+        self._update_metadata_bounds(to_return, path_dir_cache)
+
+        if len(to_return) == 0:
+            return None
+
+        # TODO_2: Fix this weird issue with the type after project is python 3.11 (?)
+        return reduce(lambda x, y: x + y, to_return)  # type: ignore

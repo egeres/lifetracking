@@ -116,6 +116,10 @@ class Node_segments(Node[Segments]):
         raise NotImplementedError
 
 
+class Node_cache_segments(Node_cache[Segments], Node_segments):
+    pass
+
+
 class Node_segments_operation(Node_1child, Node_segments):
     def __init__(
         self,
