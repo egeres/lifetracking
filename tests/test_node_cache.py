@@ -280,11 +280,12 @@ def test_node_cache_dataisextended():
                 a - datetime.timedelta(days=3),
                 a - datetime.timedelta(days=4),
                 a - datetime.timedelta(days=5),
+                a - datetime.timedelta(days=6),
             ],
         )
         c = Node_segments_generate(b)
         d = Node_cache(c, path_dir_caches=path_dir_caches)
-        _ = d.run(t=Time_interval.last_n_days(2))
+        o = d.run(t=Time_interval.last_n_days(2))
 
         # We get `start`
         path_dir_specific_cache = os.path.join(
@@ -294,13 +295,42 @@ def test_node_cache_dataisextended():
             data = json.load(f)
         date_start = parse(data["start"])
 
+        assert o is not None
+        assert data["type"] == "slice"
+
         # We get new `start`
-        _ = d.run(t=Time_interval.last_n_days(4))
+        o = d.run(t=Time_interval.last_n_days(4))
         with open(path_dir_specific_cache + "/cache.json") as f:
             data = json.load(f)
         new_date_start = parse(data["start"])
 
+        assert o is not None
+        assert data["type"] == "slice"
         assert new_date_start < date_start
+
+        # We get all
+        date_start = new_date_start
+        o = d.run()
+        with open(path_dir_specific_cache + "/cache.json") as f:
+            data = json.load(f)
+        new_date_start = parse(data["start"])
+
+        assert o is not None
+        assert len(o) == len(b)
+        assert data["type"] == "full"
+        assert new_date_start < date_start
+
+        # We get less
+        o = d.run(t=Time_interval.last_n_days(2))
+        date_start = new_date_start
+        with open(path_dir_specific_cache + "/cache.json") as f:
+            data = json.load(f)
+        new_date_start = parse(data["start"])
+
+        assert o is not None
+        assert len(o) == 3
+        assert data["type"] == "full"
+        assert new_date_start == date_start
 
 
 def test_node_cache_nodata():
@@ -328,3 +358,10 @@ def test_node_cache_nodata():
 
         assert isinstance(o, Segments)
         assert len(o) == 0
+
+
+if __name__ == "__main__":
+    test_node_cache_dataisextended()
+    # test_node_cache_load_tisnone()
+    # test_node_cache_load_tissomething()
+    # test_node_cache_nodata()

@@ -151,7 +151,6 @@ class Node_cache(Node[T]):
         context: dict | None = None,
         prefect: bool = False,
     ):
-        print("Saving cache...")
         path_fil_cache = os.path.join(path_dir_cache, "cache.json")
 
         cache_info = {
@@ -353,6 +352,7 @@ class Node_cache(Node[T]):
         self,
         generated_data: list[T],
         path_dir_cache: str,
+        t: Time_interval,
     ) -> None:
         assert isinstance(generated_data, list)
         assert isinstance(path_dir_cache, str)
@@ -384,6 +384,9 @@ class Node_cache(Node[T]):
                 max_pre = max_pre.to_pydatetime()
             cache_info["end"] = max(max_pre, time_end)
 
+        if t is None:
+            cache_info["type"] = "full"
+
         with open(path_fil_cache, "w") as f:
             json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
 
@@ -406,24 +409,51 @@ class Node_cache(Node[T]):
             datetime.datetime.fromisoformat(cache_info["start"]),
             datetime.datetime.fromisoformat(cache_info["end"]),
         )
-        t = t_cache if t is None else t
 
-        # Slices gonna slice
-        slices_to_get, slices_to_compute = t_cache.get_overlap_innerouter(t)
-        to_return += self._gather_existing_slices(
-            slices_to_get,
-            path_dir_cache,
-        )
-        to_return += self._compute_nonexistent_slices(
-            slices_to_compute,
-            path_dir_cache,
-            prefect,
-            n0,
-            cache_info,
-            context,
-        )
+        if t is None and cache_info["type"] == "slice":
+            to_return += self._gather_existing_slices(
+                [t_cache],
+                path_dir_cache,
+            )
 
-        self._update_metadata_bounds(to_return, path_dir_cache)
+            o_0 = n0._run_sequential(
+                Time_interval(
+                    datetime.datetime.min,
+                    datetime.datetime.fromisoformat(cache_info["start"]),
+                ),
+                context,
+            )
+            if o_0 is not None:
+                to_return.append(o_0)
+            o_1 = n0._run_sequential(
+                Time_interval(
+                    datetime.datetime.fromisoformat(cache_info["end"]),
+                    datetime.datetime.max,
+                ),
+                context,
+            )
+            if o_1 is not None:
+                to_return.append(o_1)
+
+        else:
+            t = t_cache if t is None else t
+            # Slices gonna slice
+            slices_to_get, slices_to_compute = t_cache.get_overlap_innerouter(t)
+
+            to_return += self._gather_existing_slices(
+                slices_to_get,
+                path_dir_cache,
+            )
+            to_return += self._compute_nonexistent_slices(
+                slices_to_compute,
+                path_dir_cache,
+                prefect,
+                n0,
+                cache_info,
+                context,
+            )
+
+        self._update_metadata_bounds(to_return, path_dir_cache, t)
 
         if len(to_return) == 0:
             return None
