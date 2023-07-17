@@ -32,15 +32,14 @@ class Social_telegram(Node_pandas, Node_0child):
             [type_of_chat] if isinstance(type_of_chat, str) else type_of_chat
         )
         self.names = names if names is not None else []
+
         self.path_to_data = path_to_data
+        if self.path_to_data is None:
+            self.path_to_data = rf"C:\Users\{os.getlogin()}\Downloads\Telegram Desktop"
+        # TODO_2: Support linux/mac path
 
     def _hashstr(self) -> str:
         return super()._hashstr()
-
-    def _get_path_to_data(self) -> str:
-        if self.path_to_data is not None:
-            return self.path_to_data
-        return rf"C:\Users\{os.getlogin()}\Downloads\Telegram Desktop"
 
     def _get_chat_exports_dirs(self, path_dir_root: str) -> list[str]:
         assert os.path.exists(path_dir_root)
@@ -62,7 +61,7 @@ class Social_telegram(Node_pandas, Node_0child):
     def get_most_recent_personal_chats(self) -> dict[str, dict[str, Any]]:
         to_return = {}
 
-        for filename in self._get_datajsons(self._get_path_to_data()):
+        for filename in self._get_datajsons(self.path_to_data):
             with open(filename, encoding="utf-8") as f:
                 try:
                     data = json.load(f)

@@ -358,10 +358,3 @@ def test_node_cache_nodata():
 
         assert isinstance(o, Segments)
         assert len(o) == 0
-
-
-if __name__ == "__main__":
-    test_node_cache_dataisextended()
-    # test_node_cache_load_tisnone()
-    # test_node_cache_load_tissomething()
-    # test_node_cache_nodata()

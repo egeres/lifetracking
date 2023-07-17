@@ -294,6 +294,9 @@ def graph_annotate_annotations(
     if annotations is None:
         return
 
+    fig_min, fig_max = (0, 1) if minmax is None else (minmax[0], minmax[1])
+    y_offset_of_10_percent = (fig_max - fig_min) * 0.1
+
     for i in annotations:
         # Days diff
         date = i["date"]
@@ -309,7 +312,6 @@ def graph_annotate_annotations(
 
         # fig_min, fig_max = (0, 1) if minmax is None else
         # (min(0, minmax[0]), minmax[1])
-        fig_min, fig_max = (0, 1) if minmax is None else (minmax[0], minmax[1])
 
         fig.add_shape(
             type="line",
@@ -328,7 +330,7 @@ def graph_annotate_annotations(
         if "title" in i:
             fig.add_annotation(
                 x=date,
-                y=fig_max,
+                y=fig_max - y_offset_of_10_percent,
                 text=i["title"],
                 showarrow=False,
                 xref="x",

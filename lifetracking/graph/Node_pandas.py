@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import copy
 import datetime
 import hashlib
+import json
 import os
 import warnings
 from abc import abstractmethod
@@ -725,6 +727,7 @@ class Reader_filecreation(Node_0child, Node_pandas):
         assert isinstance(self.valid_extensions, list)
 
     def _available(self) -> bool:
+        # TODO_2: Dir is not empty
         return os.path.exists(self.path_dir)
 
     def _hashstr(self) -> str:
@@ -759,4 +762,86 @@ class Reader_filecreation(Node_0child, Node_pandas):
         if t is not None:
             df = df[df.index >= t.start]
             df = df[df.index <= t.end]
+        return df
+
+
+class Reader_telegramchat(Node_0child, Node_pandas):
+    # DOCS: This one should be easy :)
+
+    def __init__(
+        self,
+        id_chat: int,
+        path_to_data: str | None = None,
+    ):
+        assert isinstance(id_chat, int)
+
+        self.path_to_data = path_to_data
+        if self.path_to_data is None:
+            self.path_to_data = rf"C:\Users\{os.getlogin()}\Downloads\Telegram Desktop"
+        # TODO_2: Support linux/mac path
+
+        self.id_chat = id_chat
+
+    def _available(self) -> bool:
+        # TODO_2: Available looks if there is at least one file the with id
+        return os.path.exists(self.path_to_data)
+
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (
+                # TODO_2: Add hash of fn
+                super()._hashstr()
+                + str(self.path_to_data)
+            ).encode()
+        ).hexdigest()
+
+    # REFACTOR: All this stuff overlaps with: Social_telegram
+    def _get_chat_exports_dirs(self, path_dir_root: str) -> list[str]:
+        assert os.path.exists(path_dir_root)
+        to_return = []
+        for x in os.listdir(path_dir_root):
+            if os.path.isdir(os.path.join(path_dir_root, x)):
+                if x.startswith("ChatExport"):
+                    to_return.append(os.path.join(path_dir_root, x))
+        return to_return
+
+    def _get_datajsons(self, path_dir_root: str) -> list[str]:
+        to_return = []
+        for i in self._get_chat_exports_dirs(path_dir_root):
+            for j in os.listdir(i):
+                if j.endswith(".json") and os.path.isfile(os.path.join(i, j)):
+                    to_return.append(os.path.join(i, j))
+        return to_return
+
+    def get_most_recent_personal_chats(self) -> str | None:
+        global_filename = None
+        global_last_update = datetime.datetime.min
+        for filename in self._get_datajsons(self.path_to_data):
+            with open(filename, encoding="utf-8") as f:
+                try:
+                    data = json.load(f)
+                except json.decoder.JSONDecodeError:
+                    continue
+            if data["id"] != self.id_chat:
+                continue
+            last_update = data["messages"][-1]["date"]
+            last_update = pd.to_datetime(last_update, format="%Y-%m-%dT%H:%M:%S")
+            if last_update <= global_last_update:
+                continue
+            global_last_update = last_update
+            global_filename = filename
+        return global_filename
+
+    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame | None:
+        # Chat + data
+        chat = self.get_most_recent_personal_chats()
+        if chat is None:
+            return None
+        with open(chat, encoding="utf-8") as f:
+            data = json.load(f)
+
+        # df time
+        df = pd.DataFrame(data["messages"])
+        df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%dT%H:%M:%S")
+        df = df.set_index("date")
         return df

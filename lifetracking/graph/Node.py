@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import time
 from abc import ABC, abstractmethod
@@ -84,6 +85,8 @@ class Node(ABC, Generic[T]):
         assert context is None or isinstance(context, dict)
         assert isinstance(prefect, bool)
         assert t is None or isinstance(t, Time_interval)
+
+        t = copy.copy(t)
 
         # context is changed
         if context is None:
