@@ -117,14 +117,30 @@ class Node_pandas(Node[pd.DataFrame]):
             df_resampled = df.resample("D").count()
 
             if smooth <= 1:
-                fig = px.line(df_resampled, y="count")
+                # fig = px.line(df_resampled, y="count")
+                fig = go.Figure()
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_resampled.index, y=df_resampled["count"], fill="tonexty"
+                    )
+                )
+
                 fig_min = df_resampled["count"].min()
                 fig_max = df_resampled["count"].max()
             else:
                 df_resampled["smoothed_count"] = (
                     df_resampled["count"].rolling(window=smooth, center=True).mean()
                 )
-                fig = px.line(df_resampled, y="smoothed_count")
+                # fig = px.line(df_resampled, y="smoothed_count")
+                fig = go.Figure()
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_resampled.index,
+                        y=df_resampled["smoothed_count"],
+                        fill="tonexty",
+                    )
+                )
+
                 fig_min = df_resampled["smoothed_count"].min()
                 fig_max = df_resampled["smoothed_count"].max()
 
@@ -214,6 +230,11 @@ class Node_pandas(Node[pd.DataFrame]):
 
         # fig_min, fig_max = min(0, float(df[columns].min())), float(df[columns].max())
         fig_min, fig_max = df[columns[0]].min(), df[columns[0]].max()
+
+        # Smooth smooth
+        if smooth > 1:
+            for col in columns:
+                df[col] = np.convolve(df[col], np.ones(smooth) / smooth, mode="same")
 
         # Plot
         fig = px.line(df[columns])

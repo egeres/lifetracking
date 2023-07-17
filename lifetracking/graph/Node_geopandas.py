@@ -104,6 +104,9 @@ class Reader_geojson(Node_0child, Node_geopandas):
     def _available(self) -> bool:
         return (
             os.path.isdir(self.path_dir)
+            # TODO_2: Optimize the "len(...)" to see if there is at least one file with
+            # the extension we want by just adding an iterator that fucking stops when
+            # it encounters the corresponding file?
             and len([i for i in os.listdir(self.path_dir) if i.endswith(".geojson")])
             > 0
         )
@@ -114,8 +117,11 @@ class Reader_geojson(Node_0child, Node_geopandas):
         for filename in os.listdir(self.path_dir):
             if filename.endswith(".geojson"):
                 filename_date = datetime.datetime.strptime(
-                    filename.split("_")[-1], "%Y%m%d.geojson"
+                    filename.split("_")[-1],
+                    "%Y%m%d.geojson",
                 )
+                if isinstance(t, Time_interval) and t.start.tzinfo is not None:
+                    filename_date = filename_date.replace(tzinfo=t.start.tzinfo)
                 if t is not None and not (t.start <= filename_date <= t.end):
                     continue
                 try:
@@ -199,7 +205,7 @@ class Label_geopandas(Node_1child, Node_geopandas):
             # First, check if the point is within any of the provided points
             for _, pt_row in self.coords_points.iterrows():
                 if (
-                    point.geometry.distance(pt_row["geometry"]) <= 20 / 10**5
+                    point.geometry.distance(pt_row["geometry"]) <= 30 / 10**5
                 ):  # Rough conversion of meters to degrees
                     return pt_row["label"]
 
