@@ -19,6 +19,11 @@ class Seg:
         self.end = end
         self.value = value
 
+    def get(self, key: Any, default: Any = None) -> Any:
+        if self.value is None:
+            return None
+        return self.value.get(key, default)
+
     def overlaps(self, other: Seg) -> bool:
         """Returns true if the two segments overlap in time"""
         return (

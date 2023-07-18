@@ -214,3 +214,10 @@ def test_seg_intosegmentsperday():
     assert o[0].start == b.start
     assert o[0].end == b.end
     assert o[0].value == b.value
+
+
+def test_seg_get():
+    a = Time_interval.today().to_seg()
+    assert a.get("ok") is None
+    a["ok"] = "boomer"
+    assert a.get("ok") == "boomer"
