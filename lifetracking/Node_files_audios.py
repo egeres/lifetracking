@@ -3,38 +3,38 @@ from __future__ import annotations
 import datetime
 import hashlib
 import os
-from typing import Any
 
-import librosa
-from prefect import task as prefect_task
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
+from pydub.utils import mediainfo
+from rich import print
 
 from lifetracking.datatypes.Segment import Seg, Segments
-from lifetracking.graph.Node import Node
+from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_segments import Node_segments
 from lifetracking.graph.Time_interval import Time_interval
+from lifetracking.utils import cache_singleargument
 
 
-class Reader_audios(Node_segments):
+class Reader_audios(Node_segments, Node_0child):
     def __init__(self, path_dir: str) -> None:
         super().__init__()
-        if not os.path.isdir(path_dir):
-            raise ValueError(f"{path_dir} is not a directory")
         self.path_dir = path_dir
 
-    def _get_children(self) -> list[Node]:
-        return []
+    def _available(self) -> bool:
+        return (
+            os.path.exists(self.path_dir)
+            and len(self._get_plausible_files(self.path_dir)) > 0
+        )
 
     def _hashstr(self) -> str:
         return hashlib.md5((super()._hashstr() + self.path_dir).encode()).hexdigest()
 
     @staticmethod
+    @cache_singleargument("cache_audios_length")
     def _get_audio_length_in_s(filename: str) -> float | None:
         try:
-            return librosa.get_duration(filename=filename)
+            return float(mediainfo(filename)["duration"])
         except Exception as e:
-            print(f"Error while reading {filename}: {e}")
+            print(f"[red]Error while reading {filename}: {e}")
             return None
 
     def _get_plausible_files(self, path_dir: str) -> list[str]:
@@ -44,8 +44,6 @@ class Reader_audios(Node_segments):
             filename = os.path.join(path_dir, i)
             if not os.path.isfile(filename):
                 continue
-            if "desktop.ini" in filename:
-                continue
             if not (
                 filename.endswith(".mp3")
                 or filename.endswith(".wav")
@@ -54,6 +52,7 @@ class Reader_audios(Node_segments):
                 or filename.endswith(".m4a")
                 or filename.endswith(".opus")
                 or filename.endswith(".wma")
+                or filename.endswith(".amr")
             ):
                 continue
             to_return.append(filename)
@@ -80,13 +79,3 @@ class Reader_audios(Node_segments):
                 )
             )
         return Segments(to_return)
-
-    def _run_sequential(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> Segments | None:
-        return self._operation(t)
-
-    def _make_prefect_graph(
-        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[Segments, Sync]:
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)

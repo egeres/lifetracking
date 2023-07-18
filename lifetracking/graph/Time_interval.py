@@ -4,6 +4,7 @@ import datetime
 from enum import Enum, auto
 from typing import Iterable
 
+import pandas as pd
 from typing_extensions import Self
 
 from lifetracking.datatypes.Seg import Seg
@@ -44,6 +45,9 @@ class Time_interval:
             f"<{self.start.strftime('%Y-%m-%d %H:%M')}"
             + f",{self.end.strftime('%Y-%m-%d %H:%M')}>"
         )
+
+    def tz_convert(self, tz: datetime.tzinfo) -> Time_interval:
+        return Time_interval(self.start.astimezone(tz), self.end.astimezone(tz))
 
     def truncate(self, time_res: Time_resolution) -> Time_interval:
         if time_res == Time_resolution.HOUR:
@@ -110,6 +114,9 @@ class Time_interval:
 
     def to_seg(self) -> Seg:
         return Seg(self.start, self.end)
+
+    def to_datetimeindex(self) -> pd.DatetimeIndex:
+        return pd.date_range(self.start, self.end, freq="D")
 
     def iterate_over_interval(
         self, resolution: Time_resolution = Time_resolution.DAY

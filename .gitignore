@@ -12,3 +12,9 @@ sketches/
 .hypothesis/
 
 .coverage
+
+desktop.ini
+
+cov.xml
+
+lifetracking/plots/__pycache__/

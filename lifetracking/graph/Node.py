@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import time
 from abc import ABC, abstractmethod
 from functools import reduce
 from typing import Any, Generic, Iterable, TypeVar
 
+import pandas as pd
 from prefect import flow as prefect_flow
+from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
 from prefect.task_runners import ConcurrentTaskRunner
 from prefect.utilities.asyncutils import Sync
 from rich import print
 
+from lifetracking.datatypes.Segment import Segments
 from lifetracking.graph.Time_interval import Time_interval
 
 T = TypeVar("T")
@@ -23,6 +27,12 @@ class Node(ABC, Generic[T]):
 
     def __init__(self):
         self.last_run_info: dict[str, Any] | None = None
+        self.name: str | None = None
+
+    def __repr__(self) -> str:
+        if self.name is not None:
+            return f"{self.__class__.__name__}({self.name})"
+        return self.__class__.__name__
 
     @property
     def children(self) -> list[Node]:
@@ -36,7 +46,7 @@ class Node(ABC, Generic[T]):
     @abstractmethod
     def _get_children(self) -> list[Node]:
         """Returns a set with the children of the node"""
-        ...
+        ...  # pragma: no cover
 
     @abstractmethod
     def _hashstr(self) -> str:
@@ -52,17 +62,17 @@ class Node(ABC, Generic[T]):
     @abstractmethod
     def _operation(self, t=None) -> T | None:
         """Main operation of the node"""
-        ...
+        ...  # pragma: no cover
 
     @abstractmethod
     def _run_sequential(self, t=None, context=None) -> T | None:
         """Runs the graph sequentially"""
-        ...
+        ...  # pragma: no cover
 
     @abstractmethod
     def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture[T, Sync]:
         """Parses the graph to prefect"""
-        ...
+        ...  # pragma: no cover
 
     def run(
         self,
@@ -76,6 +86,12 @@ class Node(ABC, Generic[T]):
         assert isinstance(prefect, bool)
         assert t is None or isinstance(t, Time_interval)
 
+        t = copy.copy(t)
+
+        # context is changed
+        if context is None:
+            context = {}
+
         # Prepare stuff
         self.last_run_info = {}
         t0 = time.time()
@@ -83,16 +99,29 @@ class Node(ABC, Generic[T]):
         # Actual run
         to_return: T | None = None
         if prefect:
-            to_return = self._run_prefect_graph(t)
+            to_return = self._run_prefect_graph(t, context)
         else:
             to_return = self._run_sequential(t, context)
 
         # Post-run stuff
         self.last_run_info["time"] = time.time() - t0
         self.last_run_info["run_mode"] = "prefect" if prefect else "sequential"
-        # self.last_run_info["steps_executed"] = #TODO
+        # TODO: Add executed steps count
+        # self.last_run_info["steps_executed"] =
         self.last_run_info["t_in"] = t
-        # self.last_run_info["t_out"] = Time_interval(min(to_return), max(to_return))
+        if isinstance(to_return, Segments) and len(to_return) > 0:
+            self.last_run_info["t_out"] = Time_interval(
+                min(to_return).start, max(to_return).end
+            )
+        if isinstance(to_return, (Segments, pd.DataFrame)):
+            self.last_run_info["len"] = len(to_return)
+        elif isinstance(to_return, int):
+            self.last_run_info["len"] = 1
+        elif to_return is None:
+            self.last_run_info["len"] = None
+        else:
+            raise NotImplementedError
+
         return to_return
 
     def print_stats(self):
@@ -101,11 +130,28 @@ class Node(ABC, Generic[T]):
         if self.last_run_info is None:
             print("No statistics available")
         else:
+            duration_t_out = None
+            if "t_out" in self.last_run_info:
+                duration_t_out = self.last_run_info["t_out"].duration_days
+                if duration_t_out >= 365:
+                    duration_t_out = f"{round(duration_t_out/365, 1)} years"
+                else:
+                    duration_t_out = f"{round(duration_t_out, 1)} days"
+
             print("")
-            print("Stats...")
+            print("Stats...", f"({self.name})" if self.name is not None else "")
+            print(
+                "\t✨ Nodes   : ", len(self._get_children_all()) + 1
+            )  # Allegledly, unique nodes in the graph
             print("\t✨ Time    : ", round(self.last_run_info["time"], 2), "sec")
             print("\t✨ Run mode: ", self.last_run_info["run_mode"])
             print("\t✨ t in    : ", self.last_run_info["t_in"])
+            if "t_out" in self.last_run_info:
+                print("\t✨ t out   : ", self.last_run_info["t_out"])
+            if duration_t_out is not None:
+                print("\t             ", f"({duration_t_out})")
+            if "len" in self.last_run_info:
+                print("\t✨ Length  : ", self.last_run_info["len"])
             # Print name if defined
             # print timespan input and output
             # TODO: Add how many nodes were executed
@@ -113,22 +159,22 @@ class Node(ABC, Generic[T]):
             # Nodes that took the most?
             print("")
 
-    def _run_prefect_graph(self, t=None) -> T | None:
+    def _run_prefect_graph(self, t=None, context=None) -> T | None:
         """Run the graph using prefect concurrently"""
 
         # A flow is created
         @prefect_flow(task_runner=ConcurrentTaskRunner(), name="run_prefect_graph")
         def flow():
-            return self._make_prefect_graph(t).result()
+            return self._make_prefect_graph(t, context).result()
 
         # Then is executed
         return flow()
 
-    def _get_children_tree(self) -> set[Node]:
-        """Returns a set with the children of the node"""
+    def _get_children_all(self) -> set[Node]:
+        """Returns a set with all the children of the node"""
         children = set(self._get_children())
         for child in children:
-            children = children | child._get_children_tree()
+            children = children | child._get_children_all()
         return children
 
     @staticmethod
@@ -168,6 +214,60 @@ class Node(ABC, Generic[T]):
     def _children_are_available(self) -> bool:
         """Returns whether all the children are available"""
         return all([x._available() for x in self.children])
+
+
+class Node_0child(Node[T]):
+    def _get_children(self) -> list[Node]:
+        return []
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> T | None:
+        if not self._available():
+            return None
+        return self._operation(t)
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[T | None, Sync]:
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
+
+
+class Node_1child(Node[T]):
+    @abstractmethod
+    def _operation(self, n0: Node, t: Time_interval | None) -> T | None:
+        """Main operation of the node"""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def child(self) -> Node:
+        pass
+
+    def _get_children(self) -> list[Node]:
+        return [self.child]
+
+    def _run_sequential(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> T | None:
+        # Node is calculated if it's not in the context, then _operation is called
+        n0_out = self._get_value_from_context_or_run(self.child, t, context)
+        if n0_out is None:
+            return None
+        return self._operation(
+            n0_out,
+            t,
+        )
+
+    def _make_prefect_graph(
+        self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
+    ) -> PrefectFuture[T | None, Sync]:
+        # Node graph is calculated if it's not in the context, then _operation is called
+        n0_out = self._get_value_from_context_or_makegraph(self.child, t, context)
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
+            n0_out,
+            t,
+        )
 
 
 def run_multiple(
@@ -216,3 +316,11 @@ def run_multiple_parallel(
             return results
 
         return flow()
+
+
+# TODO_3: Add a run_sequential to simplify debugging pls, something like:
+# run_sequential(
+#   node_0,
+#   node_1,
+#   node_2,
+# )

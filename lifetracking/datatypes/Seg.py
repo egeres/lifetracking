@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import datetime
 import hashlib
 from typing import Any
@@ -17,6 +18,23 @@ class Seg:
         self.start = start
         self.end = end
         self.value = value
+
+    def get(self, key: Any, default: Any = None) -> Any:
+        if self.value is None:
+            return None
+        return self.value.get(key, default)
+
+    def overlaps(self, other: Seg) -> bool:
+        """Returns true if the two segments overlap in time"""
+        return (
+            (self.start < other.end and self.start > other.start)
+            or (self.end < other.end and self.end > other.start)
+            or (other.start < self.end and other.start > self.start)
+            or (other.end < self.end and other.end > self.start)
+        )
+
+    def __copy__(self):
+        return Seg(self.start, self.end, copy.copy(self.value))
 
     def __repr__(self) -> str:
         if self.value is None:
@@ -48,6 +66,8 @@ class Seg:
         return Seg(self.start - other, self.end - other, self.value)
 
     def __eq__(self, other: Seg) -> bool:
+        if not isinstance(other, Seg):
+            return False
         return (
             self.start == other.start
             and self.end == other.end
@@ -77,12 +97,13 @@ class Seg:
         """If a segment spans multiple days, split it into multiple segments,
         one per day."""
 
+        temp_start = self.start
         splits = []
-        while self.start < self.end:
+        while temp_start < self.end:
             next_day = datetime.datetime(
-                self.start.year,
-                self.start.month,
-                self.start.day,
+                temp_start.year,
+                temp_start.month,
+                temp_start.day,
                 tzinfo=self.end.tzinfo,
             ) + datetime.timedelta(days=1)
             remove_seconds = datetime.timedelta(seconds=1)
@@ -91,10 +112,22 @@ class Seg:
                 remove_seconds = datetime.timedelta(seconds=0)
             splits.append(
                 Seg(
-                    self.start,
+                    temp_start,
                     next_day - remove_seconds,
                     self.value,
                 )
             )
-            self.start = next_day
+            temp_start = next_day
         return splits
+
+    def length_days(self) -> float:
+        return (self.end - self.start).total_seconds() / 86400.0
+
+    def length_h(self) -> float:
+        return (self.end - self.start).total_seconds() / 3600.0
+
+    def length_m(self) -> float:
+        return (self.end - self.start).total_seconds() / 60.0
+
+    def length_s(self) -> float:
+        return (self.end - self.start).total_seconds()
