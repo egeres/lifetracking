@@ -1,7 +1,12 @@
 import datetime
+import math
 import os
+from typing import Any
 
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image, ImageDraw, ImageFont, ImageOps
+
+from lifetracking.graph.Node import Node
+from lifetracking.graph.Time_interval import Time_interval
 
 
 def draw_arc(
@@ -66,6 +71,6 @@ def draw_arc(
     draw.pieslice(bbox_inner, start_angle, end_angle, fill=(0, 0, 0, 0))
 
     # Scale down the image by a factor of 4 with antialiasing
-    image = image.resize(img_size, Image.ANTIALIAS)
+    image = image.resize(img_size, Image.LANCZOS)
 
     return image

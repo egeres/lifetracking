@@ -18,13 +18,13 @@ from typing_extensions import Self
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.graph.Time_interval import Time_interval
-from lifetracking.utils import (
-    _lc_export_prepare_dir,
+from lifetracking.plots.graphs import (
     graph_annotate_annotations,
     graph_annotate_title,
     graph_annotate_today,
     graph_udate_layout,
 )
+from lifetracking.utils import _lc_export_prepare_dir
 
 
 class Segments:

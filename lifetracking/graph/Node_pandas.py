@@ -20,14 +20,13 @@ from rich import print
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
 from lifetracking.graph.Time_interval import Time_interval
-from lifetracking.utils import (
-    export_pddataframe_to_lc_single,
+from lifetracking.plots.graphs import (
     graph_annotate_annotations,
     graph_annotate_title,
     graph_annotate_today,
     graph_udate_layout,
-    hash_method,
 )
+from lifetracking.utils import export_pddataframe_to_lc_single, hash_method
 
 
 # Actually, the value of fn should be:
@@ -522,6 +521,8 @@ class Reader_pandas(Node_0child, Node_pandas):
                 filename_date = dated_name(os.path.split(filename)[1])
                 if isinstance(self.time_zone, datetime.tzinfo):
                     filename_date = filename_date.astimezone(self.time_zone)
+                    t.start = t.start.astimezone(self.time_zone)
+                    t.end = t.end.astimezone(self.time_zone)
                 if t is not None and not (t.start <= filename_date <= t.end):
                     return True
             except ValueError:
