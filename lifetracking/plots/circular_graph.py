@@ -75,6 +75,7 @@ def draw_arc(
 
     return image
 
+
 def draw_arc_text(
     text: str,
     radius: int = 500,
@@ -99,45 +100,94 @@ def draw_arc_text(
     # create a font object
     font_path = r"C:\Github\JetBrainsMono\fonts\ttf\JetBrainsMono-Regular.ttf"
     font = ImageFont.truetype(font_path, int(font_size) * 4)
-
     text_size = draw.textsize("A", font=font)
-    # text_size = draw.textbbox((0, 0), text, font=font)
     circumference_in_pixels = radius * 4 * math.pi
     text_width = sum([text_size[0] for char in text]) + spacing_px * (len(text) - 1)
-    # text_angle = text_width / circumference_in_pixels * 2 * math.pi
     text_angle = text_width / circumference_in_pixels
-
-    # angle_offset = (end - start) * math.pi * 0.5 - text_angle / 2
-    angle_offset = (end - start) - (text_angle / 2)
-
-    start_angle = angle_offset
+    start_angle = start + (end - start) / 2 - text_angle / 2
 
     # draw each character
     for i, char in enumerate(text):
-        # char_angle = start_angle + sum(char_angles[:i]) + i * space_angle
         char_angle = start_angle + i * text_angle / len(text)
 
         # calculate the character position
-        # x = (img_size[0] * 4 / 2) + radius * 4 * math.cos(char_angle * math.pi)
-        # y = (img_size[1] * 4 / 2) + radius * 4 * math.sin(char_angle * math.pi)
-
-        x = (img_size[0] * 4 / 2) + radius * 4 * math.sin(math.pi * char_angle)
-        y = (img_size[1] * 4 / 2) + radius * 4 * -math.cos(math.pi * char_angle)
-
-        # Draw the character using ImageFont
-        # draw.text((x, y), char, font=font, fill=color)
+        x = (img_size[0] * 4 / 2) + radius * 4 * math.cos(
+            math.pi * (char_angle - 0.25) * 2
+        )
+        y = (img_size[1] * 4 / 2) + radius * 4 * math.sin(
+            math.pi * (char_angle - 0.25) * 2
+        )
 
         # draw the rotated character
-        char_image = Image.new("RGBA", (font_size*4, font_size*4), (0, 0, 0, 0))
+        char_image = Image.new("RGBA", (font_size * 4, font_size * 4), (0, 0, 0, 0))
         char_draw = ImageDraw.Draw(char_image)
         char_draw.text((0, text_size[1] * -0.15), char, font=font, fill=color)
-        rotated_char = char_image.rotate(-math.degrees(char_angle * math.pi), expand=1)
+        rotated_char = char_image.rotate(
+            -math.degrees(2 * (char_angle - 0.25) * math.pi) - 90, expand=1
+        )
         image.paste(
             rotated_char,
             (int(x - rotated_char.width / 2), int(y - rotated_char.height / 2)),
             mask=rotated_char,
         )
 
-    image = image.resize(img_size, Image.LANCZOS)
+    return image.resize(img_size, Image.LANCZOS)
+
+
+def make_dailygraph_image(
+    pipelines: list[dict[str, Any]],
+    # day: datetime.datetime = datetime.datetime.now(),
+):
+    img = Image.open(rf"C:\Users\{os.getlogin()}\Desktop\Untitled.png")
+    img.alpha_composite(draw_arc((499, 501), 0, 1.0, "#FFFFFF"))
+
+    # img.alpha_composite(draw_arc((450, 550), 0.0, 0.5, "#FFFFFF"))
+    # img.alpha_composite(draw_arc_text("- SLEEP -", 500, 0.0, 0.5, "#000"))
+    # img.show()
+    # return
+
+    # FIX: If I specify "today" I cant seem to get "sleep"
+    # t
+    # start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+    # end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
+    # t = Time_interval(start, end)
+    t = Time_interval.last_n_days(1)
+
+    for i in pipelines:
+        graph = i["graph"]
+        o = graph.run(t)
+        o = [x for x in o if x.start.day == datetime.datetime.now().day]
+
+        for j in o:
+            s = j.start.hour / 24 + j.start.minute / 24 / 60
+            e = j.end.hour / 24 + j.end.minute / 24 / 60
+
+            s = 0.5
+            e = 0.75
+
+            img.alpha_composite(
+                draw_arc(
+                    (450, 550),
+                    s,
+                    e,
+                    i.get("color", "#FFFFFF"),
+                ),
+            )
+
+            text = i.get("name", None)
+            if text is not None:
+                img.alpha_composite(
+                    draw_arc_text(
+                        text,
+                        500,
+                        s,
+                        e,
+                        "#000",
+                    )
+                )
+
+    img.show()
+
+
 
     return image
