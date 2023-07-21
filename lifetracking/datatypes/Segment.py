@@ -26,6 +26,8 @@ from lifetracking.plots.graphs import (
 )
 from lifetracking.utils import _lc_export_prepare_dir
 
+# REFACTOR_1 : Rename the file to segments.py
+
 
 class Segments:
     def __init__(self, content: list[Seg]) -> None:
@@ -128,7 +130,27 @@ class Segments:
         return max(seg.end for seg in self.content)
 
     def __add__(self, other: Segments) -> Segments:
-        # TODO: After coverage has been extended, test if this could be removed
+        # FIX: Pls, the thing with the timezone discrepancies!! 🥺
+        if len(self.content) > 0 and len(other.content) > 0:
+            if (
+                other.content[0].start.tzinfo is None
+                and self.content[0].start.tzinfo is not None
+            ):
+                tz = self.content[0].start.tzinfo
+                for i in other.content:
+                    i.start = i.start.replace(tzinfo=tz)
+                    i.end = i.end.replace(tzinfo=tz)
+
+            if (
+                self.content[0].start.tzinfo is None
+                and other.content[0].start.tzinfo is not None
+            ):
+                tz = other.content[0].start.tzinfo
+                for i in self.content:
+                    i.start = i.start.replace(tzinfo=tz)
+                    i.end = i.end.replace(tzinfo=tz)
+
+        # TODO: After coverage has been extended, test if the 'sorted' could be removed
         return Segments(sorted(other.content + self.content))
 
     def _export_to_longcalendar_edit_dict(
@@ -419,3 +441,15 @@ class Segments:
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
         return fig
+
+    def increment_hours(
+        self,
+        hours: float,
+    ) -> Self:
+        assert isinstance(hours, (float, int))
+
+        for seg in self.content:
+            seg.start += datetime.timedelta(hours=hours)
+            seg.end += datetime.timedelta(hours=hours)
+
+        return self

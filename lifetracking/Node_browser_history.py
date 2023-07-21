@@ -58,7 +58,7 @@ class Parse_browserhistory(Node_pandas, Node_0child):
                 ):
                     continue
 
-            # TODO: Maybe extend the library to allow for a time interval
+            # TODO_3: Maybe extend the library to allow for a time interval
             histories = i.fetch_history().histories
             if len(histories) == 0:
                 continue
@@ -72,5 +72,5 @@ class Parse_browserhistory(Node_pandas, Node_0child):
             dfs_to_concat.append(df)
 
         df = pd.concat(dfs_to_concat)
-
+        df = df.set_index("date")
         return df

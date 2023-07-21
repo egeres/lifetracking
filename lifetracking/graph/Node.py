@@ -28,6 +28,7 @@ class Node(ABC, Generic[T]):
     def __init__(self):
         self.last_run_info: dict[str, Any] | None = None
         self.name: str | None = None
+        self.default_export: callable | None = None
 
     def __repr__(self) -> str:
         if self.name is not None:
@@ -122,6 +123,11 @@ class Node(ABC, Generic[T]):
         else:
             raise NotImplementedError
 
+        self.last_run_info["type"] = type(to_return).__name__
+
+        if isinstance(to_return, pd.DataFrame):
+            self.last_run_info["columns"] = list(to_return.columns)
+
         return to_return
 
     def print_stats(self):
@@ -152,6 +158,11 @@ class Node(ABC, Generic[T]):
                 print("\t             ", f"({duration_t_out})")
             if "len" in self.last_run_info:
                 print("\t✨ Length  : ", self.last_run_info["len"])
+
+            print("\t✨ Type    : ", self.last_run_info["type"])
+            if self.last_run_info["type"] == "DataFrame":
+                print("\t✨ Columns : ", ", ".join(self.last_run_info["columns"]))
+
             # Print name if defined
             # print timespan input and output
             # TODO: Add how many nodes were executed
