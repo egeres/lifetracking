@@ -144,31 +144,32 @@ class Node(ABC, Generic[T]):
                 else:
                     duration_t_out = f"{round(duration_t_out, 1)} days"
 
-            print("")
-            print("Stats...", f"({self.name})" if self.name is not None else "")
-            print(
-                "\t✨ Nodes   : ", len(self._get_children_all()) + 1
-            )  # Allegledly, unique nodes in the graph
-            print("\t✨ Time    : ", round(self.last_run_info["time"], 2), "sec")
-            print("\t✨ Run mode: ", self.last_run_info["run_mode"])
-            print("\t✨ t in    : ", self.last_run_info["t_in"])
+            a = ""
+            # print("")
+            a += "Stats..." + f"({self.name})\n" if self.name is not None else "" + "\n"
+            a += f"\t✨ Nodes   : {len(self._get_children_all()) + 1}\n"
+            a += f'\t✨ Time    : {round(self.last_run_info["time"], 2)} sec\n'
+            a += f'\t✨ Run mode: {self.last_run_info["run_mode"]}\n'
+            a += f'\t✨ t in    : {self.last_run_info["t_in"]}\n'
             if "t_out" in self.last_run_info:
-                print("\t✨ t out   : ", self.last_run_info["t_out"])
+                a += f'\t✨ t out   : {self.last_run_info["t_out"]}\n'
             if duration_t_out is not None:
-                print("\t             ", f"({duration_t_out})")
+                a += f'\t             {f"({duration_t_out})"}\n'
             if "len" in self.last_run_info:
-                print("\t✨ Length  : ", self.last_run_info["len"])
+                a += f'\t✨ Length  : {self.last_run_info["len"]}\n'
 
-            print("\t✨ Type    : ", self.last_run_info["type"])
+            a += f'\t✨ Type    : {self.last_run_info["type"]}\n'
             if self.last_run_info["type"] == "DataFrame":
-                print("\t✨ Columns : ", ", ".join(self.last_run_info["columns"]))
+                a += f'\t✨ Columns : {", ".join(self.last_run_info["columns"])}'
 
             # Print name if defined
             # print timespan input and output
             # TODO: Add how many nodes were executed
             # Also, how many caches were computed n stuff like that
             # Nodes that took the most?
-            print("")
+
+            print(a)
+            # print("")
 
     def _run_prefect_graph(self, t=None, context=None) -> T | None:
         """Run the graph using prefect concurrently"""
