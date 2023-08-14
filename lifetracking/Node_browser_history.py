@@ -33,6 +33,7 @@ class Parse_browserhistory(Node_pandas, Node_0child):
             OperaGX(),
             Vivaldi(),
         ]
+        self.browsers = [x for x in self.browsers if os.path.exists(x.history_dir)]
         if not os.name == "nt":
             self.browsers.append(Safari())
 

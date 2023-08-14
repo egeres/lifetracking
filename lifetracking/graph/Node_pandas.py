@@ -225,6 +225,7 @@ class Node_pandas(Node[pd.DataFrame]):
 
         # Resample
         if resample is not None:
+            df = df[columns]
             df = df.resample(resample).mean()
             # Remove NaNs?
             df = df.dropna()
