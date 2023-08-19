@@ -238,10 +238,10 @@ class Segments:
             )
             with open(path_fil_config) as f:
                 data = json.load(f)
-                assert isinstance(data, dict)
-                key_name = os.path.split(path_filename)[1].split(".")[0]
-                if key_name not in data["data"]:
-                    data["data"][key_name] = {}
+            assert isinstance(data, dict)
+            key_name = os.path.split(path_filename)[1].split(".")[0]
+            if key_name not in data["data"]:
+                data["data"][key_name] = {}
 
             # We write color and opacity
             if isinstance(color, str):
