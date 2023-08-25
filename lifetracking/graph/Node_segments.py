@@ -379,10 +379,15 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
         assert isinstance(df, pd.DataFrame)
         assert isinstance(df.index, pd.DatetimeIndex)
 
+        # Sort index of df
+        df = df.sort_index()
+
         # Pre
         to_return = []
         time_delta = pd.Timedelta(minutes=self.time_to_split_in_mins)
         count = 1
+        if len(df) == 0:
+            return Segments(to_return)
         start = df.index[0]
         end = df.index[0]
         it = df.index[1:]

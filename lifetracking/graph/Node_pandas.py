@@ -109,7 +109,7 @@ class Node_pandas(Node[pd.DataFrame]):
         assert isinstance(annotations, list) or annotations is None
 
         df = self.run(t)
-        if df is None:
+        if df is None or len(df) == 0:
             return None
         assert isinstance(df.index, pd.DatetimeIndex)
 
@@ -275,6 +275,10 @@ class Node_pandas_add(Node_pandas):
     ) -> pd.DataFrame:
         # TODO: t is not used
 
+        value = [x for x in value if x is not None]
+        if len(value) == 0:
+            return pd.DataFrame()
+
         # Return a concatenation of all the dataframes
         return pd.concat(value)
 
@@ -331,7 +335,7 @@ class Node_pandas_generate(Node_0child, Node_pandas):
         assert t is None or isinstance(t, Time_interval)
         df = self.df.copy()
         if t is not None:
-            return df[t.start : t.end]
+            return df[t.end : t.start]
         return df
 
 
@@ -577,6 +581,11 @@ class Reader_pandas(Node_0child, Node_pandas):
         if len(to_return) == 0:
             return pd.DataFrame()
         df = pd.concat(to_return, axis=0)
+
+        # Has Nans check?
+        # It can happen if you mix df's with different column manes, like "Date", "date"
+        # if df.isnull().values.any():
+        #     print(f"[red]Nans in {self.path_dir}")
 
         return df
 

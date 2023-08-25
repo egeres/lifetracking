@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import os
+import warnings
 from typing import Any, Callable
 
 import geopandas as gpd
@@ -91,7 +92,8 @@ class Reader_geojson(Node_0child, Node_geopandas):
         assert isinstance(path_dir, str)
         assert column_date_index is None or isinstance(column_date_index, str)
         if not os.path.isdir(path_dir):
-            raise ValueError(f"{path_dir} is not a directory")
+            # raise ValueError(f"{path_dir} is not a directory")
+            warnings.warn(f"{path_dir} is not a directory", stacklevel=2)
         super().__init__()
         self.path_dir = path_dir
         self.column_date_index = column_date_index

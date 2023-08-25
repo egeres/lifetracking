@@ -25,6 +25,9 @@ def test_plot_pd_countbyday_0():
 
     # Plot 0
     t = Time_interval.last_n_days(2)
+
+    o = a.run(t)
+    assert o is not None
     fig = a.plot_countbyday(t)
     assert fig is not None
 
@@ -33,7 +36,7 @@ def test_plot_pd_countbyday_0():
     t.start = t.start + timedelta(days=40)
     t.end = t.end + timedelta(days=40)
     fig = a.plot_countbyday(t)
-    assert fig is not None
+    assert fig is None
 
 
 def test_plot_pd_countbyday_1():
