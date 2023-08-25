@@ -4,9 +4,11 @@ import datetime
 import hashlib
 import multiprocessing
 import os
+import warnings
 
 import ankipandas
 import pandas as pd
+from pandas.errors import DatabaseError
 
 from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_pandas import Node_pandas
@@ -34,9 +36,14 @@ class Parse_anki_study(Node_pandas, Node_0child):
         return os.path.exists(self.path_dir)
 
     def _get_raw_data(self, path_file, return_dict):
-        col = ankipandas.Collection(path_file)
-        return_dict[0] = col.cards[["cdeck"]].copy()
-        return_dict[1] = col.revs.copy()
+        try:
+            col = ankipandas.Collection(path_file)
+            return_dict[0] = col.cards[["cdeck"]].copy()
+            return_dict[1] = col.revs.copy()
+        except DatabaseError as e:
+            warnings.warn(f"Anki databaseError: {e}", stacklevel=2)
+            return_dict[0] = None
+            return_dict[1] = None
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         # Data gathering
@@ -49,6 +56,8 @@ class Parse_anki_study(Node_pandas, Node_0child):
         p.join()
         cards = return_dict.values()[0]
         revisions = return_dict.values()[1]
+        if cards is None or revisions is None:
+            return None
 
         revisions = revisions.join(cards, on="cid")
         # Date parsing
@@ -68,11 +77,15 @@ class Parse_anki_study(Node_pandas, Node_0child):
 
 
 class Parse_anki_creation(Parse_anki_study):
-    def _get_raw_data(self, path_file, return_dict) -> pd.DataFrame:
-        col = ankipandas.Collection(path_file)
-        return_dict[0] = col.cards.copy()
+    def _get_raw_data(self, path_file, return_dict) -> None:
+        try:
+            col = ankipandas.Collection(path_file)
+            return_dict[0] = col.cards.copy()
+        except DatabaseError as e:
+            warnings.warn(f"Anki databaseError: {e}", stacklevel=2)
+            return_dict[0] = None
 
-    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame | None:
         # Data gathering
         manager = multiprocessing.Manager()
         return_dict = manager.dict()
@@ -82,6 +95,8 @@ class Parse_anki_creation(Parse_anki_study):
         p.start()
         p.join()
         cards = return_dict.values()[0]
+        if cards is None:
+            return None
 
         # Rename deck column
         cards = cards.rename(columns={"cdeck": "deck"})
