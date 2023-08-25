@@ -45,7 +45,7 @@ class Parse_anki_study(Node_pandas, Node_0child):
             return_dict[0] = None
             return_dict[1] = None
 
-    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
+    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame | None:
         # Data gathering
         manager = multiprocessing.Manager()
         return_dict = manager.dict()
