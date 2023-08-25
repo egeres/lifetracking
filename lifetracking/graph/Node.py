@@ -15,7 +15,7 @@ from prefect.task_runners import ConcurrentTaskRunner
 from prefect.utilities.asyncutils import Sync
 from rich import print
 
-from lifetracking.datatypes.Segment import Segments
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Time_interval import Time_interval
 
 T = TypeVar("T")

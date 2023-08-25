@@ -9,7 +9,7 @@ import time
 
 from dateutil.parser import parse
 
-from lifetracking.datatypes.Segment import Segments
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node_cache import Node_cache
 from lifetracking.graph.Node_segments import Node_segments_generate
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution

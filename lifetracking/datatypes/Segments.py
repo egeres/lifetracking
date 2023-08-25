@@ -26,8 +26,6 @@ from lifetracking.plots.graphs import (
 )
 from lifetracking.utils import _lc_export_prepare_dir
 
-# REFACTOR_1 : Rename the file to segments.py
-
 
 class Segments:
     def __init__(self, content: list[Seg]) -> None:

@@ -7,7 +7,7 @@ import warnings
 
 import ffmpeg
 
-from lifetracking.datatypes.Segment import Seg, Segments
+from lifetracking.datatypes.Segments import Seg, Segments
 from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_segments import Node_segments
 from lifetracking.graph.Time_interval import Time_interval

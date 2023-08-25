@@ -9,7 +9,7 @@ import pandas as pd
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from lifetracking.datatypes.Segment import Segments
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node_pandas import Node_pandas_generate
 from lifetracking.graph.Node_segments import (
     Node_segmentize_pandas,

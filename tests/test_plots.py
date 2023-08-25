@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 from lifetracking.datatypes.Seg import Seg
-from lifetracking.datatypes.Segment import Segments
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node_pandas import Node_pandas_generate
 from lifetracking.graph.Time_interval import Time_interval
 

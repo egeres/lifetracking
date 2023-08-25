@@ -13,7 +13,7 @@ from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 
 from lifetracking.datatypes.Seg import Seg
-from lifetracking.datatypes.Segment import Segments
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
 from lifetracking.graph.Node_cache import Node_cache
 from lifetracking.graph.Node_pandas import Node_pandas
