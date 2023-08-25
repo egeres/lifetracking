@@ -14,24 +14,18 @@ from lifetracking.graph.Time_interval import Time_interval
 
 class Parse_activitywatch(Node_pandas, Node_0child):
     def __init__(
-        self, bucket_name_or_id: str, url_base: str = "http://localhost:5600"
+        self, bucket_name: str, url_base: str = "http://localhost:5600"
     ) -> None:
         super().__init__()
-        assert isinstance(bucket_name_or_id, str)
+        assert isinstance(bucket_name, str)
         assert isinstance(url_base, str)
         assert url_base.startswith("http://")
         assert url_base.split(":")[-1].isnumeric()
+
         self.url_base: str = url_base
-        self.bucket_id = self._get_latest_bucket_that_starts_with_name(
-            bucket_name_or_id
-        )
+        self.bucket_id = self._get_latest_bucket_that_starts_with_name(bucket_name)
         if isinstance(self.bucket_id, dict):
             self.bucket_id = self.bucket_id["id"]
-
-        # if id is None:
-        #     self.bucket_id
-        # id = self._get_latest_bucket_that_starts_with_name(bucket_name_or_id)["id"]
-        # self.bucket_name: str = bucket_name_or_id
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -45,6 +39,7 @@ class Parse_activitywatch(Node_pandas, Node_0child):
         if self.bucket_id is None:
             return False
 
+        # Try to connect
         try:
             r = requests.get(f"{self.url_base}/api/0/buckets")
             r.raise_for_status()
@@ -82,10 +77,6 @@ class Parse_activitywatch(Node_pandas, Node_0child):
     def _get_buckets(url_base: str) -> dict | None:
         """Extracts a particular type of bucket"""
 
-        # assert isinstance(url_base, str)
-        # assert url_base.startswith("http://")
-        # assert url_base.split(":")[-1].isnumeric()
-
         try:
             out = requests.get(f"{url_base}/api/0/buckets")
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -98,11 +89,9 @@ class Parse_activitywatch(Node_pandas, Node_0child):
     def _get_data(self, bucket: dict, t: Time_interval | None = None) -> list:
         params = {}
         if t is None:
-            params["start"] = bucket["created"]
-            params["end"] = bucket["last_updated"]
+            params.update({"start": bucket["created"], "end": bucket["last_updated"]})
         else:
-            params["start"] = t.start.isoformat()
-            params["end"] = t.end.isoformat()
+            params.update({"start": t.start.isoformat(), "end": t.end.isoformat()})
 
         out = requests.get(
             f"{self.url_base}/api/0/buckets/{bucket['id']}/events",

@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import os
+import warnings
 
 from pydub.utils import mediainfo
 from rich import print
@@ -18,6 +19,8 @@ class Reader_audios(Node_segments, Node_0child):
     def __init__(self, path_dir: str) -> None:
         super().__init__()
         self.path_dir = path_dir
+        if not os.path.isdir(path_dir):
+            warnings.warn(f"{path_dir} is not a directory", stacklevel=2)
 
     def _available(self) -> bool:
         return (
@@ -58,7 +61,10 @@ class Reader_audios(Node_segments, Node_0child):
             to_return.append(filename)
         return to_return
 
-    def _operation(self, t: Time_interval | None = None) -> Segments:
+    def _operation(self, t: Time_interval | None = None) -> Segments | None:
+        if not os.path.exists(self.path_dir):
+            return None
+
         to_return = []
         for filename in self._get_plausible_files(self.path_dir):
             # Date filtering

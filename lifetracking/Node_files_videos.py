@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import os
+import warnings
 
 import ffmpeg
 
@@ -23,7 +24,8 @@ class Reader_videos(Node_segments, Node_0child):
     ) -> None:
         super().__init__()
         if not os.path.isdir(path_dir):
-            raise ValueError(f"{path_dir} is not a directory")
+            # raise ValueError(f"{path_dir} is not a directory")
+            warnings.warn(f"{path_dir} is not a directory", stacklevel=2)
         self.path_dir = path_dir
 
     def _hashstr(self) -> str:
@@ -72,7 +74,10 @@ class Reader_videos(Node_segments, Node_0child):
             to_return.append(filename)
         return to_return
 
-    def _operation(self, t: Time_interval | None = None) -> Segments:
+    def _operation(self, t: Time_interval | None = None) -> Segments | None:
+        if not os.path.isdir(self.path_dir):
+            return None
+
         to_return = []
         for filename in self._get_plausible_files(self.path_dir):
             # Date filtering
