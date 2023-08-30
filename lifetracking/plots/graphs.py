@@ -41,7 +41,7 @@ def graph_udate_layout(
     elif t is not None:
         days_span = (t.end - t.start).days
 
-    if isinstance(t, Time_interval):  # and False:
+    if isinstance(t, Time_interval) and False:
         fig.update_xaxes(range=[t.start, t.end])
 
         # Extends the ends of the lines to the edges of the graph
@@ -139,12 +139,12 @@ def graph_extend_tails(fig: go.Figure, t: Time_interval):
         if i.x[0] > new_t.start:  # type: ignore
             i.x = np.concatenate([np.array([i.x[0] - timedelta(days=1)]), i.x])
             i.y = np.concatenate([np.array([0]), i.y])
-            i.x = np.concatenate([np.array([t.start]), i.x])
+            i.x = np.concatenate([np.array([new_t.start]), i.x])
             i.y = np.concatenate([np.array([0]), i.y])
         if i.x[-1] < new_t.end.replace(hour=0, minute=0, second=0, microsecond=0):
             i.x = np.concatenate([i.x, np.array([i.x[-1] + timedelta(days=1)])])
             i.y = np.concatenate([i.y, np.array([0])])
-            i.x = np.concatenate([i.x, np.array([t.end])])
+            i.x = np.concatenate([i.x, np.array([new_t.end])])
             i.y = np.concatenate([i.y, np.array([0])])
 
 

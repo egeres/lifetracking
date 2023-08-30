@@ -113,7 +113,7 @@ class Reader_geojson(Node_0child, Node_geopandas):
             > 0
         )
 
-    def _operation(self, t: Time_interval | None = None) -> gpd.GeoDataFrame:
+    def _operation(self, t: Time_interval | None = None) -> gpd.GeoDataFrame | None:
         assert t is None or isinstance(t, Time_interval)
         to_return: list = []
         for filename in os.listdir(self.path_dir):
@@ -137,6 +137,8 @@ class Reader_geojson(Node_0child, Node_geopandas):
                     )
                 except DriverError:
                     print(f"[red]Error reading {filename}")
+        if len(to_return) == 0:
+            return None
         df = pd.concat(to_return, axis=0)
         if self.column_date_index is not None:
             # Parse to datetime
