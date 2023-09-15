@@ -83,11 +83,6 @@ def test_plot_pd_columns_0():
     )
     a = Node_pandas_generate(df, datetime_column="datetime")
     a.name = "🤔"
-    annotations = [
-        {"date": "2001-05-10", "title": "A"},
-        {"date": "2001-05-15", "title": "B"},
-        {"date": "2001-05-20", "title": "C"},
-    ]
 
     # Plot 0
     t = Time_interval.last_n_days(2)
@@ -103,6 +98,11 @@ def test_plot_pd_columns_0():
 
     # Plot 2
     t = Time_interval.last_n_days(2)
+    annotations = [
+        {"date": "2001-05-10", "title": "A"},
+        {"date": "2001-05-15", "title": "B"},
+        {"date": "2001-05-20", "title": "C"},
+    ]
     fig = a.plot_columns(t, "thing", annotations=annotations)
 
 

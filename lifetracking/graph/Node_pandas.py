@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import datetime
 import hashlib
 import json
@@ -26,7 +25,12 @@ from lifetracking.plots.graphs import (
     graph_annotate_today,
     graph_udate_layout,
 )
-from lifetracking.utils import export_pddataframe_to_lc_single, hash_method
+from lifetracking.utils import (
+    export_pddataframe_to_lc_single,
+    hash_method,
+    operator_resample_stringified,
+    plot_empty,
+)
 
 
 # Actually, the value of fn should be:
@@ -101,7 +105,7 @@ class Node_pandas(Node[pd.DataFrame]):
         t: Time_interval | None = None,
         smooth: int = 1,
         annotations: list | None = None,
-        title: str | None = None,  # TODO_1: Make title work!
+        title: str | None = None,
         stackgroup: str | None = None,
     ) -> go.Figure | None:
         assert t is None or isinstance(t, Time_interval)
@@ -184,7 +188,10 @@ class Node_pandas(Node[pd.DataFrame]):
         graph_udate_layout(fig, t)
         fig.update_yaxes(title_text="")
         fig.update_xaxes(title_text="")
-        graph_annotate_title(fig, getattr(self, "name", None))
+        if title is not None:
+            graph_annotate_title(fig, title)
+        else:
+            graph_annotate_title(fig, getattr(self, "name", None))
         if t is not None:
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
@@ -197,7 +204,9 @@ class Node_pandas(Node[pd.DataFrame]):
         resample: str | None = None,
         smooth: int = 1,  # TODO_2: Make smooth work!
         annotations: list | None = None,
-        # title: str | None = None,  # TODO_1: Make title work!
+        title: str | None = None,
+        right_magin_on_plot: bool = False,
+        resample_mode: str = "avg",
     ) -> go.Figure | None:
         # Start
         assert t is None or isinstance(t, Time_interval)
@@ -211,24 +220,23 @@ class Node_pandas(Node[pd.DataFrame]):
             return None
         assert isinstance(df, pd.DataFrame)
         assert df.empty or isinstance(df.index, pd.DatetimeIndex)
+        assert isinstance(smooth, int) and smooth >= 0
+        assert isinstance(resample, str) or resample is None
+        assert isinstance(resample_mode, str)
 
-        # Return empty figure
+        title = (self.name or "???") + " : " + "+".join(columns)
+        if title is None:
+            title = title
+
+        # Return an empty figure
         if df.empty:
-            fig = go.Figure()
-            graph_udate_layout(fig, t)
-            graph_annotate_title(fig, (self.name or "???") + " : " + "+".join(columns))
-            fig_min, fig_max = 0, 1
-            if t is not None:
-                graph_annotate_today(fig, t, (fig_min, fig_max))
-                graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
-            return fig
+            return plot_empty(t, title=title, annotations=annotations)
 
         # Resample
         if resample is not None:
             df = df[columns]
-            df = df.resample(resample).mean()
-            # Remove NaNs?
-            df = df.dropna()
+            df = operator_resample_stringified(df.resample(resample), resample_mode)
+            df = df.dropna()  # TODO_2: Why Remove NaNs? Remove this and run tests
 
         # fig_min, fig_max = min(0, float(df[columns].min())), float(df[columns].max())
         fig_min, fig_max = df[columns[0]].min(), df[columns[0]].max()
@@ -241,14 +249,12 @@ class Node_pandas(Node[pd.DataFrame]):
         # Plot
         fig = px.line(df[columns])
         graph_udate_layout(fig, t)
-        graph_annotate_title(fig, (self.name or "???") + " : " + "+".join(columns))
-
+        graph_annotate_title(fig, title)
         if t is not None:
-            # if isinstance(getattr(self, "name", None), str):
-            #     graph_annotate_title(fig, self.name)
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
-
+        if right_magin_on_plot:
+            fig.update_layout(margin=dict(r=250))
         return fig
 
     def __add__(self, other: Node_pandas) -> Node_pandas:

@@ -234,12 +234,12 @@ class Node_segments_add(Node_segments):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> Segments | None:
         n_out = [self._get_value_from_context_or_run(n, t, context) for n in self.value]
-        
+
         # How should the system react when there are None values to subtract?
         n_out = [x for x in n_out if x is not None]
         if len(n_out) == 0:
             return None
-        
+
         return self._operation(
             n_out,
             t=t,

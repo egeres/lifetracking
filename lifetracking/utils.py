@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime
 import dis
 import hashlib
 import inspect
@@ -12,9 +11,15 @@ from typing import Any, Callable
 
 import pandas as pd
 import plotly.graph_objects as go
-from dateutil.parser import parse
+from pandas.core.resample import DatetimeIndexResampler
 
 from lifetracking.graph.Time_interval import Time_interval
+from lifetracking.plots.graphs import (
+    graph_annotate_annotations,
+    graph_annotate_title,
+    graph_annotate_today,
+    graph_udate_layout,
+)
 
 
 def _lc_export_prepare_dir(path_filename: str) -> None:
@@ -187,3 +192,40 @@ def cache_singleargument(dirname: str) -> Callable:
         return wrapper
 
     return decorator
+
+
+def plot_empty(
+    t: Time_interval | None = None,
+    title: str | None = None,
+    annotations: list | None = None,
+) -> go.Figure:
+    fig = go.Figure()
+
+    graph_udate_layout(fig, t)
+    graph_annotate_title(fig, title)
+    fig_min, fig_max = 0, 1
+    if t is not None:
+        graph_annotate_today(fig, t, (fig_min, fig_max))
+        graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
+    return fig
+
+
+def operator_resample_stringified(
+    df: DatetimeIndexResampler, operator: str
+) -> pd.DataFrame:
+    """Takes a "max", "sum", etc... and applies it"""
+
+    assert isinstance(df, DatetimeIndexResampler)
+    assert isinstance(operator, str)
+    assert operator in ["avg", "sum", "max", "min"]
+
+    if operator == "avg":
+        return df.mean()
+    elif operator == "sum":
+        return df.sum()
+    elif operator == "max":
+        return df.max()
+    elif operator == "min":
+        return df.min()
+    else:
+        raise ValueError("mode must be one of avg, sum, max, min (for now!!)")
