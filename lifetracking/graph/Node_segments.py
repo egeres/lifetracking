@@ -75,6 +75,9 @@ class Node_segments(Node[Segments]):
         assert isinstance(tooltip_shows_length, bool)
 
         o = self.run(t)
+        if o is None:
+            print("🔺")
+            return None
         assert o is not None
         o.export_to_longcalendar(
             path_filename=path_filename,
@@ -231,6 +234,12 @@ class Node_segments_add(Node_segments):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> Segments | None:
         n_out = [self._get_value_from_context_or_run(n, t, context) for n in self.value]
+        
+        # How should the system react when there are None values to subtract?
+        n_out = [x for x in n_out if x is not None]
+        if len(n_out) == 0:
+            return None
+        
         return self._operation(
             n_out,
             t=t,
@@ -288,6 +297,10 @@ class Node_segments_sub(Node_segments):
         value_out = [
             self._get_value_from_context_or_run(n, t, context) for n in self.value
         ]
+        # How should the system react when there are None values to subtract?
+        value_out = [x for x in value_out if x is not None]
+        if len(value_out) == 0:
+            return None
         return self._operation(n0_out, value_out, t=t)
 
 
