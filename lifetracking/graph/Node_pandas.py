@@ -207,6 +207,7 @@ class Node_pandas(Node[pd.DataFrame]):
         title: str | None = None,
         right_magin_on_plot: bool = False,
         resample_mode: str = "avg",
+        # TODO_2: Add y range for weight plot in fitness
     ) -> go.Figure | None:
         # Start
         assert t is None or isinstance(t, Time_interval)

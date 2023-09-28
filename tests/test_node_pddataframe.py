@@ -146,7 +146,7 @@ def test_node_pddataframe_readdata_1(file_format: str):
         assert len(o) == 4
 
 
-# TODO: Test the above with `column_date_index`
+# TEST: Test the above with `column_date_index`
 
 
 def test_node_pddataframe_add_0():

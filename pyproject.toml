@@ -44,3 +44,21 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.isort]
 profile = "black"
+
+[tool.pyright]
+exclude = [
+    ".github/**",
+    ".hypothesis/**",
+    ".ipynb_checkpoints/**",
+    ".mypy_cache/**",
+    ".pytest_cache/**",
+    ".ruff_cache/**",
+    ".tox/**",
+    ".venv/**",
+    ".vscode/**",
+    "docs/**",
+    "sketches/**",
+    "tmp/**",
+    "tools/**",
+    "tools/**",
+]
