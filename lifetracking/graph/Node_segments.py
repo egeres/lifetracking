@@ -159,10 +159,10 @@ class Node_segments_merge(Node_segments_operation):
     def __init__(
         self,
         n0: Node_segments,
-        time_to_mergue_s: float,
+        time_to_mergue: datetime.timedelta,
         custom_rule: None | Callable[[Seg, Seg], bool] = None,
     ) -> None:
-        assert isinstance(time_to_mergue_s, (float, int))
+        assert isinstance(time_to_mergue, datetime.timedelta)
         assert isinstance(n0, Node_segments)
         assert custom_rule is None or callable(
             custom_rule
@@ -170,7 +170,7 @@ class Node_segments_merge(Node_segments_operation):
 
         super().__init__(
             n0,
-            lambda x: Segments.merge(x, time_to_mergue_s, custom_rule),  # type: ignore
+            lambda x: Segments.merge(x, time_to_mergue, custom_rule),  # type: ignore
         )
 
 

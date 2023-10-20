@@ -273,17 +273,18 @@ class Segments:
         with open(path_filename, "w") as f:
             json.dump(to_export, f, indent=4, default=str)
 
-    # TODO: time_to_mergue_s also accepts a datetime.timedelta
-    # TODO: Or... is just a timedeleta :[
     @staticmethod
     def merge(
         segs: Segments,
-        time_to_mergue_s: float,
+        time_to_mergue: datetime.timedelta,
         custom_rule: None | Callable[[Seg, Seg], bool] = None,
     ) -> Segments:
         """Merges segments that are close to each other in time. So if we set
         `time_to_mergue_s` to be 1 minute, and we have two segments that are 30
         seconds apart, they will be merged."""
+
+        assert isinstance(segs, Segments)
+        assert isinstance(time_to_mergue, datetime.timedelta)
 
         if len(segs) < 2:
             return segs
@@ -293,9 +294,7 @@ class Segments:
         if custom_rule is None:
             to_return.append(segs.content[0])
             for seg in segs.content[1:]:
-                if seg.start - to_return[-1].end < datetime.timedelta(
-                    seconds=time_to_mergue_s
-                ):
+                if seg.start - to_return[-1].end < time_to_mergue:
                     to_return[-1].end = seg.end
                     # TODO: Maybe adds a counter with "operation_merge_count"?
                 else:
@@ -303,9 +302,9 @@ class Segments:
         else:
             to_return.append(segs.content[0])
             for seg in segs.content[1:]:
-                if seg.start - to_return[-1].end < datetime.timedelta(
-                    seconds=time_to_mergue_s
-                ) and custom_rule(to_return[-1], seg):
+                if seg.start - to_return[-1].end < time_to_mergue and custom_rule(
+                    to_return[-1], seg
+                ):
                     to_return[-1].end = max(seg.end, to_return[-1].end)
                     # TODO: Maybe adds a counter with "operation_merge_count"?
                 else:
