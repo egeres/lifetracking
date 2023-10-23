@@ -6,6 +6,7 @@ import json
 import os
 import warnings
 from abc import abstractmethod
+from pathlib import Path
 from typing import Any, Callable
 
 import numpy as np
@@ -41,8 +42,7 @@ class Node_pandas(Node[pd.DataFrame]):
     def __init__(self) -> None:
         super().__init__()
 
-    # TODO_2: Confusing name with _operation, rename
-    def operation(
+    def apply(
         self,
         fn: Callable[[pd.DataFrame], pd.DataFrame],
     ) -> Node_pandas:
@@ -68,7 +68,7 @@ class Node_pandas(Node[pd.DataFrame]):
         )
 
     def remove_nans(self) -> Node_pandas:
-        return self.operation(lambda df: df.dropna())
+        return self.apply(lambda df: df.dropna())
 
     def _plot_countbyday_generatedata(
         self,
@@ -202,7 +202,7 @@ class Node_pandas(Node[pd.DataFrame]):
         t: Time_interval | None,
         columns: str | list[str],
         resample: str | None = None,
-        smooth: int = 1,  # TODO_2: Make smooth work!
+        smooth: int = 1,
         annotations: list | None = None,
         title: str | None = None,
         right_magin_on_plot: bool = False,
@@ -727,26 +727,62 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
 
 
 class Reader_filecreation(Node_0child, Node_pandas):
-    # DOCS: This one should be easy :)
+    """Reader_filecreation class is responsible for generating a DataFrame that contains
+    information about the filenames and their date of creation present in a specified
+    directory.
+
+    When executed, the node retrieves a pd.DataFrame with the following columns:
+    - **filename**: The name of the file.
+    - **date**: The date of creation of the file.
+
+    ## Parameters
+    - **path_dir (str)**: Path to the directory that contains the files.
+    - **fn (Callable)**: A function that takes a filename as its argument and returns a
+      datetime-like object (either a `pd.Timestamp` or any datetime object).
+    - **valid_extensions (list[str] | str | None, optional)**: List of valid file
+      extensions to consider. If `None`, all files are considered valid.
+
+    ## Example
+    ```python
+    pipeline_photos_phone = Reader_filecreation(
+        "C:/Backup/Camera",
+        lambda x: pd.to_datetime(
+            x.split(".")[0], format="%Y%m%d_%H%M%S", errors="coerce"
+        ),
+        valid_extensions=[".jpg", ".jpeg", ".png", ".JPEG", ".JPG", ".PNG"],
+    )
+    ```
+
+    ## Raises
+    - **AssertionError**:
+        - If `fn` is not callable.
+        - If any item in `valid_extensions` is not a string starting with a dot.
+        - If `valid_extensions` is not a list after processing.
+    """
 
     def __init__(
         self,
-        path_dir: str,
-        fn: Callable[[pd.Series], pd.Series],
+        path_dir: str | Path,
+        fn: Callable[[Path], pd.Timestamp | Any],
         valid_extensions: list[str] | str | None = None,
     ):
         assert callable(fn)
 
-        self.path_dir = path_dir
+        if isinstance(path_dir, str):
+            path_dir = Path(path_dir)
+        self.path_dir: Path = path_dir
         self.fn = fn
         self.valid_extensions: list[str] = []
         if isinstance(valid_extensions, str):
             self.valid_extensions = [valid_extensions]
+        assert all(
+            [isinstance(x, str) and x.startswith(".") for x in self.valid_extensions]
+        )
         assert isinstance(self.valid_extensions, list)
 
     def _available(self) -> bool:
         # TODO_2: Dir is not empty
-        return os.path.exists(self.path_dir)
+        return self.path_dir.exists() and self.path_dir.is_dir()
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -762,7 +798,8 @@ class Reader_filecreation(Node_0child, Node_pandas):
         assert t is None or isinstance(t, Time_interval)
 
         # df
-        files = os.listdir(self.path_dir)
+        # files = os.listdir(self.path_dir)
+        files = self.path_dir.glob("*")
         df = pd.DataFrame({"filename": files})
 
         # Remove the ones that do not end with the valid extensions
@@ -789,20 +826,21 @@ class Reader_telegramchat(Node_0child, Node_pandas):
     def __init__(
         self,
         id_chat: int,
-        path_to_data: str | None = None,
+        path_to_data: str | Path | None = None,
     ):
         assert isinstance(id_chat, int)
 
-        self.path_to_data = path_to_data
-        if self.path_to_data is None:
-            self.path_to_data = rf"C:\Users\{os.getlogin()}\Downloads\Telegram Desktop"
-        # TODO_2: Support linux/mac path
+        if path_to_data is None:
+            path_to_data = Path.home() / "Downloads" / "Telegram Desktop"
+        if isinstance(path_to_data, str):
+            path_to_data = Path(path_to_data)
+        self.path_to_data: Path = path_to_data
 
         self.id_chat = id_chat
 
     def _available(self) -> bool:
         # TODO_2: Available looks if there is at least one file the with id
-        return os.path.exists(self.path_to_data)
+        return self.path_to_data.exists() and self.path_to_data.is_dir()
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -814,6 +852,7 @@ class Reader_telegramchat(Node_0child, Node_pandas):
         ).hexdigest()
 
     # REFACTOR: All this stuff overlaps with: Social_telegram
+    # REFACTOR: All of these use Path instead of str
     def _get_chat_exports_dirs(self, path_dir_root: str) -> list[str]:
         assert os.path.exists(path_dir_root)
         to_return = []
@@ -834,7 +873,7 @@ class Reader_telegramchat(Node_0child, Node_pandas):
     def get_most_recent_personal_chats(self) -> str | None:
         global_filename = None
         global_last_update = datetime.datetime.min
-        for filename in self._get_datajsons(self.path_to_data):
+        for filename in self._get_datajsons(str(self.path_to_data)):
             with open(filename, encoding="utf-8") as f:
                 try:
                     data = json.load(f)

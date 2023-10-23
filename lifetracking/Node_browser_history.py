@@ -64,7 +64,7 @@ class Parse_browserhistory(Node_pandas, Node_0child):
             if len(histories) == 0:
                 continue
             df = pd.DataFrame(histories, columns=["date", "url"])
-            df["date"] = df["date"].dt.tz_localize(None)  # TODO: Pls, fix this 🙄
+            df["date"] = df["date"].dt.tz_localize(None)  # TODO_3: (TZ) Pls, fix this 🙄
             if t is not None:
                 df = df[df["date"] >= t.start]
                 df = df[df["date"] <= t.end]

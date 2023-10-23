@@ -7,6 +7,7 @@ import json
 import os
 import pickle
 import tempfile
+from datetime import timedelta
 from typing import Any, Callable
 
 import pandas as pd
@@ -91,7 +92,7 @@ def _lc_export_configchanges(
 def export_pddataframe_to_lc_single(
     df: pd.DataFrame,
     path_filename: str,
-    # hour_offset: float = 0.0, # TODO_1
+    time_offset: timedelta | None = None,
     color: str | Callable[[pd.Series], str] | None = None,
     opacity: float | Callable[[pd.Series], float] = 1.0,
 ):
@@ -103,6 +104,10 @@ def export_pddataframe_to_lc_single(
     if not path_filename.endswith(".json"):
         raise ValueError("path_filename must end with .json")
     assert os.path.split(path_filename)[-1] != "config.json"
+    if time_offset is None:
+        time_offset = timedelta()
+    assert isinstance(time_offset, timedelta)
+    assert isinstance(df, pd.DataFrame)
 
     # Assertion of color, opacity and tooltip
     assert color is None or isinstance(color, str) or callable(color)
@@ -117,9 +122,6 @@ def export_pddataframe_to_lc_single(
         or isinstance(opacity, float)
         or len(inspect.signature(opacity).parameters) == 1
     )
-
-    # Other assertions
-    assert isinstance(df, pd.DataFrame)
 
     # Dir setup
     _lc_export_prepare_dir(path_filename)
@@ -137,7 +139,7 @@ def export_pddataframe_to_lc_single(
             base_dict["opacity"] = opacity(i)
 
         if isinstance(n, pd.Timestamp):
-            to_export.append({"start": n} | base_dict)
+            to_export.append({"start": n + time_offset} | base_dict)
         else:
             raise ValueError
     with open(path_filename, "w") as f:

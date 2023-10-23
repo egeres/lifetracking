@@ -101,7 +101,7 @@ def graph_annotate_today(
 
     # Today
     today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    # TODO: At some point, decide upon tzinfo's
+    # TODO_3 (TZ) : At some point, decide upon tzinfo's
     if t.start.tzinfo is not None:
         today = today.astimezone(t.start.tzinfo)
 

@@ -41,14 +41,14 @@ class Node_segments(Node[Segments]):
 
     def merge(
         self,
-        time_to_mergue_s: float,
+        time_to_mergue: datetime.timedelta,
         custom_rule: None | Callable[[Seg, Seg], bool] = None,
     ):
         """Merges Segs that are close to each other in time. So if we set
         `time_to_mergue_s` to be 1 minute, and we have two segments that are 30
         seconds apart, they will be merged."""
 
-        return Node_segments_merge(self, time_to_mergue_s, custom_rule)
+        return Node_segments_merge(self, time_to_mergue, custom_rule)
 
     def __add__(self, other: Node_segments) -> Node_segments:
         return Node_segments_add([self, other])

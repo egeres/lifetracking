@@ -206,7 +206,7 @@ def test_node_pddataframe_filecreation_0():
         a = Reader_filecreation(
             tmpdirname,
             lambda x: pd.to_datetime(
-                x.split(".")[0],
+                x.name.split(".")[0],
                 format="%Y-%m-%d",
             ),
         )
@@ -220,7 +220,7 @@ def test_node_pddataframe_filecreation_1():
     a = Reader_filecreation(
         "/this_dir_does_not_exist",
         lambda x: pd.to_datetime(
-            x.split(".")[0],
+            x.name.split(".")[0],
             format="%Y-%m-%d",
         ),
     )

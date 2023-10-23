@@ -128,7 +128,7 @@ class Segments:
         return max(seg.end for seg in self.content)
 
     def __add__(self, other: Segments) -> Segments:
-        # FIX: Pls, the thing with the timezone discrepancies!! 🥺
+        # FIX: (TZ) Pls, the thing with the timezone discrepancies!! 🥺
         if len(self.content) > 0 and len(other.content) > 0:
             if (
                 other.content[0].start.tzinfo is None
@@ -338,7 +338,7 @@ class Segments:
         else:
             a, b = t.start, t.end
 
-        # TODO_4: Do something about tz infos pls 🥺
+        # TODO_3: (TZ) Do something about tz infos pls 🥺
         # if len(self.content) > 0:
         #     if a.tzinfo is None:
         #         a = a.replace(tzinfo=self.content[0].start.tzinfo)
