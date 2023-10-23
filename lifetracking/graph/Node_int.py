@@ -28,6 +28,7 @@ class Node_int(Node[int]):
 class Node_int_generate(Node_0child, Node_int):
     def __init__(self, value: int, artificial_delay: float = 0) -> None:
         super().__init__()
+        assert isinstance(value, int)
         self.value = value
         self.artificial_delay = artificial_delay
 

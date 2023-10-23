@@ -736,7 +736,7 @@ class Reader_filecreation(Node_0child, Node_pandas):
     - **date**: The date of creation of the file.
 
     ## Parameters
-    - **path_dir (str)**: Path to the directory that contains the files.
+    - **path_dir (str | Path)**: Path to the directory that contains the files.
     - **fn (Callable)**: A function that takes a filename as its argument and returns a
       datetime-like object (either a `pd.Timestamp` or any datetime object).
     - **valid_extensions (list[str] | str | None, optional)**: List of valid file

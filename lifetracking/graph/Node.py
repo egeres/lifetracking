@@ -282,6 +282,21 @@ class Node_1child(Node[T]):
         )
 
 
+class Node_generate_None(Node_0child[None]):
+    """Generates None when run
+
+    It's mostly intended to be used for testing purposes"""
+
+    def _hashstr(self) -> str:
+        return hashlib.md5((super()._hashstr() + str(None)).encode()).hexdigest()
+
+    def _available(self) -> bool:
+        return True
+
+    def _operation(self, t: Time_interval | None = None) -> None:
+        return None
+
+
 def run_multiple(
     nodes_to_run: list[Node], t=None, prefect: bool = False
 ) -> Iterable[Any]:
