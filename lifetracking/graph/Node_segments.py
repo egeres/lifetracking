@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+import json
 from functools import reduce
+from pathlib import Path
 from typing import Any, Callable
 
 import numpy as np
@@ -25,7 +27,7 @@ class Node_segments(Node[Segments]):
     def __init__(self) -> None:
         super().__init__()
 
-    def operation(
+    def apply(
         self,
         fn: Callable[[Segments], Segments],
     ) -> Node_segments:
@@ -650,4 +652,60 @@ class Node_segmentize_pandas_startend(Node_1child, Node_segments):
                     None if self.segment_metadata is None else self.segment_metadata(i),
                 )
             )
+        return Segments(to_return)
+
+
+class Reader_segmentsinjson(Node_0child, Node_segments):
+    """Gets a folder with json files and creates a Segments object with them. The
+    structure must be as follows:
+
+    [
+        {"start":2023-01-01T00:00:00, "end":2023-01-01T00:00:00, "value":{}},
+        ...
+    ]
+    """
+
+    def __init__(
+        self,
+        path_dir: str | Path,
+    ):
+        if isinstance(path_dir, str):
+            path_dir = Path(path_dir)
+        self.path_dir: Path = path_dir
+
+    def _available(self) -> bool:
+        return (
+            self.path_dir.exists()
+            and self.path_dir.is_dir()
+            and len(list(self.path_dir.glob("*"))) > 0
+        )
+
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (super()._hashstr() + str(self.path_dir)).encode()
+        ).hexdigest()
+
+    def _operation(self, t: Time_interval | None = None) -> Segments:
+        assert t is None or isinstance(t, Time_interval)
+
+        files = self.path_dir.glob("*")
+
+        if t is not None:
+            files = [
+                f for f in files if datetime.datetime.strptime(f.stem, "%Y-%m-%d") in t
+            ]
+
+        to_return = []
+        for f in files:
+            with open(f) as f:
+                data = json.load(f)
+            for i in data:
+                to_return.append(
+                    Seg(
+                        datetime.datetime.strptime(i["start"], "%Y-%m-%d %H:%M:%S"),
+                        datetime.datetime.strptime(i["end"], "%Y-%m-%d %H:%M:%S"),
+                        i.get("value"),
+                    )
+                )
+
         return Segments(to_return)

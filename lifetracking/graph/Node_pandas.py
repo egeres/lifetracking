@@ -781,8 +781,11 @@ class Reader_filecreation(Node_0child, Node_pandas):
         assert isinstance(self.valid_extensions, list)
 
     def _available(self) -> bool:
-        # TODO_2: Dir is not empty
-        return self.path_dir.exists() and self.path_dir.is_dir()
+        return (
+            self.path_dir.exists()
+            and self.path_dir.is_dir()
+            and len(list(self.path_dir.glob("*"))) > 0
+        )
 
     def _hashstr(self) -> str:
         return hashlib.md5(

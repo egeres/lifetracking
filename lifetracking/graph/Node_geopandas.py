@@ -23,7 +23,7 @@ class Node_geopandas(Node[gpd.GeoDataFrame]):
     def __init__(self) -> None:
         super().__init__()
 
-    def operation(
+    def apply(
         self,
         f: Callable[
             [gpd.GeoDataFrame | PrefectFuture[gpd.GeoDataFrame, Sync]], gpd.GeoDataFrame
