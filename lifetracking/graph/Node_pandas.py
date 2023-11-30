@@ -6,6 +6,7 @@ import json
 import os
 import warnings
 from abc import abstractmethod
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Callable
 
@@ -57,12 +58,14 @@ class Node_pandas(Node[pd.DataFrame]):
         path_filename: str,
         color: str | Callable[[pd.Series], str] | None = None,
         opacity: float | Callable[[pd.Series], float] = 1.0,
+        hour_offset: float = 0,
     ):
         o = self.run(t)
         assert o is not None
         export_pddataframe_to_lc_single(
             o,
             path_filename=path_filename,
+            time_offset=timedelta(hours=hour_offset),
             color=color,
             opacity=opacity,
         )
@@ -673,6 +676,20 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
                 + hash_method(self.criteria_to_select_file)
             ).encode()
         ).hexdigest()
+
+    def _available(self) -> bool:
+        return (
+            os.path.isdir(self.path_dir)
+            and os.path.exists(self.path_dir)
+            and len(
+                [
+                    i
+                    for i in os.listdir(self.path_dir)
+                    # if "i is date" # TODO_2: Add this
+                ]
+            )
+            > 0
+        )
 
     def _operation_generate_df(self, list_of_df) -> pd.DataFrame:
         # If to_return is empty, return an empty dataframe
