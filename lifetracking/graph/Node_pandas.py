@@ -4,7 +4,9 @@ import datetime
 import hashlib
 import json
 import os
+import tempfile
 import warnings
+import zipfile
 from abc import abstractmethod
 from datetime import timedelta
 from pathlib import Path
@@ -922,3 +924,83 @@ class Reader_telegramchat(Node_0child, Node_pandas):
         df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%dT%H:%M:%S")
         df = df.set_index("date")
         return df
+
+
+class Reader_openAI_history(Node_0child, Node_pandas):
+    """Receives an export of the openAI data and returns a dataframe with the author of
+    the messages. Output columns are:
+
+    - **id**: The id of the message.
+    - **status**: The status of the message.
+    - **content**: The content of the message.
+    - **author**: The author of the message.
+    """
+
+    def __init__(
+        self,
+        path_to_data: str | Path | None = None,
+    ):
+        if isinstance(path_to_data, str):
+            path_to_data = Path(path_to_data)
+        assert isinstance(path_to_data, Path)
+        assert path_to_data.name.endswith(".zip")
+        assert path_to_data.exists(), f"{path_to_data} does not exist"
+        self.path_to_data: Path = path_to_data
+
+        # self.path_dir_tmp = Path.home() / "tmp"
+        self.path_dir_tmp = Path(tempfile.gettempdir())
+        self.path_dir_tmp.mkdir(exist_ok=True)
+        self.path_dir_tmp = self.path_dir_tmp / (path_to_data.name[:-4])
+        if not self.path_dir_tmp.exists():
+            # print(f"Extracting {path_to_data} to {self.path_dir_tmp}...")
+            with zipfile.ZipFile(path_to_data, "r") as zip_ref:
+                zip_ref.extractall(self.path_dir_tmp)
+
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (
+                # TODO_2: Add hash of fn
+                super()._hashstr()
+                + str(self.path_to_data)
+            ).encode()
+        ).hexdigest()
+
+    def _parse_openai_conversation(
+        self, dict_conversation: dict
+    ) -> list[dict[str, Any]]:
+        messages = []
+        for _, v in dict_conversation["mapping"].items():
+            if v["message"] is None:
+                continue
+            if v["message"]["create_time"] is None:
+                continue
+            messages.append(
+                {
+                    "id": v["message"]["id"],
+                    "status": v["message"]["status"],
+                    "content": v["message"]["content"],
+                    "author": v["message"]["author"]["role"],
+                    "date": datetime.datetime.utcfromtimestamp(
+                        v["message"]["create_time"]
+                    ),
+                }
+            )
+        return messages
+
+    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame | None:
+        assert (self.path_dir_tmp / "conversations.json").exists()
+
+        with open(self.path_dir_tmp / "conversations.json", encoding="utf-8") as f:
+            data = json.load(f, strict=False)
+
+            to_return = []
+            for i in data:
+                # TODO_3: Fix UTC stuff
+                time_creation = datetime.datetime.utcfromtimestamp(i["create_time"])
+                if t is not None and time_creation not in t:
+                    continue
+                to_return.extend(self._parse_openai_conversation(i))
+
+            df = pd.DataFrame(to_return)
+            df = df.set_index("date")
+            return df
