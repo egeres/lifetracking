@@ -36,11 +36,8 @@ class Node_segments(Node[Segments]):
     def assign_value_all(self, key: str, value: Any) -> Node_segments:
         """Assigns a value to all the Seg objects inside an instance of Segments"""
 
-        # TODO_3: Refactor to a pandas dataframe and make this a columns assignment
-
         def fn(segments: Segments) -> Segments:
-            for i in segments.content:
-                i[key] = value
+            segments[key] = value
             return segments
 
         return self.apply(fn)

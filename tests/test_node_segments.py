@@ -38,6 +38,22 @@ def test_node_segments_run(n: int):
     assert len(b[Time_interval.today()]) == 1
 
 
+def test_node_segments_assignvalues():
+    a = Node_segments_generate(
+        Segments(
+            [
+                Time_interval.today().to_seg(),
+                Time_interval.last_week().to_seg(),
+            ]
+        )
+    )
+    b = a.assign_value_all("some_key", "some_value")
+    o = b.run()
+    assert o is not None
+    for i in o:
+        assert i["some_key"] == "some_value"
+
+
 def test_node_segments_run_prefect():
     a = Node_segments_generate(
         Segments(

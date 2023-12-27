@@ -107,6 +107,8 @@ class Segments:
 
     def __setitem__(self, property_name: str, value: Any) -> Self:
         """Sets a property of all the segments"""
+        # TODO_3: Refactor to a pandas dataframe and make this a columns assignment
+
         for seg in self.content:
             seg[property_name] = value
         return self

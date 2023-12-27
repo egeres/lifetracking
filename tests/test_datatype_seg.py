@@ -21,6 +21,22 @@ from lifetracking.datatypes.Seg import Seg
 from lifetracking.graph.Time_interval import Time_interval
 
 
+def test_basic_creation():
+    a = Seg(
+        datetime.datetime(2021, 1, 1, 0, 0, 0, 0),
+        datetime.datetime(2021, 1, 1, 23, 59, 59, 999999),
+    )
+    a["value"] = "Oh, I can save stuff here?"
+    _ = a["value"]
+
+    with pytest.raises(AssertionError):
+        a = Seg(
+            datetime.datetime(2021, 1, 1, 0, 0, 0, 0),
+            datetime.datetime(2021, 1, 1, 23, 59, 59, 999999),
+        )
+        _ = a["value"]
+
+
 def test_seg_repr():
     a = Seg(
         datetime.datetime(2021, 1, 1, 0, 0, 0, 0),

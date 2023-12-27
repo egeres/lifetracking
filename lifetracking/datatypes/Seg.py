@@ -75,8 +75,7 @@ class Seg:
         )
 
     def __getitem__(self, key: Any) -> Any:
-        if self.value is None:
-            self.value = {}
+        assert self.value is not None, "Current Seg has no value"
         return self.value[key]
 
     def __setitem__(self, key: Any, value: Any) -> None:
