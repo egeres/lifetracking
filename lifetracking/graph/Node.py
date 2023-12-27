@@ -225,7 +225,7 @@ class Node(ABC, Generic[T]):
 
     def _children_are_available(self) -> bool:
         """Returns whether all the children are available"""
-        return all([x._available() for x in self.children])
+        return all(x._available() for x in self.children)
 
 
 class Node_0child(Node[T]):
@@ -236,6 +236,7 @@ class Node_0child(Node[T]):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> T | None:
         if not self._available():
+            print(f"Node {self} is not available...")
             return None
         return self._operation(t)
 
@@ -333,16 +334,14 @@ def run_multiple_parallel(
         context: dict[Node, Any] = {}
         return [node._run_sequential(t, context) for node in nodes_to_run]
 
-    else:
-        # A flow is created
-        @prefect_flow(task_runner=ConcurrentTaskRunner(), name="run_prefect_graph")
-        def flow():
-            context: dict[Node, Any] = {}
-            tasks = [node._make_prefect_graph(t, context) for node in nodes_to_run]
-            results = [task.result() for task in tasks]
-            return results
+    # A flow is created
+    @prefect_flow(task_runner=ConcurrentTaskRunner(), name="run_prefect_graph")
+    def flow():
+        context: dict[Node, Any] = {}
+        tasks = [node._make_prefect_graph(t, context) for node in nodes_to_run]
+        return [task.result() for task in tasks]
 
-        return flow()
+    return flow()
 
 
 # TODO_3: Add a run_sequential to simplify debugging pls, something like:

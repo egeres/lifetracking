@@ -34,7 +34,7 @@ class Parse_browserhistory(Node_pandas, Node_0child):
             Vivaldi(),
         ]
         self.browsers = [x for x in self.browsers if os.path.exists(x.history_dir)]
-        if not os.name == "nt":
+        if os.name != "nt":
             self.browsers.append(Safari())
 
     def _hashstr(self) -> str:
@@ -64,7 +64,7 @@ class Parse_browserhistory(Node_pandas, Node_0child):
             if len(histories) == 0:
                 continue
             df = pd.DataFrame(histories, columns=["date", "url"])
-            df["date"] = df["date"].dt.tz_localize(None)  # TODO_3: (TZ) Pls, fix this 🙄
+            df["date"] = df["date"].dt.tz_localize(None)  # TODO_3: (TZ) Pls, fix this🙄
             if t is not None:
                 df = df[df["date"] >= t.start]
                 df = df[df["date"] <= t.end]
@@ -72,6 +72,4 @@ class Parse_browserhistory(Node_pandas, Node_0child):
 
             dfs_to_concat.append(df)
 
-        df = pd.concat(dfs_to_concat)
-        df = df.set_index("date")
-        return df
+        return pd.concat(dfs_to_concat).set_index("date")

@@ -23,7 +23,7 @@ def graph_udate_layout(
     # Base
     newlayout = {
         "template": "plotly_dark",
-        "margin": dict(l=0, r=0, t=0, b=0),  # Is this a good idea tho?
+        "margin": {"l": 0, "r": 0, "t": 0, "b": 0},  # Is this a good idea tho?
         "legend": {
             "font": {
                 "family": "JetBrains Mono",
@@ -41,14 +41,14 @@ def graph_udate_layout(
     elif t is not None:
         days_span = (t.end - t.start).days
 
-    if isinstance(t, Time_interval) and False:
+    if isinstance(t, Time_interval):
         fig.update_xaxes(range=[t.start, t.end])
 
         # Extends the ends of the lines to the edges of the graph
         # Range of days
         # Bad for weight-like stuff
         # Good for count-epetitions-per-day-stuff, or stuff that baselines to 0 I guess
-        graph_extend_tails(fig, t)
+        # graph_extend_tails(fig, t)
 
     # x ticks
     if days_span is None:
@@ -235,9 +235,9 @@ def graph_annotate_title(
         y=0.9,
         text=title,
         showarrow=False,
-        font=dict(
-            family="JetBrains Mono",
-            size=16,
-        ),
+        font={
+            "family": "JetBrains Mono",
+            "size": 16,
+        },
     )
     return fig

@@ -22,6 +22,7 @@ from lifetracking.graph.Time_interval import Time_interval
 
 
 def test_basic_creation():
+    # Case 0
     a = Seg(
         datetime.datetime(2021, 1, 1, 0, 0, 0, 0),
         datetime.datetime(2021, 1, 1, 23, 59, 59, 999999),
@@ -29,11 +30,12 @@ def test_basic_creation():
     a["value"] = "Oh, I can save stuff here?"
     _ = a["value"]
 
+    # Case 1
+    a = Seg(
+        datetime.datetime(2021, 1, 1, 0, 0, 0, 0),
+        datetime.datetime(2021, 1, 1, 23, 59, 59, 999999),
+    )
     with pytest.raises(AssertionError):
-        a = Seg(
-            datetime.datetime(2021, 1, 1, 0, 0, 0, 0),
-            datetime.datetime(2021, 1, 1, 23, 59, 59, 999999),
-        )
         _ = a["value"]
 
 

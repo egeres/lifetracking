@@ -83,7 +83,8 @@ class Parse_activitywatch(Node_pandas, Node_0child):
             return None
 
         if out.status_code != 200:
-            raise Exception("The connection had a problem!")
+            msg = f"The connection had a problem! {out.status_code}"
+            raise Exception(msg)
         return out.json()
 
     def _get_data(self, bucket: dict, t: Time_interval | None = None) -> list:
@@ -98,7 +99,8 @@ class Parse_activitywatch(Node_pandas, Node_0child):
             params=params,
         )
         if out.status_code != 200:
-            raise Exception("The connection had a problem!")
+            msg = f"The connection had a problem! {out.status_code}"
+            raise Exception(msg)
         return out.json()
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame | None:
@@ -112,7 +114,8 @@ class Parse_activitywatch(Node_pandas, Node_0child):
         if buckets is None:
             return None
         if self.bucket_id not in buckets:
-            raise Exception("The bucket name is not available!")
+            msg = "The bucket name is not available!"
+            raise Exception(msg)
         bucket = buckets[self.bucket_id]
 
         # Data request

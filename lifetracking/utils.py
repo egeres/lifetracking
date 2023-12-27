@@ -102,7 +102,8 @@ def export_pddataframe_to_lc_single(
     # Assertions
     assert isinstance(path_filename, str)
     if not path_filename.endswith(".json"):
-        raise ValueError("path_filename must end with .json")
+        msg = "path_filename must end with .json"
+        raise ValueError(msg)
     assert os.path.split(path_filename)[-1] != "config.json"
     if time_offset is None:
         time_offset = timedelta()
@@ -223,11 +224,12 @@ def operator_resample_stringified(
 
     if operator == "avg":
         return df.mean()
-    elif operator == "sum":
+    if operator == "sum":
         return df.sum()
-    elif operator == "max":
+    if operator == "max":
         return df.max()
-    elif operator == "min":
+    if operator == "min":
         return df.min()
-    else:
-        raise ValueError("mode must be one of avg, sum, max, min (for now!!)")
+
+    msg = "mode must be one of avg, sum, max, min (for now!!)"
+    raise ValueError(msg)

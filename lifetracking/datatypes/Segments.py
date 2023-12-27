@@ -60,23 +60,25 @@ class Segments:
                         content.pop(content_index)
                         content_index -= 1
                         break
+
                     # t covers the right side
                     if t.end >= s.end:
                         s.end = t.start
                         break
+
                     # t covers the left side
-                    elif t.start <= s.start:
+                    if t.start <= s.start:
                         s.start = t.end
                         break
-                    else:
-                        content.append(Seg(t.end, s.end, s.value))
-                        content = sorted(content, key=lambda x: x.start)
-                        # TODO: Benchmark the difference in speed, but needs
-                        # python >= 3.10
-                        # insort(content, Seg(t.end, s.end, s.value), key=lambda
-                        # x: x.start)
-                        s.end = t.start
-                        break
+
+                    content.append(Seg(t.end, s.end, s.value))
+                    content = sorted(content, key=lambda x: x.start)
+                    # TODO: Benchmark the difference in speed, but needs
+                    # python >= 3.10
+                    # insort(content, Seg(t.end, s.end, s.value), key=lambda
+                    # x: x.start)
+                    s.end = t.start
+                    break
             content_index += 1
         return Segments(sorted(content))
 
@@ -94,7 +96,7 @@ class Segments:
     def __getitem__(self, index: Time_interval | int) -> Segments | Seg:
         if isinstance(index, int):
             return self.content[index]
-        elif isinstance(index, Time_interval):
+        if isinstance(index, Time_interval):
             return Segments(
                 [
                     seg
@@ -102,8 +104,8 @@ class Segments:
                     if index.start <= seg.start and seg.end <= index.end
                 ]
             )
-        else:
-            raise TypeError("index must be Time_interval or int")
+        msg = "index must be Time_interval or int"
+        raise TypeError(msg)
 
     def __setitem__(self, property_name: str, value: Any) -> Self:
         """Sets a property of all the segments"""
@@ -200,7 +202,8 @@ class Segments:
         # Assertions
         assert isinstance(path_filename, str)
         if not path_filename.endswith(".json"):
-            raise ValueError("path_filename must end with .json")
+            msg = "path_filename must end with .json"
+            raise ValueError(msg)
         assert os.path.split(path_filename)[-1] != "config.json"
 
         # Assertion of color, opacity and tooltip
@@ -345,10 +348,9 @@ class Segments:
         #     if a.tzinfo is None:
         #         a = a.replace(tzinfo=self.content[0].start.tzinfo)
         #         b = b.replace(tzinfo=self.content[0].start.tzinfo)
-        if len(data) > 0:
-            if a.tzinfo is None:
-                a = a.replace(tzinfo=data[0].start.tzinfo)
-                b = b.replace(tzinfo=data[0].start.tzinfo)
+        if len(data) > 0 and a.tzinfo is None:
+            a = a.replace(tzinfo=data[0].start.tzinfo)
+            b = b.replace(tzinfo=data[0].start.tzinfo)
 
         # Data itself
         c: list[float] = [0] * ((b - a).days + 1)
@@ -411,7 +413,8 @@ class Segments:
 
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(yaxes, tuple) or yaxes is None
-        assert isinstance(smooth, int) and smooth > 0
+        assert isinstance(smooth, int)
+        assert smooth > 0
         if isinstance(stackgroup, dict):
             assert "label" in stackgroup
         assert title is None or isinstance(title, str)
@@ -444,9 +447,8 @@ class Segments:
             for col in df.columns:
                 # The user should be able to specify colors/etc for these plots...
                 extra_args = {}
-                if isinstance(stackgroup, dict):
-                    if col in stackgroup.get("colors", {}):
-                        extra_args["marker_color"] = stackgroup["colors"][col]
+                if isinstance(stackgroup, dict) and col in stackgroup.get("colors", {}):
+                    extra_args["marker_color"] = stackgroup["colors"][col]
 
                 # Fig
                 fig.add_trace(

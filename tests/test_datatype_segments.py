@@ -104,10 +104,10 @@ def test_export_to_longcalendar(opacity: float):
         a.export_to_longcalendar(filename, tooltip=lambda x: "test")
 
         # Failure
-        with pytest.raises(ValueError):
-            filename = os.path.join(
-                tmpdirname, "a_nice_subfolder", "another_sub_folder", "test.csv"
-            )
+        filename = os.path.join(
+            tmpdirname, "a_nice_subfolder", "another_sub_folder", "test.csv"
+        )
+        with pytest.raises(ValueError, match="path_filename must end with .json"):
             a.export_to_longcalendar(filename, opacity=opacity)
 
 

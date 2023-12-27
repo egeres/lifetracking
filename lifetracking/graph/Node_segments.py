@@ -36,6 +36,9 @@ class Node_segments(Node[Segments]):
     def assign_value_all(self, key: str, value: Any) -> Node_segments:
         """Assigns a value to all the Seg objects inside an instance of Segments"""
 
+        # TODO_2": Since this actually calls Segments.__setitem__() maybe it should just
+        # be Node_segments.__setitem__()
+
         def fn(segments: Segments) -> Segments:
             segments[key] = value
             return segments
@@ -92,7 +95,7 @@ class Node_segments(Node[Segments]):
         o = self.run(t)
         if o is None:
             print("🔺")
-            return None
+            return
         assert o is not None
         o.export_to_longcalendar(
             path_filename=path_filename,
@@ -113,7 +116,8 @@ class Node_segments(Node[Segments]):
     ) -> go.Figure | None:
         assert t is None or isinstance(t, Time_interval)
         assert yaxes is None or isinstance(yaxes, tuple)
-        assert isinstance(smooth, int) and smooth > 0
+        assert isinstance(smooth, int)
+        assert smooth > 0
         assert isinstance(annotations, list) or annotations is None
 
         o = self.run(t)
@@ -206,8 +210,7 @@ class Node_segments_generate(Node_0child, Node_segments):
         assert t is None or isinstance(t, Time_interval)
         if t is None:
             return self.value
-        else:
-            return self.value[t]
+        return self.value[t]
 
 
 class Node_segments_add(Node_segments):
@@ -566,13 +569,12 @@ class Node_segmentize_pandas_duration(Node_1child, Node_segments):
         iterable = df.iterrows()
 
         # TODO: Could this be removed by always ensuring an ordering in the dates?
-        if len(df) > 1:
-            if (
-                df.iloc[0][self.name_column_duration]
-                > df.iloc[1][self.name_column_duration]
-            ):
-                # iterable = reversed(list(iterable))
-                iterable = df[::-1].iterrows()
+        if len(df) > 1 and (
+            df.iloc[0][self.name_column_duration]
+            > df.iloc[1][self.name_column_duration]
+        ):
+            # iterable = reversed(list(iterable))
+            iterable = df[::-1].iterrows()
 
         # Segmentizing
         to_return = []
@@ -651,9 +653,8 @@ class Node_segmentize_pandas_startend(Node_1child, Node_segments):
         else:
             iterable = df.iterrows()
         # TODO: Could this be removed by always ensuring an ordering in the dates?
-        if len(df) > 1:
-            if df.index[0] > df.index[1]:
-                iterable = df[::-1].iterrows()
+        if len(df) > 1 and df.index[0] > df.index[1]:
+            iterable = df[::-1].iterrows()
 
         # Segmentizing
         to_return = []

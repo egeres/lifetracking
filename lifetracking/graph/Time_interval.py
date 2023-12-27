@@ -50,18 +50,20 @@ class Time_interval:
         return Time_interval(self.start.astimezone(tz), self.end.astimezone(tz))
 
     def truncate(self, time_res: Time_resolution) -> Time_interval:
+        assert isinstance(time_res, Time_resolution)
+
         if time_res == Time_resolution.HOUR:
             return Time_interval(
                 self.start.replace(minute=0, second=0, microsecond=0),
                 self.end.replace(minute=59, second=59, microsecond=999999),
             )
-        elif time_res == Time_resolution.DAY:
+        if time_res == Time_resolution.DAY:
             return Time_interval(
                 self.start.replace(hour=0, minute=0, second=0, microsecond=0),
                 self.end.replace(hour=23, minute=59, second=59, microsecond=999999),
             )
-        else:
-            raise ValueError(f"Unsupported time resolution: {time_res}")
+        msg = f"Unsupported time resolution: {time_res}"
+        raise ValueError(msg)
 
     def get_overlap_innerouter(
         self, another: Time_interval
@@ -78,34 +80,34 @@ class Time_interval:
             return [another], []
 
         # "another" has 0 overlap
-        elif another.end <= self.start:
+        if another.end <= self.start:
             return [], [another]
 
         # "another" has 0 overlap
-        elif another.start >= self.end:
+        if another.start >= self.end:
             return [], [another]
 
         # If "another" starts before self and ends within self
-        elif another.start < self.start and another.end <= self.end:
+        if another.start < self.start and another.end <= self.end:
             return [Time_interval(self.start, another.end)], [
                 Time_interval(another.start, self.start)
             ]
 
         # If "another" starts within self and ends after self
-        elif another.start >= self.start and another.end > self.end:
+        if another.start >= self.start and another.end > self.end:
             return [Time_interval(another.start, self.end)], [
                 Time_interval(self.end, another.end)
             ]
 
         # If "another" starts before self and ends after self
-        elif another.start < self.start and another.end > self.end:
+        if another.start < self.start and another.end > self.end:
             return [self], [
                 Time_interval(another.start, self.start),
                 Time_interval(self.end, another.end),
             ]
 
-        else:
-            raise ValueError("Unhandled case ??")
+        msg = f"Unhandled case??: {self} {another}"
+        raise ValueError(msg)
 
     def normalize_ends(self) -> Self:
         self.start = self.start.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -142,7 +144,8 @@ class Time_interval:
                 current += datetime.timedelta(hours=1)
 
         else:
-            raise ValueError(f"Unsupported time resolution: {resolution}")
+            msg = f"Unsupported time resolution: {resolution}"
+            raise ValueError(msg)
 
     @property
     def duration_days(self) -> float:

@@ -38,7 +38,7 @@ def test_timeinterval_truncate():
     assert b.start == datetime.datetime(2021, 1, 1, 0, 0, 0)
     assert b.end == datetime.datetime(2021, 1, 1, 23, 59, 59, 999999)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(AssertionError):
         b = a.truncate(999)  # type: ignore
 
 
@@ -106,7 +106,7 @@ def test_time_iterator_days():
     # Day resolution
     a = list(Time_interval.today().iterate_over_interval())
     assert len(a) == 1
-    a = list(list(Time_interval.last_n_days(1).iterate_over_interval()))
+    a = list(Time_interval.last_n_days(1).iterate_over_interval())
     assert len(a) == 2
     a = list(Time_interval.last_week().iterate_over_interval())
     assert len(a) == 8

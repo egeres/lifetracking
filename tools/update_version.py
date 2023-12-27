@@ -9,7 +9,8 @@ def get_latest_git_tag():
         args=["git", "describe", "--abbrev=0", "--tags"], capture_output=True, text=True
     )
     if result.returncode != 0:
-        raise Exception("Failed to fetch latest Git tag.")
+        msg = "Failed to fetch latest Git tag."
+        raise Exception(msg)
     return result.stdout.strip()
 
 
@@ -28,10 +29,11 @@ def update_version_in_pyproject_toml(version):
 def main():
     latest_tag = get_latest_git_tag()
     if not re.match(r"^v?\d+\.\d+\.\d+$", latest_tag):
-        raise Exception(
+        msg = (
             f"Invalid Git tag: {latest_tag}."
             "Must be in semantic versioning format (e.g., 1.2.3)"
         )
+        raise Exception(msg)
 
     update_version_in_pyproject_toml(latest_tag)
     print(f"Updated version in pyproject.toml to {latest_tag}")

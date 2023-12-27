@@ -114,7 +114,8 @@ class Node_pandas(Node[pd.DataFrame]):
         stackgroup: str | None = None,
     ) -> go.Figure | None:
         assert t is None or isinstance(t, Time_interval)
-        assert isinstance(smooth, int) and smooth >= 0
+        assert isinstance(smooth, int)
+        assert smooth >= 0
         assert isinstance(annotations, list) or annotations is None
 
         df = self.run(t)
@@ -216,7 +217,7 @@ class Node_pandas(Node[pd.DataFrame]):
     ) -> go.Figure | None:
         # Start
         assert t is None or isinstance(t, Time_interval)
-        assert isinstance(columns, str) or isinstance(columns, list)
+        assert isinstance(columns, (str, int))
         if isinstance(columns, str):
             columns = [columns]
 
@@ -226,7 +227,8 @@ class Node_pandas(Node[pd.DataFrame]):
             return None
         assert isinstance(df, pd.DataFrame)
         assert df.empty or isinstance(df.index, pd.DatetimeIndex)
-        assert isinstance(smooth, int) and smooth >= 0
+        assert isinstance(smooth, int)
+        assert smooth >= 0
         assert isinstance(resample, str) or resample is None
         assert isinstance(resample_mode, str)
 
@@ -260,7 +262,7 @@ class Node_pandas(Node[pd.DataFrame]):
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
         if right_magin_on_plot:
-            fig.update_layout(margin=dict(r=250))
+            fig.update_layout(margin={"r": 250})
         return fig
 
     def __add__(self, other: Node_pandas) -> Node_pandas:
@@ -427,9 +429,10 @@ class Node_pandas_remove_close(Node_pandas_operation):
             df = df.sort_values(by=[column_name])
             df["time_diff"] = df[column_name].diff()
         else:
-            raise ValueError(
+            msg = (
                 "Either column_name must be given or the index must be a DatetimeIndex"
             )
+            raise ValueError(msg)
 
         mask = df["time_diff"].isnull() | (
             # df["time_diff"].dt.total_seconds() >= max_time
@@ -490,13 +493,12 @@ class Reader_pandas(Node_0child, Node_pandas):
         # The rest of the init!
         assert isinstance(path_dir, str)
         assert isinstance(column_date_index, (str, type(None)))
-        if not path_dir.endswith(self.file_extension):
-            if dated_name is None:
-                warnings.warn(
-                    "No dated_name function provided,"
-                    " so the files will not be filtered by date",
-                    stacklevel=2,
-                )
+        if not path_dir.endswith(self.file_extension) and dated_name is None:
+            warnings.warn(
+                "No dated_name function provided,"
+                " so the files will not be filtered by date",
+                stacklevel=2,
+            )
         super().__init__()
         self.path_dir = path_dir
         self.dated_name = dated_name
@@ -513,19 +515,18 @@ class Reader_pandas(Node_0child, Node_pandas):
     def _available(self) -> bool:
         if self.path_dir.endswith(self.file_extension):
             return os.path.exists(self.path_dir)
-        else:
-            return (
-                os.path.isdir(self.path_dir)
-                and os.path.exists(self.path_dir)
-                and len(
-                    [
-                        i
-                        for i in os.listdir(self.path_dir)
-                        if i.endswith(self.file_extension)
-                    ]
-                )
-                > 0
+        return (
+            os.path.isdir(self.path_dir)
+            and os.path.exists(self.path_dir)
+            and len(
+                [
+                    i
+                    for i in os.listdir(self.path_dir)
+                    if i.endswith(self.file_extension)
+                ]
             )
+            > 0
+        )
 
     def _operation_filter_by_date(
         self,
@@ -599,7 +600,7 @@ class Reader_pandas(Node_0child, Node_pandas):
         # if df.isnull().values.any():
         #     print(f"[red]Nans in {self.path_dir}")
 
-        return df
+        return df  # noqa: RET504
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         assert t is None or isinstance(t, Time_interval)
@@ -683,12 +684,10 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
         return (
             os.path.isdir(self.path_dir)
             and os.path.exists(self.path_dir)
-            and len(
-                [
-                    i
-                    for i in os.listdir(self.path_dir)
-                    # if "i is date" # TODO_2: Add this
-                ]
+            and any(
+                True
+                for i in os.listdir(self.path_dir)
+                # if "i is date" # TODO_2: Add this
             )
             > 0
         )
@@ -795,7 +794,7 @@ class Reader_filecreation(Node_0child, Node_pandas):
         if isinstance(valid_extensions, str):
             self.valid_extensions = [valid_extensions]
         assert all(
-            [isinstance(x, str) and x.startswith(".") for x in self.valid_extensions]
+            isinstance(x, str) and x.startswith(".") for x in self.valid_extensions
         )
         assert isinstance(self.valid_extensions, list)
 
@@ -885,6 +884,14 @@ class Reader_telegramchat(Node_0child, Node_pandas):
         return to_return
 
     def _get_datajsons(self, path_dir_root: str) -> list[str]:
+        # TODO_2: Try this syntax instead
+        # return [
+        #     os.path.join(i, j)
+        #     for i in self._get_chat_exports_dirs(path_dir_root)
+        #     for j in os.listdir(i)
+        #     if j.endswith(".json") and os.path.isfile(os.path.join(i, j))
+        # ]
+
         to_return = []
         for i in self._get_chat_exports_dirs(path_dir_root):
             for j in os.listdir(i):
@@ -922,8 +929,7 @@ class Reader_telegramchat(Node_0child, Node_pandas):
         # df time
         df = pd.DataFrame(data["messages"])
         df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%dT%H:%M:%S")
-        df = df.set_index("date")
-        return df
+        return df.set_index("date")
 
 
 class Reader_openAI_history(Node_0child, Node_pandas):
@@ -969,7 +975,7 @@ class Reader_openAI_history(Node_0child, Node_pandas):
         self, dict_conversation: dict
     ) -> list[dict[str, Any]]:
         messages = []
-        for _, v in dict_conversation["mapping"].items():
+        for v in dict_conversation["mapping"].values():
             if v["message"] is None:
                 continue
             if v["message"]["create_time"] is None:
@@ -1002,5 +1008,4 @@ class Reader_openAI_history(Node_0child, Node_pandas):
                 to_return.extend(self._parse_openai_conversation(i))
 
             df = pd.DataFrame(to_return)
-            df = df.set_index("date")
-            return df
+            return df.set_index("date")

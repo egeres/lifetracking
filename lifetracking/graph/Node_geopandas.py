@@ -171,7 +171,8 @@ class Label_geopandas(Node_1child, Node_geopandas):
             coords_points,
             columns=["geometry", "label"],
             geometry=[
-                Point(map(lambda x: float(x.strip()), x.split(",")[::-1]))
+                # Point(map(lambda x: float(x.strip()), x.split(",")[::-1]))
+                Point(float(x.strip()) for x in x.split(",")[::-1])
                 for x, _ in coords_points
             ],
         )

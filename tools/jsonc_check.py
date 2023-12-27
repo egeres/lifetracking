@@ -1,3 +1,5 @@
+# ruff: noqa: PERF203
+
 import sys
 
 import json5

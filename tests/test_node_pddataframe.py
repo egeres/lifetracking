@@ -90,7 +90,7 @@ def test_node_pddataframe_readdata_0(file_format: str):
                 lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         else:
-            raise NotImplementedError()
+            raise NotImplementedError
 
         # Case 0: Simple run
         assert reader.available
@@ -132,7 +132,7 @@ def test_node_pddataframe_readdata_1(file_format: str):
                 lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         else:
-            raise NotImplementedError()
+            raise NotImplementedError
 
         # Case 0: Simple run
         assert reader.available
