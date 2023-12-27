@@ -368,6 +368,14 @@ class Segments:
         smooth: int,
         stackgroup: str,
     ) -> dict[str, list[float]]:
+        """Retrieves something like:
+        {
+            "study": [0.1, 0.1, 1.4, 0.9...],
+            "personal": [0.1, 0.1, 1.4, 0.9...],
+            ...
+        }
+        """
+
         # Uniques
         unique_categories = set()
         for s in self.content:
@@ -390,11 +398,21 @@ class Segments:
         smooth: int = 1,
         annotations: list | None = None,
         title: str | None = None,
-        stackgroup: str | None = None,
+        stackgroup: str | dict | None = None,
     ) -> go.Figure:
+        """Plots the hours of the segments in the interval t
+
+        Parameters:
+        stackgroup
+        It can be a string or a dict with the key "label" and optionally "colors"
+        """
+
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(yaxes, tuple) or yaxes is None
         assert isinstance(smooth, int) and smooth > 0
+        if isinstance(stackgroup, dict):
+            assert "label" in stackgroup
+        assert title is None or isinstance(title, str)
 
         # Pre
         fig_min, fig_max = (0, 24) if yaxes is None else yaxes
@@ -408,8 +426,12 @@ class Segments:
                 else pd.date_range(self.min(), self.max(), freq="D")
             )
             fig = px.line(x=fig_index, y=c)
+
         else:
-            c = self._plot_hours_generatedata_with_stackgroup(t, smooth, stackgroup)
+            stackgroupname: str = (
+                stackgroup if isinstance(stackgroup, str) else stackgroup["label"]
+            )
+            c = self._plot_hours_generatedata_with_stackgroup(t, smooth, stackgroupname)
             fig_index = (
                 t.to_datetimeindex()
                 if t is not None
@@ -418,6 +440,13 @@ class Segments:
             df = pd.DataFrame(c, index=fig_index)
             fig = go.Figure()
             for col in df.columns:
+                # The user should be able to specify colors/etc for these plots...
+                extra_args = {}
+                if isinstance(stackgroup, dict):
+                    if col in stackgroup.get("colors", {}):
+                        extra_args["marker_color"] = stackgroup["colors"][col]
+
+                # Fig
                 fig.add_trace(
                     go.Scatter(
                         x=df.index,
@@ -425,6 +454,7 @@ class Segments:
                         stackgroup="one",
                         fill="tonexty",
                         name=col,
+                        **extra_args,
                     )
                 )
             fig.update_layout(hovermode="x unified")

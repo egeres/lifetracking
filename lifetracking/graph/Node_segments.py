@@ -33,6 +33,18 @@ class Node_segments(Node[Segments]):
     ) -> Node_segments:
         return Node_segments_operation(self, fn)  # type: ignore
 
+    def assign_value_all(self, key: str, value: Any) -> Node_segments:
+        """Assigns a value to all the Seg objects inside an instance of Segments"""
+
+        # TODO_3: Refactor to a pandas dataframe and make this a columns assignment
+
+        def fn(segments: Segments) -> Segments:
+            for i in segments.content:
+                i[key] = value
+            return segments
+
+        return self.apply(fn)
+
     # TODO_3
     # def filter(self):
     #     ...
@@ -40,6 +52,10 @@ class Node_segments(Node[Segments]):
     # TODO_3
     # def filter(self, fn: Callable[[pd.Series], bool]) -> Node_pandas:
     #     return Node_segment_filter(self, fn)
+
+    # TODO_3
+    # def clone():
+    # ...
 
     def merge(
         self,
@@ -96,7 +112,7 @@ class Node_segments(Node[Segments]):
         yaxes: tuple[float, float] | None = None,
         smooth: int = 1,
         annotations: list | None = None,
-        stackgroup: str | None = None,
+        stackgroup: str | dict | None = None,
     ) -> go.Figure | None:
         assert t is None or isinstance(t, Time_interval)
         assert yaxes is None or isinstance(yaxes, tuple)

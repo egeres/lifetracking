@@ -5,7 +5,7 @@ import hashlib
 import time
 from abc import ABC, abstractmethod
 from functools import reduce
-from typing import Any, Generic, Iterable, TypeVar
+from typing import Any, Callable, Generic, Iterable, TypeVar
 
 import pandas as pd
 from prefect import flow as prefect_flow
@@ -28,10 +28,10 @@ class Node(ABC, Generic[T]):
     def __init__(self):
         self.last_run_info: dict[str, Any] | None = None
         self.name: str | None = None
-        self.default_export: callable | None = None
+        self.default_export: Callable | None = None
 
     def __repr__(self) -> str:
-        if self.name is not None:
+        if getattr(self, "name", None) is not None:
             return f"{self.__class__.__name__}({self.name})"
         return self.__class__.__name__
 
