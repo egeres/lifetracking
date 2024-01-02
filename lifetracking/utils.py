@@ -147,6 +147,8 @@ def export_pddataframe_to_lc_single(
         json.dump(to_export, f, indent=4, default=str)
 
 
+# TODO_1: Rename to something like "Calculate_hash_from_method" or more verbose
+# DOCS: Docstring on this bs
 def hash_method(method: Callable) -> str:
     z = ""
     for i in dis.get_instructions(method):

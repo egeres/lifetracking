@@ -572,7 +572,7 @@ class Reader_pandas(Node_0child, Node_pandas):
             )
 
         # Load them
-        to_return: list = []
+        to_return = []
         for filename in files_to_read:
             # Filter by date
             if self.dated_name is not None and self._operation_filter_by_date(

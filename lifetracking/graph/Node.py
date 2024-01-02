@@ -114,7 +114,7 @@ class Node(ABC, Generic[T]):
             self.last_run_info["t_out"] = Time_interval(
                 min(to_return).start, max(to_return).end
             )
-        if isinstance(to_return, (Segments, pd.DataFrame)):
+        if isinstance(to_return, (Segments, pd.DataFrame, list)):
             self.last_run_info["len"] = len(to_return)
         elif isinstance(to_return, int):
             self.last_run_info["len"] = 1
