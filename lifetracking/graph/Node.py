@@ -227,6 +227,40 @@ class Node(ABC, Generic[T]):
         """Returns whether all the children are available"""
         return all(x._available() for x in self.children)
 
+    # TODO_2: Unify all the export_to_longcalendar into a coherent interface, pls
+    @abstractmethod
+    def export_to_longcalendar(
+        self,
+        t: Time_interval | None,
+        path_filename: str,
+        hour_offset: float = 0.0,
+        color: str | Callable[[T], str] | None = None,
+        opacity: float | Callable[[T], float] = 1.0,
+        # tooltip: str | Callable[[T], str] | None = None,
+        # tooltip_shows_length: bool = False,
+    ) -> None:
+        ...  # pragma: no cover
+
+    def set_default_export(
+        self,
+        path_filename: str,
+        color: str | Callable[[T], str] | None = None,
+        opacity: float | Callable[[T], float] = 1.0,
+        hour_offset: float = 0,
+    ) -> Node[T]:
+        def default_export_pajas(t: Time_interval | None = None):
+            self.export_to_longcalendar(
+                t,
+                path_filename=path_filename,
+                color=color,
+                opacity=opacity,
+                hour_offset=hour_offset,
+            )
+
+        self.default_export = default_export_pajas
+        self.final = True
+        return self
+
 
 class Node_0child(Node[T]):
     def _get_children(self) -> list[Node]:
@@ -296,6 +330,16 @@ class Node_generate_None(Node_0child[None]):
 
     def _operation(self, t: Time_interval | None = None) -> None:
         return None
+
+    def export_to_longcalendar(
+        self,
+        t: Time_interval | None,
+        path_filename: str,
+        color: str | Callable[[None], str] | None = None,
+        opacity: float | Callable[[None], float] = 1.0,
+        hour_offset: float = 0,
+    ):
+        raise NotImplementedError
 
 
 def run_multiple(

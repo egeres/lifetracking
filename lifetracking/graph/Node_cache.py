@@ -6,7 +6,7 @@ import json
 import os
 import pickle
 from functools import reduce
-from typing import Any, TypeVar
+from typing import Any, Callable, TypeVar
 
 import pandas as pd
 from prefect.futures import PrefectFuture
@@ -460,3 +460,13 @@ class Node_cache(Node[T]):
 
         # TODO_2: Fix this weird issue with the type after project is python 3.11 (?)
         return reduce(lambda x, y: x + y, to_return)  # type: ignore
+
+    def export_to_longcalendar(
+        self,
+        t: Time_interval | None,
+        path_filename: str,
+        color: str | Callable[[None], str] | None = None,
+        opacity: float | Callable[[None], float] = 1.0,
+        hour_offset: float = 0,
+    ):
+        raise NotImplementedError

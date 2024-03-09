@@ -600,7 +600,7 @@ class Reader_pandas(Node_0child, Node_pandas):
         # if df.isnull().values.any():
         #     print(f"[red]Nans in {self.path_dir}")
 
-        return df  # noqa: RET504
+        return df
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         assert t is None or isinstance(t, Time_interval)
