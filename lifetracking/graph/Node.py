@@ -239,8 +239,7 @@ class Node(ABC, Generic[T]):
         opacity: float | Callable[[T], float] = 1.0,
         # tooltip: str | Callable[[T], str] | None = None,
         # tooltip_shows_length: bool = False,
-    ) -> None:
-        ...  # pragma: no cover
+    ) -> None: ...  # pragma: no cover
 
     def set_default_export(
         self,
