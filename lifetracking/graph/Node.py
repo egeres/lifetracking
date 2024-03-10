@@ -28,7 +28,8 @@ class Node(ABC, Generic[T]):
     def __init__(self):
         self.last_run_info: dict[str, Any] | None = None
         self.name: str | None = None
-        self.default_export: Callable | None = None
+        self.default_export: Callable = self._print_default_export_hasnt_been_defined
+        self.final: bool = False
 
     def __repr__(self) -> str:
         if getattr(self, "name", None) is not None:
@@ -260,6 +261,12 @@ class Node(ABC, Generic[T]):
         self.default_export = default_export_pajas
         self.final = True
         return self
+
+    def _print_default_export_hasnt_been_defined(self, *args, **kwargs):
+        print(
+            f"Woops! Default export hasn't been defined for {self}. "
+            "Please, use the method set_default_export to define it 🙃"
+        )
 
 
 class Node_0child(Node[T]):

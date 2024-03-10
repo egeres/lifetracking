@@ -47,15 +47,23 @@ class Parse_anki_study(Node_pandas, Node_0child):
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame | None:
         # Data gathering
+        # return_dict = {}
+        # self._get_raw_data(self.path_file_anki, return_dict)
+        # cards = return_dict[0]
+        # revisions = return_dict[1]
+
+        # Data gathering (multiprocessing)
         manager = multiprocessing.Manager()
         return_dict = manager.dict()
         p = multiprocessing.Process(
-            target=self._get_raw_data, args=(self.path_file_anki, return_dict)
+            target=self._get_raw_data,
+            args=(self.path_file_anki, return_dict),
         )
         p.start()
         p.join()
         cards = return_dict.values()[0]
         revisions = return_dict.values()[1]
+
         if cards is None or revisions is None:
             return None
 
@@ -87,14 +95,21 @@ class Parse_anki_creation(Parse_anki_study):
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame | None:
         # Data gathering
+        # return_dict = {}
+        # self._get_raw_data(self.path_file_anki, return_dict)
+        # cards = return_dict[0]
+
+        # Data gathering (multiprocessing)
         manager = multiprocessing.Manager()
         return_dict = manager.dict()
         p = multiprocessing.Process(
-            target=self._get_raw_data, args=(self.path_file_anki, return_dict)
+            target=self._get_raw_data,
+            args=(self.path_file_anki, return_dict),
         )
         p.start()
         p.join()
         cards = return_dict.values()[0]
+
         if cards is None:
             return None
 

@@ -9,7 +9,7 @@ from typing import Any, Callable, Literal
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
 
 # TODO_2: We whould refactor the names of the readers, right now it is
-from lifetracking.graph.Node_dicts import Reader_dicts
+#
 from lifetracking.graph.Node_pandas import Reader_jsons
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import hash_method
@@ -22,6 +22,18 @@ from lifetracking.utils import hash_method
 class Node_dicts(Node[list[dict]]):
     def __init__(self) -> None:
         super().__init__()
+
+    def export_to_longcalendar(
+        self,
+        t: Time_interval | None,
+        path_filename: str,
+        hour_offset: float = 0.0,
+        opacity: float = 1.0,
+        tooltip: str | Callable[[list[dict]], str] | None = None,
+        color: str | Callable[[list[dict]], str] | None = None,
+        tooltip_shows_length: bool = False,
+    ):
+        raise NotImplementedError("This method is not implemented yet hehe")
 
 
 class Reader_dicts(Node_0child, Node_dicts):
@@ -37,6 +49,15 @@ class Reader_dicts(Node_0child, Node_dicts):
         time_zone: None | datetime.tzinfo = None,
     ) -> None:
         super().__init__()
+        assert isinstance(path_dir, str)
+        assert dated_name is None or callable(dated_name)
+        assert (
+            column_date_index is None
+            or isinstance(column_date_index, str)
+            or callable(column_date_index)
+        )
+        assert time_zone is None or isinstance(time_zone, datetime.tzinfo)
+
         self.path_dir = path_dir
         self.dated_name = dated_name
         self.column_date_index = column_date_index
