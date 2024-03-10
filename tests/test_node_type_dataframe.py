@@ -19,7 +19,7 @@ from lifetracking.graph.Node_pandas import (
 from lifetracking.graph.Time_interval import Time_interval
 
 
-def test_node_pddataframe_0():
+def test_node_pddataframe_creation():
     df = pd.DataFrame([{"a": 0}, {"a": 1}, {"a": 2}])
     a = Node_pandas_generate(df)
 

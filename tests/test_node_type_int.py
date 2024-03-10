@@ -16,6 +16,10 @@ from lifetracking.graph.Node_int import (
 )
 
 
+def test_node_int_creation():
+    Node_int_generate(1)
+
+
 def test_run_single_basic():
     a = Node_int_generate(1)
     b = Node_int_generate(1)

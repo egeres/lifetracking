@@ -20,6 +20,10 @@ from lifetracking.graph.Node_segments import (
 from lifetracking.graph.Time_interval import Time_interval
 
 
+def test_node_segments_creation():
+    Node_segments_generate(Segments([Time_interval.today().to_seg()]))
+
+
 @given(st.integers(min_value=2, max_value=100_000))
 @settings(deadline=None)
 def test_node_segments_run(n: int):
