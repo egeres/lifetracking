@@ -600,7 +600,7 @@ class Reader_pandas(Node_0child, Node_pandas):
         # if df.isnull().values.any():
         #     print(f"[red]Nans in {self.path_dir}")
 
-        return df
+        return df  # noqa: RET504
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         assert t is None or isinstance(t, Time_interval)
@@ -878,9 +878,10 @@ class Reader_telegramchat(Node_0child, Node_pandas):
         assert os.path.exists(path_dir_root)
         to_return = []
         for x in os.listdir(path_dir_root):
-            if os.path.isdir(os.path.join(path_dir_root, x)):
-                if x.startswith("ChatExport"):
-                    to_return.append(os.path.join(path_dir_root, x))
+            if os.path.isdir(os.path.join(path_dir_root, x)) and x.startswith(
+                "ChatExport"
+            ):
+                to_return.append(os.path.join(path_dir_root, x))
         return to_return
 
     def _get_datajsons(self, path_dir_root: str) -> list[str]:

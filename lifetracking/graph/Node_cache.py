@@ -36,7 +36,7 @@ class Node_cache(Node[T]):
         # (refactor this in the future pls)
         if isinstance(n0, Node_int):
             msg = "The input node cannot be constant (to be improved)"
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         super().__init__()
         self.n0 = n0

@@ -142,7 +142,8 @@ def export_pddataframe_to_lc_single(
         if isinstance(n, pd.Timestamp):
             to_export.append({"start": n + time_offset} | base_dict)
         else:
-            raise ValueError
+            msg = "Index must be a pd.Timestamp"
+            raise TypeError(msg)
     with open(path_filename, "w") as f:
         json.dump(to_export, f, indent=4, default=str)
 

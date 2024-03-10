@@ -1,7 +1,11 @@
-
 # pre-commit install
 # pre-commit install --hook-type commit-msg
+# pre-commit autoupdate
 # pre-commit run --all-files
+# pre-commit run --files "sys_setup/windows/main.py"
+
+# More info about conventional commits here:
+# https://gist.github.com/joshbuchea/6f47e86d2510bce28f8e7f42ae84c716
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -23,20 +27,10 @@ repos:
         types: [markdown, python]
         files: "\\.(md|py)$"
 
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-
   - repo: https://github.com/psf/black
     rev: 24.2.0
     hooks:
       - id: black
-
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.15.1
-    hooks:
-      - id: pyupgrade
 
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v3.1.0
@@ -44,10 +38,10 @@ repos:
       - id: conventional-pre-commit
         stages: [commit-msg]
 
-  - repo: https://github.com/asottile/yesqa
-    rev: v1.5.0
-    hooks:
-    - id: yesqa
+  # - repo: https://github.com/asottile/yesqa
+  #   rev: v1.5.0
+  #   hooks:
+  #     - id: yesqa
 
   - repo: local
     hooks:
@@ -58,25 +52,12 @@ repos:
         language: system
         entry: jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace
 
-  # - repo: https://github.com/pycqa/flake8
-  #   rev: 7.0.0
-  #   hooks:
-  #     - id: flake8
-  #       additional_dependencies: [flake8-bugbear]
-  #       args:
-  #         - --count
-  #         - --max-complexity=10
-  #         - --max-line-length=88
-  #         - --statistics
-  #         - --ignore=F401,W503,E203
-
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.3.0
+  # Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.2
     hooks:
-      - id: pydocstyle
-        args:
-          # http://www.pydocstyle.org/en/stable/error_codes.html
-          - --select=D3,D414,D419,D408,D409,D200,D201,D206,D207,D208,D210,D211,D212,D214,D215
+      - id: ruff
+        types_or: [python, pyi, jupyter]
 
   - repo: local
     hooks:

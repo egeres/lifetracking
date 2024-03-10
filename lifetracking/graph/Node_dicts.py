@@ -33,7 +33,8 @@ class Node_dicts(Node[list[dict]]):
         color: str | Callable[[list[dict]], str] | None = None,
         tooltip_shows_length: bool = False,
     ):
-        raise NotImplementedError("This method is not implemented yet hehe")
+        msg = "This method is not implemented yet hehe"
+        raise NotImplementedError(msg)
 
 
 class Reader_dicts(Node_0child, Node_dicts):

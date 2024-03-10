@@ -10,7 +10,7 @@ def get_latest_git_tag():
     )
     if result.returncode != 0:
         msg = "Failed to fetch latest Git tag."
-        raise Exception(msg)
+        raise ValueError(msg)
     return result.stdout.strip()
 
 
@@ -33,7 +33,7 @@ def main():
             f"Invalid Git tag: {latest_tag}."
             "Must be in semantic versioning format (e.g., 1.2.3)"
         )
-        raise Exception(msg)
+        raise ValueError(msg)
 
     update_version_in_pyproject_toml(latest_tag)
     print(f"Updated version in pyproject.toml to {latest_tag}")
