@@ -86,12 +86,10 @@ class Segments:
         return hashlib.md5(self.__class__.__name__.encode()).hexdigest()
 
     @overload
-    def __getitem__(self, index: int) -> Seg:
-        ...  # pragma: no cover
+    def __getitem__(self, index: int) -> Seg: ...  # pragma: no cover
 
     @overload
-    def __getitem__(self, index: Time_interval) -> Segments:
-        ...  # pragma: no cover
+    def __getitem__(self, index: Time_interval) -> Segments: ...  # pragma: no cover
 
     def __getitem__(self, index: Time_interval | int) -> Segments | Seg:
         if isinstance(index, int):
