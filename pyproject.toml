@@ -34,7 +34,7 @@ tomlkit = "^0.11.8"
 json5 = "^0.9.11"
 coverage = "^7.2.5"
 hypothesis = "^6.75.3"
-ruff = "^0.3.2"
+ruff = ">=0.3.2"
 
 [build-system]
 requires = ["poetry-core"]

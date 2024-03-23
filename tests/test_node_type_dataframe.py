@@ -44,24 +44,49 @@ def test_node_pddataframe_filter():
     )
 
 
-def test_node_pddataframe_removeifclose():
+def test_node_pddataframe_removeifclose_first():
     t = datetime.datetime.now()
     df = pd.DataFrame(
         [
-            {"datetime": t + datetime.timedelta(minutes=0)},
-            {"datetime": t + datetime.timedelta(minutes=1)},
-            {"datetime": t + datetime.timedelta(minutes=2)},
-            {"datetime": t + datetime.timedelta(minutes=3)},
-            {"datetime": t + datetime.timedelta(minutes=4)},
-            {"datetime": t + datetime.timedelta(minutes=999)},
+            {"a": "a", "datetime": t + datetime.timedelta(minutes=0)},
+            {"a": "b", "datetime": t + datetime.timedelta(minutes=1)},
+            {"a": "c", "datetime": t + datetime.timedelta(minutes=2)},
+            {"a": "d", "datetime": t + datetime.timedelta(minutes=3)},
+            {"a": "e", "datetime": t + datetime.timedelta(minutes=4)},
+            {"a": "f", "datetime": t + datetime.timedelta(minutes=50)},
+            {"a": "g", "datetime": t + datetime.timedelta(minutes=51)},
+            {"a": "h", "datetime": t + datetime.timedelta(minutes=999)},
         ]
     )
     a = Node_pandas_generate(df, datetime_column="datetime")
-    b = Node_pandas_remove_close(a, datetime.timedelta(minutes=2))
+    b = Node_pandas_remove_close(a, datetime.timedelta(minutes=2), keep="first")
+    o = b.run()
+    assert o is not None
+    assert len(o) == 3
+    assert list(o["a"]) == ["a", "f", "h"]
+
+
+def test_node_pddataframe_removeifclose_last():
+    t = datetime.datetime.now()
+    df = pd.DataFrame(
+        [
+            {"a": "a", "datetime": t + datetime.timedelta(minutes=0)},
+            {"a": "b", "datetime": t + datetime.timedelta(minutes=1)},
+            {"a": "c", "datetime": t + datetime.timedelta(minutes=2)},
+            {"a": "d", "datetime": t + datetime.timedelta(minutes=3)},
+            {"a": "e", "datetime": t + datetime.timedelta(minutes=4)},
+            {"a": "f", "datetime": t + datetime.timedelta(minutes=50)},
+            {"a": "g", "datetime": t + datetime.timedelta(minutes=51)},
+            {"a": "h", "datetime": t + datetime.timedelta(minutes=999)},
+        ]
+    )
+    a = Node_pandas_generate(df, datetime_column="datetime")
+    b = Node_pandas_remove_close(a, datetime.timedelta(minutes=2), keep="last")
 
     o = b.run()
     assert o is not None
-    assert len(o) == 2
+    assert len(o) == 3
+    assert list(o["a"]) == ["e", "g", "h"]
 
 
 file_extensions_to_test = ["csv", "json"]

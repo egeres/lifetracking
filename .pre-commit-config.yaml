@@ -38,6 +38,7 @@ repos:
       - id: conventional-pre-commit
         stages: [commit-msg]
 
+  # Do I really need this or is it a reflecion of my insecurities?
   # - repo: https://github.com/asottile/yesqa
   #   rev: v1.5.0
   #   hooks:

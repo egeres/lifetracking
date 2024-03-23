@@ -5,6 +5,7 @@ import hashlib
 import time
 from abc import ABC, abstractmethod
 from functools import reduce
+from pathlib import Path
 from typing import Any, Callable, Generic, Iterable, TypeVar
 
 import pandas as pd
@@ -243,21 +244,21 @@ class Node(ABC, Generic[T]):
 
     def set_default_export(
         self,
-        path_filename: str,
+        path_filename: Path,
         color: str | Callable[[T], str] | None = None,
         opacity: float | Callable[[T], float] = 1.0,
         hour_offset: float = 0,
     ) -> Node[T]:
-        def default_export_pajas(t: Time_interval | None = None):
+        def default_export_method(t: Time_interval | None = None):
             self.export_to_longcalendar(
                 t,
-                path_filename=path_filename,
+                path_filename=str(path_filename),
                 color=color,
                 opacity=opacity,
                 hour_offset=hour_offset,
             )
 
-        self.default_export = default_export_pajas
+        self.default_export = default_export_method
         self.final = True
         return self
 

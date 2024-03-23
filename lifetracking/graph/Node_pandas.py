@@ -401,11 +401,36 @@ class Node_pandas_filter(Node_pandas_operation):
 class Node_pandas_remove_close(Node_pandas_operation):
     """Remove rows that are too close together in time"""
 
+    def __init__(
+        self,
+        n0: Node_pandas,
+        max_time: int | float | datetime.timedelta,  # TODO_1: Remove int and float
+        column_name: str | None = None,
+        keep: str = "first",
+    ):
+        """Max time is assumed to be in minutes if an int or float is given"""
+
+        assert isinstance(n0, Node_pandas)
+        assert isinstance(max_time, (int, float, datetime.timedelta))
+        assert column_name is None or isinstance(column_name, str)
+        assert keep in ["first", "last"], "keep must be 'first' or 'last'"
+
+        super().__init__(
+            n0,
+            lambda df: self._remove_dupe_rows_df(
+                df,  # type: ignore
+                max_time,
+                column_name,
+                keep,
+            ),
+        )
+
     @staticmethod
     def _remove_dupe_rows_df(
         df: pd.DataFrame,
         max_time: int | float | datetime.timedelta,
         column_name: str | None = None,
+        keep: str = "first",
     ):
         if df.shape[0] == 0:
             return df
@@ -422,45 +447,47 @@ class Node_pandas_remove_close(Node_pandas_operation):
         if column_name is None and isinstance(df.index, pd.DatetimeIndex):
             # Deduplicate based on index
             df = df.sort_index()
-            df["time_diff"] = df.index.to_series().diff()
+            # df["time_diff"] = df.index.to_series().diff()
+            time_diff = df.index.to_series().diff()
         elif column_name is not None:
             if df[column_name].dtype != "datetime64[ns]":
                 df[column_name] = pd.to_datetime(df[column_name])
             df = df.sort_values(by=[column_name])
-            df["time_diff"] = df[column_name].diff()
+            # df["time_diff"] = df[column_name].diff()
+            time_diff = df[column_name].diff()
         else:
             msg = (
                 "Either column_name must be given or the index must be a DatetimeIndex"
             )
             raise ValueError(msg)
 
-        mask = df["time_diff"].isnull() | (
-            # df["time_diff"].dt.total_seconds() >= max_time
-            df["time_diff"]
-            >= max_time
-        )
-        return df[mask].drop(columns=["time_diff"])
+        # Calculate mask to determine rows to keep
+        mask = time_diff.isnull() | (time_diff >= max_time)
 
-    def __init__(
-        self,
-        n0: Node_pandas,
-        max_time: int | float | datetime.timedelta,
-        column_name: str | None = None,
-    ):
-        """Max time is assumed to be in minutes if an int or float is given"""
+        rows_to_keep = []
+        current_row: int | None = None
+        if keep == "first":
+            for i, row in df.iterrows():
+                print(row["a"], mask[i])
+                if current_row is None:
+                    current_row = i
+                if mask[i]:
+                    rows_to_keep.append(i)
+                    current_row = None
+            df = df.loc[rows_to_keep]
 
-        assert isinstance(n0, Node_pandas)
-        assert isinstance(max_time, (int, float, datetime.timedelta))
-        assert column_name is None or isinstance(column_name, str)
+        elif keep == "last":
+            reversed_indexes = df.index[::-1]
+            for i in reversed_indexes:
+                if current_row is None:
+                    current_row = i
+                if mask.loc[i]:
+                    rows_to_keep.append(current_row)
+                    current_row = None
+            rows_to_keep.reverse()
+            df = df.loc[rows_to_keep]
 
-        super().__init__(
-            n0,
-            lambda df: self._remove_dupe_rows_df(
-                df,  # type: ignore
-                max_time,
-                column_name,
-            ),
-        )
+        return df
 
 
 class Reader_pandas(Node_0child, Node_pandas):
