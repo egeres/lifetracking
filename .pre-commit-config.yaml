@@ -8,42 +8,44 @@
 # https://gist.github.com/joshbuchea/6f47e86d2510bce28f8e7f42ae84c716
 
 repos:
+  # Basic ones
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
       - id: trailing-whitespace
-      - id: mixed-line-ending
-      - id: check-ast # .py's are valid
-      - id: check-case-conflict # Checks for case conflicts in filenames
-      - id: check-docstring-first # Checks that the docstring is the first thing in the file
-      # - id: check-json // Not working for Json with comments! Disabled for now
+      - id: check-ast
+      - id: check-docstring-first
       - id: check-toml
       - id: check-xml
       - id: check-yaml
       - id: check-builtin-literals
       - id: check-byte-order-marker
       - id: check-executables-have-shebangs
-      - id: end-of-file-fixer
         types: [markdown, python]
         files: "\\.(md|py)$"
 
-  - repo: https://github.com/psf/black
-    rev: 24.2.0
-    hooks:
-      - id: black
-
+  # Conventional commits
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v3.1.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
+        args: [] # Opt: list of Conv Commits types to allow like: ci,fix..
 
-  # Do I really need this or is it a reflecion of my insecurities?
-  # - repo: https://github.com/asottile/yesqa
-  #   rev: v1.5.0
-  #   hooks:
-  #     - id: yesqa
+  # Blaaack
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
 
+  # Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.4
+    hooks:
+      - id: ruff
+        types_or: [python, pyi, jupyter]
+
+  # Notebooks
   - repo: local
     hooks:
       - id: jupyter-nb-clear-output
@@ -52,32 +54,3 @@ repos:
         stages: [commit]
         language: system
         entry: jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace
-
-  # Ruff
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.2
-    hooks:
-      - id: ruff
-        types_or: [python, pyi, jupyter]
-
-  - repo: local
-    hooks:
-      - id: check-jsonc
-        name: Check JSONC
-        language: python
-        entry: python tools/jsonc_check.py
-        types: [file]
-        files: "\\.(json|jsonc)$"
-        additional_dependencies: [json5]
-
-  # - repo: local
-  #   hooks:
-  #     - id: update-version
-  #       name: Update pyproject.toml version
-  #       language: python
-  #       entry: python tools/update_version.py
-  #       files: pyproject.toml
-  #       always_run: true
-  #       pass_filenames: false
-  #       stages: [commit]
-  #       additional_dependencies: [tomlkit]
