@@ -49,6 +49,7 @@ def test_node_pddataframe_removeifclose_first():
     df = pd.DataFrame(
         [
             {"a": "a", "datetime": t + datetime.timedelta(minutes=0)},
+            {"a": "a", "datetime": t + datetime.timedelta(minutes=0)},  # Oh, it's dupe!
             {"a": "b", "datetime": t + datetime.timedelta(minutes=1)},
             {"a": "c", "datetime": t + datetime.timedelta(minutes=2)},
             {"a": "d", "datetime": t + datetime.timedelta(minutes=3)},
@@ -75,6 +76,7 @@ def test_node_pddataframe_removeifclose_last():
             {"a": "c", "datetime": t + datetime.timedelta(minutes=2)},
             {"a": "d", "datetime": t + datetime.timedelta(minutes=3)},
             {"a": "e", "datetime": t + datetime.timedelta(minutes=4)},
+            {"a": "e", "datetime": t + datetime.timedelta(minutes=4)},  # Dupe line :)
             {"a": "f", "datetime": t + datetime.timedelta(minutes=50)},
             {"a": "g", "datetime": t + datetime.timedelta(minutes=51)},
             {"a": "h", "datetime": t + datetime.timedelta(minutes=999)},

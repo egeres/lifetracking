@@ -448,12 +448,14 @@ class Node_pandas_remove_close(Node_pandas_operation):
             # Deduplicate based on index
             df = df.sort_index()
             # df["time_diff"] = df.index.to_series().diff()
+            df = df.drop_duplicates()
             time_diff = df.index.to_series().diff()
         elif column_name is not None:
             if df[column_name].dtype != "datetime64[ns]":
                 df[column_name] = pd.to_datetime(df[column_name])
             df = df.sort_values(by=[column_name])
             # df["time_diff"] = df[column_name].diff()
+            df = df.drop_duplicates()
             time_diff = df[column_name].diff()
         else:
             msg = (
@@ -467,13 +469,28 @@ class Node_pandas_remove_close(Node_pandas_operation):
         rows_to_keep = []
         current_row: int | None = None
         if keep == "first":
-            for i, row in df.iterrows():
-                print(row["a"], mask[i])
+            for i, _ in df.iterrows():
                 if current_row is None:
                     current_row = i
-                if mask[i]:
-                    rows_to_keep.append(i)
-                    current_row = None
+
+                # if mask[i]:
+                #     rows_to_keep.append(i)
+                #     current_row = None
+
+                # if (isinstance(mask[i], (bool, np.bool_)) and mask[i]) or all(
+                #     mask.loc[i]
+                # ):
+                #     rows_to_keep.append(i)
+                #     current_row = None
+
+                if isinstance(mask[i], (bool, np.bool_)):
+                    if mask[i]:
+                        rows_to_keep.append(i)
+                        current_row = None
+                else:
+                    if all(mask.loc[i]):
+                        rows_to_keep.append(i)
+                        current_row = None
             df = df.loc[rows_to_keep]
 
         elif keep == "last":
@@ -516,6 +533,13 @@ class Reader_pandas(Node_0child, Node_pandas):
         assert len(self.file_extension) > 1
         self.reading_method = self._gen_reading_method()
         assert callable(self.reading_method)
+
+        if Path(path_dir).is_file() and not path_dir.endswith(self.file_extension):
+            msg = (
+                f"File {path_dir} does not have the correct extension "
+                f".This reader only reads {self.file_extension} files"
+            )
+            raise ValueError(msg)
 
         # The rest of the init!
         assert isinstance(path_dir, str)

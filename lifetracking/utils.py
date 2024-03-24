@@ -8,6 +8,7 @@ import os
 import pickle
 import tempfile
 from datetime import timedelta
+from pathlib import Path
 from typing import Any, Callable
 
 import pandas as pd
@@ -91,7 +92,7 @@ def _lc_export_configchanges(
 
 def export_pddataframe_to_lc_single(
     df: pd.DataFrame,
-    path_filename: str,
+    path_filename: str | Path,
     time_offset: timedelta | None = None,
     color: str | Callable[[pd.Series], str] | None = None,
     opacity: float | Callable[[pd.Series], float] = 1.0,
@@ -100,7 +101,10 @@ def export_pddataframe_to_lc_single(
     data. No tooltip support is intentional!"""
 
     # Assertions
-    assert isinstance(path_filename, str)
+    assert isinstance(path_filename, (str, Path))
+    # TODO_2: Remove this and only use pathlib
+    if isinstance(path_filename, Path):
+        path_filename = str(path_filename)
     if not path_filename.endswith(".json"):
         msg = "path_filename must end with .json"
         raise ValueError(msg)
