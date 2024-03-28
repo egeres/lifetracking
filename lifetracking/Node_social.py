@@ -45,9 +45,10 @@ class Social_telegram(Node_pandas, Node_0child):
         assert os.path.exists(path_dir_root)
         to_return = []
         for x in os.listdir(path_dir_root):
-            if os.path.isdir(os.path.join(path_dir_root, x)):
-                if x.startswith("ChatExport"):
-                    to_return.append(os.path.join(path_dir_root, x))
+            if os.path.isdir(os.path.join(path_dir_root, x)) and x.startswith(
+                "ChatExport"
+            ):
+                to_return.append(os.path.join(path_dir_root, x))
         return to_return
 
     def _get_datajsons(self, path_dir_root: str) -> list[str]:

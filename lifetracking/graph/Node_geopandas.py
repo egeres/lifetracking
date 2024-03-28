@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import os
+import warnings
 from typing import Any, Callable
 
 import geopandas as gpd
@@ -22,7 +23,7 @@ class Node_geopandas(Node[gpd.GeoDataFrame]):
     def __init__(self) -> None:
         super().__init__()
 
-    def operation(
+    def apply(
         self,
         f: Callable[
             [gpd.GeoDataFrame | PrefectFuture[gpd.GeoDataFrame, Sync]], gpd.GeoDataFrame
@@ -91,7 +92,8 @@ class Reader_geojson(Node_0child, Node_geopandas):
         assert isinstance(path_dir, str)
         assert column_date_index is None or isinstance(column_date_index, str)
         if not os.path.isdir(path_dir):
-            raise ValueError(f"{path_dir} is not a directory")
+            # raise ValueError(f"{path_dir} is not a directory")
+            warnings.warn(f"{path_dir} is not a directory", stacklevel=2)
         super().__init__()
         self.path_dir = path_dir
         self.column_date_index = column_date_index
@@ -111,7 +113,7 @@ class Reader_geojson(Node_0child, Node_geopandas):
             > 0
         )
 
-    def _operation(self, t: Time_interval | None = None) -> gpd.GeoDataFrame:
+    def _operation(self, t: Time_interval | None = None) -> gpd.GeoDataFrame | None:
         assert t is None or isinstance(t, Time_interval)
         to_return: list = []
         for filename in os.listdir(self.path_dir):
@@ -135,6 +137,8 @@ class Reader_geojson(Node_0child, Node_geopandas):
                     )
                 except DriverError:
                     print(f"[red]Error reading {filename}")
+        if len(to_return) == 0:
+            return None
         df = pd.concat(to_return, axis=0)
         if self.column_date_index is not None:
             # Parse to datetime
@@ -167,7 +171,8 @@ class Label_geopandas(Node_1child, Node_geopandas):
             coords_points,
             columns=["geometry", "label"],
             geometry=[
-                Point(map(lambda x: float(x.strip()), x.split(",")[::-1]))
+                # Point(map(lambda x: float(x.strip()), x.split(",")[::-1]))
+                Point(float(x.strip()) for x in x.split(",")[::-1])
                 for x, _ in coords_points
             ],
         )

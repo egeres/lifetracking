@@ -21,29 +21,21 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: Install deps
         run: |
           python -m pip install --upgrade pip
           python -m pip install poetry
           poetry install
 
-      - name: Check with black
+      - name: Black ✨
         run: |
           poetry run black --check .
 
-      - name: Check with isort
+      - name: Ruff ✨
         run: |
-          poetry run isort --check-only .
+          poetry run ruff check .
 
-      - name: Lint with flake8
-        run: |
-          # Old
-          # stop the build if there are Python syntax errors or undefined names
-          # flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Mine
-          poetry run flake8 . --count --max-complexity=10 --max-line-length=88 --statistics --ignore=F401,W503,E203
-
-      - name: Test with pytest
+      - name: Pytest ✨
         run: |
           # I'm not sure about disabling the tests, but it's in for now!
           poetry run pytest --disable-pytest-warnings

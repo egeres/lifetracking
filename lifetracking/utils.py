@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime
 import dis
 import hashlib
 import inspect
@@ -8,13 +7,21 @@ import json
 import os
 import pickle
 import tempfile
+from datetime import timedelta
+from pathlib import Path
 from typing import Any, Callable
 
 import pandas as pd
 import plotly.graph_objects as go
-from dateutil.parser import parse
+from pandas.core.resample import DatetimeIndexResampler
 
 from lifetracking.graph.Time_interval import Time_interval
+from lifetracking.plots.graphs import (
+    graph_annotate_annotations,
+    graph_annotate_title,
+    graph_annotate_today,
+    graph_udate_layout,
+)
 
 
 def _lc_export_prepare_dir(path_filename: str) -> None:
@@ -85,8 +92,8 @@ def _lc_export_configchanges(
 
 def export_pddataframe_to_lc_single(
     df: pd.DataFrame,
-    path_filename: str,
-    # hour_offset: float = 0.0, # TODO_1
+    path_filename: str | Path,
+    time_offset: timedelta | None = None,
     color: str | Callable[[pd.Series], str] | None = None,
     opacity: float | Callable[[pd.Series], float] = 1.0,
 ):
@@ -94,10 +101,18 @@ def export_pddataframe_to_lc_single(
     data. No tooltip support is intentional!"""
 
     # Assertions
-    assert isinstance(path_filename, str)
+    assert isinstance(path_filename, (str, Path))
+    # TODO_2: Remove this and only use pathlib
+    if isinstance(path_filename, Path):
+        path_filename = str(path_filename)
     if not path_filename.endswith(".json"):
-        raise ValueError("path_filename must end with .json")
+        msg = "path_filename must end with .json"
+        raise ValueError(msg)
     assert os.path.split(path_filename)[-1] != "config.json"
+    if time_offset is None:
+        time_offset = timedelta()
+    assert isinstance(time_offset, timedelta)
+    assert isinstance(df, pd.DataFrame)
 
     # Assertion of color, opacity and tooltip
     assert color is None or isinstance(color, str) or callable(color)
@@ -112,9 +127,6 @@ def export_pddataframe_to_lc_single(
         or isinstance(opacity, float)
         or len(inspect.signature(opacity).parameters) == 1
     )
-
-    # Other assertions
-    assert isinstance(df, pd.DataFrame)
 
     # Dir setup
     _lc_export_prepare_dir(path_filename)
@@ -132,13 +144,16 @@ def export_pddataframe_to_lc_single(
             base_dict["opacity"] = opacity(i)
 
         if isinstance(n, pd.Timestamp):
-            to_export.append({"start": n} | base_dict)
+            to_export.append({"start": n + time_offset} | base_dict)
         else:
-            raise ValueError
+            msg = "Index must be a pd.Timestamp"
+            raise TypeError(msg)
     with open(path_filename, "w") as f:
         json.dump(to_export, f, indent=4, default=str)
 
 
+# TODO_1: Rename to something like "Calculate_hash_from_method" or more verbose
+# DOCS: Docstring on this bs
 def hash_method(method: Callable) -> str:
     z = ""
     for i in dis.get_instructions(method):
@@ -187,3 +202,41 @@ def cache_singleargument(dirname: str) -> Callable:
         return wrapper
 
     return decorator
+
+
+def plot_empty(
+    t: Time_interval | None = None,
+    title: str | None = None,
+    annotations: list | None = None,
+) -> go.Figure:
+    fig = go.Figure()
+
+    graph_udate_layout(fig, t)
+    graph_annotate_title(fig, title)
+    fig_min, fig_max = 0, 1
+    if t is not None:
+        graph_annotate_today(fig, t, (fig_min, fig_max))
+        graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
+    return fig
+
+
+def operator_resample_stringified(
+    df: DatetimeIndexResampler, operator: str
+) -> pd.DataFrame:
+    """Takes a "max", "sum", etc... and applies it"""
+
+    assert isinstance(df, DatetimeIndexResampler)
+    assert isinstance(operator, str)
+    assert operator in ["avg", "sum", "max", "min"]
+
+    if operator == "avg":
+        return df.mean()
+    if operator == "sum":
+        return df.sum()
+    if operator == "max":
+        return df.max()
+    if operator == "min":
+        return df.min()
+
+    msg = "mode must be one of avg, sum, max, min (for now!!)"
+    raise ValueError(msg)

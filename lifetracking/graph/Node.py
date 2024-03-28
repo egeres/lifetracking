@@ -5,7 +5,8 @@ import hashlib
 import time
 from abc import ABC, abstractmethod
 from functools import reduce
-from typing import Any, Generic, Iterable, TypeVar
+from pathlib import Path
+from typing import Any, Callable, Generic, Iterable, TypeVar
 
 import pandas as pd
 from prefect import flow as prefect_flow
@@ -15,7 +16,7 @@ from prefect.task_runners import ConcurrentTaskRunner
 from prefect.utilities.asyncutils import Sync
 from rich import print
 
-from lifetracking.datatypes.Segment import Segments
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Time_interval import Time_interval
 
 T = TypeVar("T")
@@ -28,9 +29,11 @@ class Node(ABC, Generic[T]):
     def __init__(self):
         self.last_run_info: dict[str, Any] | None = None
         self.name: str | None = None
+        self.default_export: Callable = self._print_default_export_hasnt_been_defined
+        self.final: bool = False
 
     def __repr__(self) -> str:
-        if self.name is not None:
+        if getattr(self, "name", None) is not None:
             return f"{self.__class__.__name__}({self.name})"
         return self.__class__.__name__
 
@@ -113,7 +116,7 @@ class Node(ABC, Generic[T]):
             self.last_run_info["t_out"] = Time_interval(
                 min(to_return).start, max(to_return).end
             )
-        if isinstance(to_return, (Segments, pd.DataFrame)):
+        if isinstance(to_return, (Segments, pd.DataFrame, list)):
             self.last_run_info["len"] = len(to_return)
         elif isinstance(to_return, int):
             self.last_run_info["len"] = 1
@@ -121,6 +124,11 @@ class Node(ABC, Generic[T]):
             self.last_run_info["len"] = None
         else:
             raise NotImplementedError
+
+        self.last_run_info["type"] = type(to_return).__name__
+
+        if isinstance(to_return, pd.DataFrame):
+            self.last_run_info["columns"] = list(to_return.columns)
 
         return to_return
 
@@ -138,26 +146,32 @@ class Node(ABC, Generic[T]):
                 else:
                     duration_t_out = f"{round(duration_t_out, 1)} days"
 
-            print("")
-            print("Stats...", f"({self.name})" if self.name is not None else "")
-            print(
-                "\t✨ Nodes   : ", len(self._get_children_all()) + 1
-            )  # Allegledly, unique nodes in the graph
-            print("\t✨ Time    : ", round(self.last_run_info["time"], 2), "sec")
-            print("\t✨ Run mode: ", self.last_run_info["run_mode"])
-            print("\t✨ t in    : ", self.last_run_info["t_in"])
+            a = ""
+            # print("")
+            a += "Stats..." + f"({self.name})\n" if self.name is not None else "" + "\n"
+            a += f"\t✨ Nodes   : {len(self._get_children_all()) + 1}\n"
+            a += f'\t✨ Time    : {round(self.last_run_info["time"], 2)} sec\n'
+            a += f'\t✨ Run mode: {self.last_run_info["run_mode"]}\n'
+            a += f'\t✨ t in    : {self.last_run_info["t_in"]}\n'
             if "t_out" in self.last_run_info:
-                print("\t✨ t out   : ", self.last_run_info["t_out"])
+                a += f'\t✨ t out   : {self.last_run_info["t_out"]}\n'
             if duration_t_out is not None:
-                print("\t             ", f"({duration_t_out})")
+                a += f'\t             {f"({duration_t_out})"}\n'
             if "len" in self.last_run_info:
-                print("\t✨ Length  : ", self.last_run_info["len"])
+                a += f'\t✨ Length  : {self.last_run_info["len"]}\n'
+
+            a += f'\t✨ Type    : {self.last_run_info["type"]}\n'
+            if self.last_run_info["type"] == "DataFrame":
+                a += f'\t✨ Columns : {", ".join(self.last_run_info["columns"])}'
+
             # Print name if defined
             # print timespan input and output
             # TODO: Add how many nodes were executed
             # Also, how many caches were computed n stuff like that
             # Nodes that took the most?
-            print("")
+
+            print(a)
+            # print("")
 
     def _run_prefect_graph(self, t=None, context=None) -> T | None:
         """Run the graph using prefect concurrently"""
@@ -213,7 +227,46 @@ class Node(ABC, Generic[T]):
 
     def _children_are_available(self) -> bool:
         """Returns whether all the children are available"""
-        return all([x._available() for x in self.children])
+        return all(x._available() for x in self.children)
+
+    # TODO_2: Unify all the export_to_longcalendar into a coherent interface, pls
+    @abstractmethod
+    def export_to_longcalendar(
+        self,
+        t: Time_interval | None,
+        path_filename: str,
+        hour_offset: float = 0.0,
+        color: str | Callable[[T], str] | None = None,
+        opacity: float | Callable[[T], float] = 1.0,
+        # tooltip: str | Callable[[T], str] | None = None,
+        # tooltip_shows_length: bool = False,
+    ) -> None: ...  # pragma: no cover
+
+    def set_default_export(
+        self,
+        path_filename: Path,
+        color: str | Callable[[T], str] | None = None,
+        opacity: float | Callable[[T], float] = 1.0,
+        hour_offset: float = 0,
+    ) -> Node[T]:
+        def default_export_method(t: Time_interval | None = None):
+            self.export_to_longcalendar(
+                t,
+                path_filename=str(path_filename),
+                color=color,
+                opacity=opacity,
+                hour_offset=hour_offset,
+            )
+
+        self.default_export = default_export_method
+        self.final = True
+        return self
+
+    def _print_default_export_hasnt_been_defined(self, *args, **kwargs):
+        print(
+            f"Woops! Default export hasn't been defined for {self}. "
+            "Please, use the method set_default_export to define it 🙃"
+        )
 
 
 class Node_0child(Node[T]):
@@ -224,6 +277,7 @@ class Node_0child(Node[T]):
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> T | None:
         if not self._available():
+            print(f"Node {self} is not available...")
             return None
         return self._operation(t)
 
@@ -270,6 +324,31 @@ class Node_1child(Node[T]):
         )
 
 
+class Node_generate_None(Node_0child[None]):
+    """Generates None when run
+
+    It's mostly intended to be used for testing purposes"""
+
+    def _hashstr(self) -> str:
+        return hashlib.md5((super()._hashstr() + str(None)).encode()).hexdigest()
+
+    def _available(self) -> bool:
+        return True
+
+    def _operation(self, t: Time_interval | None = None) -> None:
+        return None
+
+    def export_to_longcalendar(
+        self,
+        t: Time_interval | None,
+        path_filename: str,
+        color: str | Callable[[None], str] | None = None,
+        opacity: float | Callable[[None], float] = 1.0,
+        hour_offset: float = 0,
+    ):
+        raise NotImplementedError
+
+
 def run_multiple(
     nodes_to_run: list[Node], t=None, prefect: bool = False
 ) -> Iterable[Any]:
@@ -306,16 +385,14 @@ def run_multiple_parallel(
         context: dict[Node, Any] = {}
         return [node._run_sequential(t, context) for node in nodes_to_run]
 
-    else:
-        # A flow is created
-        @prefect_flow(task_runner=ConcurrentTaskRunner(), name="run_prefect_graph")
-        def flow():
-            context: dict[Node, Any] = {}
-            tasks = [node._make_prefect_graph(t, context) for node in nodes_to_run]
-            results = [task.result() for task in tasks]
-            return results
+    # A flow is created
+    @prefect_flow(task_runner=ConcurrentTaskRunner(), name="run_prefect_graph")
+    def flow():
+        context: dict[Node, Any] = {}
+        tasks = [node._make_prefect_graph(t, context) for node in nodes_to_run]
+        return [task.result() for task in tasks]
 
-        return flow()
+    return flow()
 
 
 # TODO_3: Add a run_sequential to simplify debugging pls, something like:

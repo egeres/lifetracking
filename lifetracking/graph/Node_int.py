@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import time
-from typing import Any
+from typing import Any, Callable
 
 from prefect import task as prefect_task
 from prefect.futures import PrefectFuture
@@ -24,10 +24,21 @@ class Node_int(Node[int]):
     def __add__(self, other: Node_int) -> Node_int_addition:
         return Node_int_addition(self, other)
 
+    def export_to_longcalendar(
+        self,
+        t: Time_interval | None,
+        path_filename: str,
+        color: str | Callable[[int], str] | None = None,
+        opacity: float | Callable[[int], float] = 1.0,
+        hour_offset: float = 0,
+    ):
+        raise NotImplementedError
+
 
 class Node_int_generate(Node_0child, Node_int):
     def __init__(self, value: int, artificial_delay: float = 0) -> None:
         super().__init__()
+        assert isinstance(value, int)
         self.value = value
         self.artificial_delay = artificial_delay
 

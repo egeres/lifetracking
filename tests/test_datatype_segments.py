@@ -12,7 +12,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from lifetracking.datatypes.Seg import Seg
-from lifetracking.datatypes.Segment import Segments
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Time_interval import Time_interval
 
 
@@ -104,10 +104,10 @@ def test_export_to_longcalendar(opacity: float):
         a.export_to_longcalendar(filename, tooltip=lambda x: "test")
 
         # Failure
-        with pytest.raises(ValueError):
-            filename = os.path.join(
-                tmpdirname, "a_nice_subfolder", "another_sub_folder", "test.csv"
-            )
+        filename = os.path.join(
+            tmpdirname, "a_nice_subfolder", "another_sub_folder", "test.csv"
+        )
+        with pytest.raises(ValueError, match="path_filename must end with .json"):
             a.export_to_longcalendar(filename, opacity=opacity)
 
 
@@ -147,7 +147,7 @@ def test_segments_merge_0():
             Seg(a + timedelta(minutes=100), a + timedelta(minutes=105)),
         ]
     )
-    c = Segments.merge(b, 5 * 60)
+    c = Segments.merge(b, timedelta(seconds=5 * 60))
     assert len(c) == 2
     assert c[0].start == b[0].start
     assert c[0].end == b[1].end
@@ -159,7 +159,7 @@ def test_segments_merge_0():
             Seg(a + timedelta(minutes=90), a + timedelta(minutes=105)),
         ]
     )
-    c = Segments.merge(b, 0)
+    c = Segments.merge(b, timedelta(seconds=0))
     assert len(c) == 3
     b["my_key"] = 0
     for i in b:
@@ -175,10 +175,10 @@ def test_segments_merge_1():
             Seg(a + timedelta(minutes=8), a + timedelta(minutes=9)),
         ]
     )
-    c = Segments.merge(b, 0.01)
+    c = Segments.merge(b, timedelta(seconds=0.01))
     assert len(c) == 3
 
-    c = Segments.merge(b, 9999)
+    c = Segments.merge(b, timedelta(seconds=9999))
     assert len(c) == 1
 
 
@@ -195,18 +195,18 @@ def test_segments_merge_2():
     # |-------|
     #  |-------|
     #     ||
-    c = Segments.merge(b, 2)
+    c = Segments.merge(b, timedelta(seconds=2))
     assert len(c) == 1
 
 
 def test_segments_merge_empty():
     b = Segments([])
-    c = Segments.merge(b, 5 * 60)
+    c = Segments.merge(b, timedelta(seconds=5 * 60))
     assert len(c) == 0
 
     a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments([Seg(a + timedelta(minutes=0), a + timedelta(minutes=1))])
-    c = Segments.merge(b, 5 * 60)
+    c = Segments.merge(b, timedelta(seconds=5 * 60))
     assert len(c) == 1
 
 
@@ -220,7 +220,9 @@ def test_segments_merge_with_customrule():
             Seg(a + timedelta(minutes=9), a + timedelta(minutes=10), {"my_key": 0}),
         ]
     )
-    c = Segments.merge(b, 5 * 60, lambda x, y: x["my_key"] == y["my_key"])
+    c = Segments.merge(
+        b, timedelta(seconds=5 * 60), lambda x, y: x["my_key"] == y["my_key"]
+    )
 
     assert len(c) == 3
     assert c[0]["my_key"] == 0
@@ -293,7 +295,7 @@ def test_segments_sub_0():
         a + timedelta(minutes=10), a + timedelta(minutes=15)
     )  # Remaining segment
 
-    # TODO: Finish this!
+    # TODO_2: Finish this!
     # a = Node_segments_generate(Segments([Time_interval.last_n_days(5).to_seg()]))
     # b = Node_segments_generate(Segments([Time_interval.last_n_days(1).to_seg()]))
     # c = a - b

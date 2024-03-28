@@ -19,7 +19,7 @@ from lifetracking.graph.Node_pandas import (
 from lifetracking.graph.Time_interval import Time_interval
 
 
-def test_node_pddataframe_0():
+def test_node_pddataframe_creation():
     df = pd.DataFrame([{"a": 0}, {"a": 1}, {"a": 2}])
     a = Node_pandas_generate(df)
 
@@ -44,24 +44,51 @@ def test_node_pddataframe_filter():
     )
 
 
-def test_node_pddataframe_removeifclose():
+def test_node_pddataframe_removeifclose_first():
     t = datetime.datetime.now()
     df = pd.DataFrame(
         [
-            {"datetime": t + datetime.timedelta(minutes=0)},
-            {"datetime": t + datetime.timedelta(minutes=1)},
-            {"datetime": t + datetime.timedelta(minutes=2)},
-            {"datetime": t + datetime.timedelta(minutes=3)},
-            {"datetime": t + datetime.timedelta(minutes=4)},
-            {"datetime": t + datetime.timedelta(minutes=999)},
+            {"a": "a", "datetime": t + datetime.timedelta(minutes=0)},
+            {"a": "a", "datetime": t + datetime.timedelta(minutes=0)},  # Oh, it's dupe!
+            {"a": "b", "datetime": t + datetime.timedelta(minutes=1)},
+            {"a": "c", "datetime": t + datetime.timedelta(minutes=2)},
+            {"a": "d", "datetime": t + datetime.timedelta(minutes=3)},
+            {"a": "e", "datetime": t + datetime.timedelta(minutes=4)},
+            {"a": "f", "datetime": t + datetime.timedelta(minutes=50)},
+            {"a": "g", "datetime": t + datetime.timedelta(minutes=51)},
+            {"a": "h", "datetime": t + datetime.timedelta(minutes=999)},
         ]
     )
     a = Node_pandas_generate(df, datetime_column="datetime")
-    b = Node_pandas_remove_close(a, datetime.timedelta(minutes=2))
+    b = Node_pandas_remove_close(a, datetime.timedelta(minutes=2), keep="first")
+    o = b.run()
+    assert o is not None
+    assert len(o) == 3
+    assert list(o["a"]) == ["a", "f", "h"]
+
+
+def test_node_pddataframe_removeifclose_last():
+    t = datetime.datetime.now()
+    df = pd.DataFrame(
+        [
+            {"a": "a", "datetime": t + datetime.timedelta(minutes=0)},
+            {"a": "b", "datetime": t + datetime.timedelta(minutes=1)},
+            {"a": "c", "datetime": t + datetime.timedelta(minutes=2)},
+            {"a": "d", "datetime": t + datetime.timedelta(minutes=3)},
+            {"a": "e", "datetime": t + datetime.timedelta(minutes=4)},
+            {"a": "e", "datetime": t + datetime.timedelta(minutes=4)},  # Dupe line :)
+            {"a": "f", "datetime": t + datetime.timedelta(minutes=50)},
+            {"a": "g", "datetime": t + datetime.timedelta(minutes=51)},
+            {"a": "h", "datetime": t + datetime.timedelta(minutes=999)},
+        ]
+    )
+    a = Node_pandas_generate(df, datetime_column="datetime")
+    b = Node_pandas_remove_close(a, datetime.timedelta(minutes=2), keep="last")
 
     o = b.run()
     assert o is not None
-    assert len(o) == 2
+    assert len(o) == 3
+    assert list(o["a"]) == ["e", "g", "h"]
 
 
 file_extensions_to_test = ["csv", "json"]
@@ -90,7 +117,7 @@ def test_node_pddataframe_readdata_0(file_format: str):
                 lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         else:
-            raise NotImplementedError()
+            raise NotImplementedError
 
         # Case 0: Simple run
         assert reader.available
@@ -132,7 +159,7 @@ def test_node_pddataframe_readdata_1(file_format: str):
                 lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         else:
-            raise NotImplementedError()
+            raise NotImplementedError
 
         # Case 0: Simple run
         assert reader.available
@@ -146,7 +173,7 @@ def test_node_pddataframe_readdata_1(file_format: str):
         assert len(o) == 4
 
 
-# TODO: Test the above with `column_date_index`
+# TEST: Test the above with `column_date_index`
 
 
 def test_node_pddataframe_add_0():
@@ -206,7 +233,7 @@ def test_node_pddataframe_filecreation_0():
         a = Reader_filecreation(
             tmpdirname,
             lambda x: pd.to_datetime(
-                x.split(".")[0],
+                x.name.split(".")[0],
                 format="%Y-%m-%d",
             ),
         )
@@ -220,7 +247,7 @@ def test_node_pddataframe_filecreation_1():
     a = Reader_filecreation(
         "/this_dir_does_not_exist",
         lambda x: pd.to_datetime(
-            x.split(".")[0],
+            x.name.split(".")[0],
             format="%Y-%m-%d",
         ),
     )

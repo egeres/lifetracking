@@ -1,16 +1,12 @@
 from __future__ import annotations
 
+import copy
 import datetime
-import dis
-import hashlib
-import inspect
-import json
-import os
-import pickle
-import tempfile
-from typing import Any, Callable
+from datetime import timedelta
 
+import numpy as np
 import pandas as pd
+import plotly
 import plotly.graph_objects as go
 from dateutil.parser import parse
 
@@ -21,10 +17,13 @@ def graph_udate_layout(
     fig: go.Figure,
     t: Time_interval | None,
 ):
+    assert isinstance(fig, go.Figure), "fig is not a plotly Figure!"
+    assert isinstance(t, Time_interval) or t is None, "t is not a Time_interval or None"
+
     # Base
     newlayout = {
         "template": "plotly_dark",
-        "margin": dict(l=0, r=0, t=0, b=0),  # Is this a good idea tho?
+        "margin": {"l": 0, "r": 0, "t": 0, "b": 0},  # Is this a good idea tho?
         "legend": {
             "font": {
                 "family": "JetBrains Mono",
@@ -41,6 +40,15 @@ def graph_udate_layout(
         days_span = (max(fig.data[0].x) - min(fig.data[0].x)).days
     elif t is not None:
         days_span = (t.end - t.start).days
+
+    if isinstance(t, Time_interval):
+        fig.update_xaxes(range=[t.start, t.end])
+
+        # Extends the ends of the lines to the edges of the graph
+        # Range of days
+        # Bad for weight-like stuff
+        # Good for count-epetitions-per-day-stuff, or stuff that baselines to 0 I guess
+        # graph_extend_tails(fig, t)
 
     # x ticks
     if days_span is None:
@@ -93,7 +101,7 @@ def graph_annotate_today(
 
     # Today
     today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    # TODO: At some point, decide upon tzinfo's
+    # TODO_3 (TZ) : At some point, decide upon tzinfo's
     if t.start.tzinfo is not None:
         today = today.astimezone(t.start.tzinfo)
 
@@ -110,6 +118,34 @@ def graph_annotate_today(
             xref="x",
             yref="y",
         )
+
+
+def graph_extend_tails(fig: go.Figure, t: Time_interval):
+    # Extends the ends of the lines to the edges of the graph
+    for i in fig.data:
+        if not isinstance(i, plotly.graph_objs._scatter.Scatter):
+            continue
+        assert isinstance(i, plotly.graph_objs._scatter.Scatter)
+        assert isinstance(i.x, np.ndarray)
+        assert isinstance(i.y, np.ndarray)
+        if len(i.x) == 0:
+            continue
+
+        new_t = copy.copy(t)
+        if i.x[0].tzinfo and t.start.tzinfo is None:
+            new_t.start = new_t.start.replace(tzinfo=i.x[0].tzinfo)
+            new_t.end = new_t.end.replace(tzinfo=i.x[0].tzinfo)
+
+        if i.x[0] > new_t.start:  # type: ignore
+            i.x = np.concatenate([np.array([i.x[0] - timedelta(days=1)]), i.x])
+            i.y = np.concatenate([np.array([0]), i.y])
+            i.x = np.concatenate([np.array([new_t.start]), i.x])
+            i.y = np.concatenate([np.array([0]), i.y])
+        if i.x[-1] < new_t.end.replace(hour=0, minute=0, second=0, microsecond=0):
+            i.x = np.concatenate([i.x, np.array([i.x[-1] + timedelta(days=1)])])
+            i.y = np.concatenate([i.y, np.array([0])])
+            i.x = np.concatenate([i.x, np.array([new_t.end])])
+            i.y = np.concatenate([i.y, np.array([0])])
 
 
 def graph_annotate_annotations(
@@ -199,9 +235,9 @@ def graph_annotate_title(
         y=0.9,
         text=title,
         showarrow=False,
-        font=dict(
-            family="JetBrains Mono",
-            size=16,
-        ),
+        font={
+            "family": "JetBrains Mono",
+            "size": 16,
+        },
     )
     return fig

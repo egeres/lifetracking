@@ -3,11 +3,12 @@ from __future__ import annotations
 import datetime
 import hashlib
 import os
+import warnings
 
 from pydub.utils import mediainfo
 from rich import print
 
-from lifetracking.datatypes.Segment import Seg, Segments
+from lifetracking.datatypes.Segments import Seg, Segments
 from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_segments import Node_segments
 from lifetracking.graph.Time_interval import Time_interval
@@ -18,6 +19,8 @@ class Reader_audios(Node_segments, Node_0child):
     def __init__(self, path_dir: str) -> None:
         super().__init__()
         self.path_dir = path_dir
+        if not os.path.isdir(path_dir):
+            warnings.warn(f"{path_dir} is not a directory", stacklevel=2)
 
     def _available(self) -> bool:
         return (
@@ -44,28 +47,23 @@ class Reader_audios(Node_segments, Node_0child):
             filename = os.path.join(path_dir, i)
             if not os.path.isfile(filename):
                 continue
-            if not (
-                filename.endswith(".mp3")
-                or filename.endswith(".wav")
-                or filename.endswith(".flac")
-                or filename.endswith(".ogg")
-                or filename.endswith(".m4a")
-                or filename.endswith(".opus")
-                or filename.endswith(".wma")
-                or filename.endswith(".amr")
+            if not filename.endswith(
+                ("mp3", "wav", "flac", "ogg", "m4a", "opus", "wma", "amr")
             ):
                 continue
             to_return.append(filename)
         return to_return
 
-    def _operation(self, t: Time_interval | None = None) -> Segments:
+    def _operation(self, t: Time_interval | None = None) -> Segments | None:
+        if not os.path.exists(self.path_dir):
+            return None
+
         to_return = []
         for filename in self._get_plausible_files(self.path_dir):
             # Date filtering
             date_creation = datetime.datetime.fromtimestamp(os.stat(filename).st_ctime)
-            if t is not None:
-                if date_creation not in t:
-                    continue
+            if t is not None and date_creation not in t:
+                continue
 
             # Info extraction
             duration_in_s = self._get_audio_length_in_s(filename)

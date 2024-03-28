@@ -10,7 +10,7 @@ import pandas as pd
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 
-from lifetracking.datatypes.Segment import Seg, Segments
+from lifetracking.datatypes.Segments import Seg, Segments
 from lifetracking.graph.Node import Node, Node_1child
 from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Node_segments import Node_segments

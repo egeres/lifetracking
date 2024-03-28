@@ -9,7 +9,7 @@ import pandas as pd
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from lifetracking.datatypes.Segment import Segments
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node_pandas import Node_pandas_generate
 from lifetracking.graph.Node_segments import (
     Node_segmentize_pandas,
@@ -18,6 +18,10 @@ from lifetracking.graph.Node_segments import (
     Node_segments_generate,
 )
 from lifetracking.graph.Time_interval import Time_interval
+
+
+def test_node_segments_creation():
+    Node_segments_generate(Segments([Time_interval.today().to_seg()]))
 
 
 @given(st.integers(min_value=2, max_value=100_000))
@@ -36,6 +40,22 @@ def test_node_segments_run(n: int):
     assert b is not None
     assert len(b) == 3
     assert len(b[Time_interval.today()]) == 1
+
+
+def test_node_segments_assignvalues():
+    a = Node_segments_generate(
+        Segments(
+            [
+                Time_interval.today().to_seg(),
+                Time_interval.last_week().to_seg(),
+            ]
+        )
+    )
+    b = a.assign_value_all("some_key", "some_value")
+    o = b.run()
+    assert o is not None
+    for i in o:
+        assert i["some_key"] == "some_value"
 
 
 def test_node_segments_run_prefect():

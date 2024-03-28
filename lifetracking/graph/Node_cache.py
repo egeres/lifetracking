@@ -6,13 +6,12 @@ import json
 import os
 import pickle
 from functools import reduce
-from typing import Any, TypeVar
+from typing import Any, Callable, TypeVar
 
 import pandas as pd
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 
-from lifetracking.datatypes.Segment import Segments
 from lifetracking.graph.Node import Node
 from lifetracking.graph.Node_int import Node_int
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
@@ -36,7 +35,8 @@ class Node_cache(Node[T]):
         # TODO Currently it gives an error if the input node is constant
         # (refactor this in the future pls)
         if isinstance(n0, Node_int):
-            raise ValueError("The input node cannot be constant (to be improved)")
+            msg = "The input node cannot be constant (to be improved)"
+            raise TypeError(msg)
 
         super().__init__()
         self.n0 = n0
@@ -83,15 +83,14 @@ class Node_cache(Node[T]):
             )
 
         # We have something? -> Load what we can and recompute anything missing
-        else:
-            return self._load_cache(
-                t,
-                n0,
-                path_dir_cache,
-                hash_node,
-                context,
-                prefect,
-            )
+        return self._load_cache(
+            t,
+            n0,
+            path_dir_cache,
+            hash_node,
+            context,
+            prefect,
+        )
 
     def _run_sequential(self, t=None, context=None) -> T | None:
         return self._operation(self.n0, t, context)
@@ -211,24 +210,24 @@ class Node_cache(Node[T]):
                     current_data["data_count"] += 1
                     data_to_save.append(aa)
                     continue
-                else:
-                    # Saving data in pickle & metadata
-                    filename_slice = os.path.join(
-                        path_dir_cache, f"{current_day.split('T')[0]}.pickle"
-                    )
-                    with open(filename_slice, "wb") as f:
-                        pickle.dump(type(o)(data_to_save), f)
-                    cache_metadata[current_day] = current_data
 
-                    # We reset stuff
-                    current_day = aa.start.replace(
-                        hour=0, minute=0, second=0, microsecond=0
-                    ).isoformat()
-                    data_to_save = [aa]
-                    current_data = {
-                        "creation_time": datetime.datetime.now().isoformat(),
-                        "data_count": 1,
-                    }
+                # Saving data in pickle & metadata
+                filename_slice = os.path.join(
+                    path_dir_cache, f"{current_day.split('T')[0]}.pickle"
+                )
+                with open(filename_slice, "wb") as f:
+                    pickle.dump(type(o)(data_to_save), f)
+                cache_metadata[current_day] = current_data
+
+                # We reset stuff
+                current_day = aa.start.replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                ).isoformat()
+                data_to_save = [aa]
+                current_data = {
+                    "creation_time": datetime.datetime.now().isoformat(),
+                    "data_count": 1,
+                }
 
             # "After for"
             if len(data_to_save) != 0:
@@ -311,7 +310,8 @@ class Node_cache(Node[T]):
                     # This redundancy is a bit dumb, I need to think about it
                     o = n0._run_sequential(t_sub_sub, context)  # [t_sub]
                     if o is None:
-                        raise ValueError("Check this!")
+                        msg = "Check this!"
+                        raise ValueError(msg)
                     o = o[t_sub]
                     # TODO: I think it should be this one, but test fail
                     # o = o[t_sub_sub]
@@ -460,3 +460,13 @@ class Node_cache(Node[T]):
 
         # TODO_2: Fix this weird issue with the type after project is python 3.11 (?)
         return reduce(lambda x, y: x + y, to_return)  # type: ignore
+
+    def export_to_longcalendar(
+        self,
+        t: Time_interval | None,
+        path_filename: str,
+        color: str | Callable[[None], str] | None = None,
+        opacity: float | Callable[[None], float] = 1.0,
+        hour_offset: float = 0,
+    ):
+        raise NotImplementedError

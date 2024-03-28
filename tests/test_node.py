@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 
 from lifetracking.datatypes.Seg import Seg
-from lifetracking.datatypes.Segment import Segments
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node_int import Node_int_generate, Node_int_singleincrement
 from lifetracking.graph.Node_segments import Node_segments_generate
 

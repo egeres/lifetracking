@@ -9,7 +9,7 @@ import time
 
 from dateutil.parser import parse
 
-from lifetracking.datatypes.Segment import Segments
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node_cache import Node_cache
 from lifetracking.graph.Node_segments import Node_segments_generate
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
@@ -62,11 +62,11 @@ def test_node_cache_save_tisnone():
         )
 
         # Validation for the json file
-        path_fil_json = [
+        path_fil_json = next(
             os.path.join(path_dir_specific_cache, x)
             for x in os.listdir(path_dir_specific_cache)
             if x.endswith(".json")
-        ][0]
+        )
         with open(path_fil_json) as f:
             data = json.load(f)
             assert data["start"] == b.min().strftime("%Y-%m-%d %H:%M:%S")
@@ -77,11 +77,11 @@ def test_node_cache_save_tisnone():
 
         # Validation for the pickle files
         all_data_count = 0
-        path_fil_pickle = [
+        path_fil_pickle = next(
             os.path.join(path_dir_specific_cache, x)
             for x in os.listdir(path_dir_specific_cache)
             if x.endswith(".pickle")
-        ][0]
+        )
         with open(path_fil_pickle, "rb") as f:
             data = pickle.load(f)
             assert isinstance(data, Segments)
@@ -138,11 +138,11 @@ def test_node_cache_save_tissomething():
         assert len(os.listdir(path_dir_specific_cache)) == 4
 
         # cache.json validation
-        path_fil_json = [
+        path_fil_json = next(
             os.path.join(path_dir_specific_cache, x)
             for x in os.listdir(path_dir_specific_cache)
             if x.endswith(".json")
-        ][0]
+        )
         with open(path_fil_json) as f:
             data = json.load(f)
             # assert data["start"] == b.min().strftime("%Y-%m-%d %H:%M:%S") # 🤔
@@ -179,11 +179,11 @@ def test_node_cache_save_tissomething():
         assert len(os.listdir(path_dir_specific_cache)) == 7
 
         # cache.json validation
-        path_fil_json = [
+        path_fil_json = next(
             os.path.join(path_dir_specific_cache, x)
             for x in os.listdir(path_dir_specific_cache)
             if x.endswith(".json")
-        ][0]
+        )
         with open(path_fil_json) as f:
             data = json.load(f)
             # assert data["start"] == b.min().strftime("%Y-%m-%d %H:%M:%S") # 🤔

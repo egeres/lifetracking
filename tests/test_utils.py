@@ -101,6 +101,7 @@ def test_export_pddataframe_to_lc_single():
         export_pddataframe_to_lc_single(
             df,
             os.path.join(path_dir, "out.json"),
+            time_offset=datetime.timedelta(minutes=30),
             color="#F00",
             opacity=0.5,
         )

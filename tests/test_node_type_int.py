@@ -3,12 +3,35 @@ from __future__ import annotations
 from hypothesis import given
 from hypothesis import strategies as st
 
-from lifetracking.graph.Node import Node, run_multiple, run_multiple_parallel
+from lifetracking.graph.Node import (
+    Node,
+    Node_generate_None,
+    run_multiple,
+    run_multiple_parallel,
+)
 from lifetracking.graph.Node_int import (
     Node_int_addition,
     Node_int_generate,
     Node_int_singleincrement,
 )
+
+
+def test_node_int_creation():
+    Node_int_generate(1)
+
+
+def test_run_single_basic():
+    a = Node_int_generate(1)
+    b = Node_int_generate(1)
+    c = a + b
+    assert c.run() == 2
+
+
+def test_run_single_none():
+    a = Node_int_generate(1)
+    b = Node_generate_None()
+    c = a + b  # type: ignore
+    assert c.run() is None
 
 
 @given(st.integers(), st.integers())
@@ -24,6 +47,16 @@ def test_run_single_simple(a_val, b_val):
     assert len(b.children) == 0
     assert len(Node_int_singleincrement(b).children) == 1
     assert len(c.children) == 2
+
+
+def test_run_single_hash():
+    a = Node_int_generate(1)
+    b = Node_int_generate(1)
+    c = a + b
+
+    h_i = a._hashstr()  # Individual hash
+    h_t = c.hash_tree()  # Hash tree
+    assert h_i != h_t
 
 
 def test_run_single_simple_test_iadd():

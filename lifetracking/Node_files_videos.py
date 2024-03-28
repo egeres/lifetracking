@@ -3,10 +3,11 @@ from __future__ import annotations
 import datetime
 import hashlib
 import os
+import warnings
 
 import ffmpeg
 
-from lifetracking.datatypes.Segment import Seg, Segments
+from lifetracking.datatypes.Segments import Seg, Segments
 from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_segments import Node_segments
 from lifetracking.graph.Time_interval import Time_interval
@@ -23,7 +24,8 @@ class Reader_videos(Node_segments, Node_0child):
     ) -> None:
         super().__init__()
         if not os.path.isdir(path_dir):
-            raise ValueError(f"{path_dir} is not a directory")
+            # raise ValueError(f"{path_dir} is not a directory")
+            warnings.warn(f"{path_dir} is not a directory", stacklevel=2)
         self.path_dir = path_dir
 
     def _hashstr(self) -> str:
@@ -47,10 +49,9 @@ class Reader_videos(Node_segments, Node_0child):
             dur_secs = int(
                 vid["streams"][0]["tags"]["DURATION"].split(".")[0].split(":")[2]
             )
-            time_in_s = dur_secs + 60 * dur_mins + 3600 * dur_hours
-            return time_in_s
-        else:
-            print("Woops, error, invalid video streams!")
+            return dur_secs + (60 * dur_mins) + (3600 * dur_hours)
+        print("Woops, error, invalid video streams!")
+        return None
 
     def _get_plausible_files(self, path_dir: str) -> list[str]:
         to_return = []
@@ -61,25 +62,21 @@ class Reader_videos(Node_segments, Node_0child):
                 continue
             if "desktop.ini" in filename:
                 continue
-            if not (
-                filename.endswith(".mp4")
-                or filename.endswith(".mkv")
-                or filename.endswith(".avi")
-                or filename.endswith(".mov")
-                or filename.endswith(".webm")
-            ):
+            if not filename.endswith(("mp4", "mkv", "avi", "mov", "webm")):
                 continue
             to_return.append(filename)
         return to_return
 
-    def _operation(self, t: Time_interval | None = None) -> Segments:
+    def _operation(self, t: Time_interval | None = None) -> Segments | None:
+        if not os.path.isdir(self.path_dir):
+            return None
+
         to_return = []
         for filename in self._get_plausible_files(self.path_dir):
             # Date filtering
             date_creation = datetime.datetime.fromtimestamp(os.stat(filename).st_ctime)
-            if t is not None:
-                if date_creation not in t:
-                    continue
+            if t is not None and date_creation not in t:
+                continue
 
             # Info extraction
             duration_in_s = self._get_video_length_in_s(filename)
