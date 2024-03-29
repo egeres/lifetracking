@@ -12,72 +12,63 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+def get_system_details(way_this_info_was_added: str) -> dict[str, str]:
+    return {
+        "os.login()": os.getlogin(),
+        "platform.system()": platform.system(),
+        "machine_name": str(os.getenv("COMPUTERNAME", os.getenv("HOSTNAME"))),
+        "way_this_info_was_added": way_this_info_was_added,
+        "name_of_the_script": sys.argv[0],
+    }
+
+
 def write_single_on_csv(
-    path_to_file: Path, way_this_info_was_added: str = "manual", **kwargs
+    path_to_file: Path,
+    way_this_info_was_added: str = "manual",
+    now: datetime.datetime | None = None,
+    **kwargs,
 ):
 
     assert isinstance(path_to_file, Path)
     assert path_to_file.suffix == ".csv"
     assert isinstance(way_this_info_was_added, str)
 
+    if now is None:
+        now = datetime.datetime.now(datetime.timezone.utc)
+
     mode = "w" if not path_to_file.exists() else "a"
+    d = get_system_details(way_this_info_was_added)
 
     with open(path_to_file, mode, newline="") as file:
+        # TODO_2: Add check if columns change from the header to what it's being saved
+
         writer = csv.writer(file)
         if mode == "w":
-            writer.writerow(
-                [
-                    "datetime",
-                    "os.login()",
-                    "platform.system()",
-                    "machine_name",
-                    "way_this_info_was_added",
-                    "name_of_the_script",
-                    # Extra data...
-                    *kwargs.keys(),
-                ]
-            )
-
-        # TODO_2: Add check in case columns change from the header to what it's being
-        # saved
-
-        writer.writerow(
-            [
-                datetime.datetime.now(datetime.timezone.utc),
-                os.getlogin(),
-                platform.system(),
-                os.getenv("COMPUTERNAME", os.getenv("HOSTNAME")),
-                way_this_info_was_added,
-                sys.argv[0],
-                # Extra data...
-                *[str(x) for x in kwargs.values()],
-            ]
-        )
+            writer.writerow(["datetime", *d.keys(), *kwargs.keys()])
+        writer.writerow([now, *d.values(), *[str(x) for x in kwargs.values()]])
 
 
 def write_single_on_dated_json(
-    path_to_dir: Path, way_this_info_was_added: str = "manual", **kwargs
+    path_to_dir: Path,
+    way_this_info_was_added: str = "manual",
+    now: datetime.datetime | None = None,
+    **kwargs,
 ):
 
     assert isinstance(path_to_dir, Path)
     assert path_to_dir.is_dir()
     assert isinstance(way_this_info_was_added, str)
 
-    now = datetime.datetime.now(datetime.timezone.utc)
+    if now is None:
+        now = datetime.datetime.now(datetime.timezone.utc)
 
     df: list[dict] = []
     if os.path.exists(path_to_dir / f"{now.strftime('%Y-%m-%d')}.json"):
         with open(path_to_dir / f"{now.strftime('%Y-%m-%d')}.json", "r+") as f:
             df = json.load(f)
     df.append(
-        {
-            "datetime": now.isoformat(),
-            "os.login()": os.getlogin(),
-            "platform.system()": platform.system(),
-            "machine_name": os.getenv("COMPUTERNAME", os.getenv("HOSTNAME")),
-            "way_this_info_was_added": way_this_info_was_added,
-            "name_of_the_script": sys.argv[0],
-        }
+        {"datetime": now.isoformat()}
+        | get_system_details(way_this_info_was_added)
         | kwargs
     )
     with open(path_to_dir / f"{now.strftime('%Y-%m-%d')}.json", "w") as f:
@@ -87,20 +78,29 @@ def write_single_on_dated_json(
 # TODO_2: Add write_segment_on_csv
 # TODO_2: Add write_segment_on_dated_json
 
-if __name__ == "__main__":
 
-    from pydantic import BaseModel
+def write_segment_on_csv(
+    path_to_file: Path,
+    start: datetime.datetime,
+    end: datetime.datetime,
+    way_this_info_was_added: str = "manual",
+    **kwargs,
+):
+    assert isinstance(path_to_file, Path)
+    assert path_to_file.suffix == ".csv"
+    assert isinstance(way_this_info_was_added, str)
+    assert start < end
+    assert isinstance(start, datetime.datetime)
+    assert isinstance(end, datetime.datetime)
+    assert isinstance(way_this_info_was_added, str)
 
-    class Person_0(BaseModel):
-        name: str
-        age: int = 99
+    mode = "w" if not path_to_file.exists() else "a"
+    d = get_system_details(way_this_info_was_added)
 
-    @dataclass
-    class Person_1:
-        name: str
-        age: int
+    with open(path_to_file, mode, newline="") as file:
+        # TODO_2: Add check if columns change from the header to what it's being saved
 
-    now = datetime.datetime.now(datetime.timezone.utc)
-    file = Path(f"C:/Shared/deletemee_{now.strftime('%Y-%m-%d')}.csv")
-
-    write_single_on_csv(file, "manual", weight=70, height=1.70)
+        writer = csv.writer(file)
+        if mode == "w":
+            writer.writerow(["start", "end", *d, *kwargs.keys()])
+        writer.writerow([start, end, *d.values(), *[str(x) for x in kwargs.values()]])
