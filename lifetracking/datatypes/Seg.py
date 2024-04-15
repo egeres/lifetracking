@@ -108,20 +108,20 @@ class Seg:
                 tzinfo=self.end.tzinfo,
             ) + datetime.timedelta(days=1)
 
-            # TODO_2: This causes a weird bug, try it with seconds=1 and evaluate it
-            # further with a proper test
-            remove_seconds = datetime.timedelta(seconds=0.001)
-            if next_day > self.end:
-                next_day = self.end
-                remove_seconds = datetime.timedelta(seconds=0)
             splits.append(
                 Seg(
                     temp_start,
-                    next_day - remove_seconds,
+                    (
+                        self.end
+                        if next_day > self.end
+                        else next_day - datetime.timedelta(microseconds=1)
+                    ),
                     self.value,
                 )
             )
+
             temp_start = next_day
+
         return splits
 
     def length_days(self) -> float:
