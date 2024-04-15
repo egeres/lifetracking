@@ -2,6 +2,8 @@
 Meant to be used for single data points, like weight, height, etc.
 """
 
+from __future__ import annotations
+
 import csv
 import datetime
 import json

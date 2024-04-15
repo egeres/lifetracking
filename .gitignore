@@ -23,3 +23,5 @@ lifetracking/plots/__pycache__/
 .pytest_cache/
 
 .tox/
+
+lifetracking/dataloggers/__pycache__/

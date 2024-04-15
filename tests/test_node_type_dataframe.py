@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import tempfile
+from datetime import timedelta
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -44,23 +45,44 @@ def test_node_pddataframe_filter():
     )
 
 
+def test_node_pddataframe_removeifclose():
+    t = datetime.datetime.now()
+    df = pd.DataFrame(
+        [
+            {"a": "a", "t": t + timedelta(minutes=0)},
+            {"a": "a", "t": t + timedelta(minutes=0)},  # Oh, it's dupe!
+            {"a": "a", "t": t + timedelta(minutes=999999)},
+        ]
+    )
+    df.set_index("t", inplace=True)
+    assert isinstance(df.index, pd.DatetimeIndex)
+
+    p = 0
+
+    a = Node_pandas_generate(df)
+    b = Node_pandas_remove_close(a, timedelta(minutes=2), keep="first")
+    o = b.run()
+    assert o is not None
+    assert len(o) == 2
+
+
 def test_node_pddataframe_removeifclose_first():
     t = datetime.datetime.now()
     df = pd.DataFrame(
         [
-            {"a": "a", "datetime": t + datetime.timedelta(minutes=0)},
-            {"a": "a", "datetime": t + datetime.timedelta(minutes=0)},  # Oh, it's dupe!
-            {"a": "b", "datetime": t + datetime.timedelta(minutes=1)},
-            {"a": "c", "datetime": t + datetime.timedelta(minutes=2)},
-            {"a": "d", "datetime": t + datetime.timedelta(minutes=3)},
-            {"a": "e", "datetime": t + datetime.timedelta(minutes=4)},
-            {"a": "f", "datetime": t + datetime.timedelta(minutes=50)},
-            {"a": "g", "datetime": t + datetime.timedelta(minutes=51)},
-            {"a": "h", "datetime": t + datetime.timedelta(minutes=999)},
+            {"a": "a", "datetime": t + timedelta(minutes=0)},
+            {"a": "a", "datetime": t + timedelta(minutes=0)},  # Oh, it's dupe!
+            {"a": "b", "datetime": t + timedelta(minutes=1)},
+            {"a": "c", "datetime": t + timedelta(minutes=2)},
+            {"a": "d", "datetime": t + timedelta(minutes=3)},
+            {"a": "e", "datetime": t + timedelta(minutes=4)},
+            {"a": "f", "datetime": t + timedelta(minutes=50)},
+            {"a": "g", "datetime": t + timedelta(minutes=51)},
+            {"a": "h", "datetime": t + timedelta(minutes=999)},
         ]
     )
     a = Node_pandas_generate(df, datetime_column="datetime")
-    b = Node_pandas_remove_close(a, datetime.timedelta(minutes=2), keep="first")
+    b = Node_pandas_remove_close(a, timedelta(minutes=2), keep="first")
     o = b.run()
     assert o is not None
     assert len(o) == 3
@@ -71,19 +93,19 @@ def test_node_pddataframe_removeifclose_last():
     t = datetime.datetime.now()
     df = pd.DataFrame(
         [
-            {"a": "a", "datetime": t + datetime.timedelta(minutes=0)},
-            {"a": "b", "datetime": t + datetime.timedelta(minutes=1)},
-            {"a": "c", "datetime": t + datetime.timedelta(minutes=2)},
-            {"a": "d", "datetime": t + datetime.timedelta(minutes=3)},
-            {"a": "e", "datetime": t + datetime.timedelta(minutes=4)},
-            {"a": "e", "datetime": t + datetime.timedelta(minutes=4)},  # Dupe line :)
-            {"a": "f", "datetime": t + datetime.timedelta(minutes=50)},
-            {"a": "g", "datetime": t + datetime.timedelta(minutes=51)},
-            {"a": "h", "datetime": t + datetime.timedelta(minutes=999)},
+            {"a": "a", "datetime": t + timedelta(minutes=0)},
+            {"a": "b", "datetime": t + timedelta(minutes=1)},
+            {"a": "c", "datetime": t + timedelta(minutes=2)},
+            {"a": "d", "datetime": t + timedelta(minutes=3)},
+            {"a": "e", "datetime": t + timedelta(minutes=4)},
+            {"a": "e", "datetime": t + timedelta(minutes=4)},  # Dupe line :)
+            {"a": "f", "datetime": t + timedelta(minutes=50)},
+            {"a": "g", "datetime": t + timedelta(minutes=51)},
+            {"a": "h", "datetime": t + timedelta(minutes=999)},
         ]
     )
     a = Node_pandas_generate(df, datetime_column="datetime")
-    b = Node_pandas_remove_close(a, datetime.timedelta(minutes=2), keep="last")
+    b = Node_pandas_remove_close(a, timedelta(minutes=2), keep="last")
 
     o = b.run()
     assert o is not None
@@ -192,12 +214,12 @@ def test_node_pddataframe_readjson_0():
     with tempfile.TemporaryDirectory() as tmpdirname:
         t = datetime.datetime.now()
         b = [
-            {"datetime": t + datetime.timedelta(minutes=0)},
-            {"datetime": t + datetime.timedelta(minutes=1)},
-            {"datetime": t + datetime.timedelta(minutes=2)},
-            {"datetime": t + datetime.timedelta(minutes=3)},
-            {"datetime": t + datetime.timedelta(minutes=4)},
-            {"datetime": t + datetime.timedelta(minutes=999)},
+            {"datetime": t + timedelta(minutes=0)},
+            {"datetime": t + timedelta(minutes=1)},
+            {"datetime": t + timedelta(minutes=2)},
+            {"datetime": t + timedelta(minutes=3)},
+            {"datetime": t + timedelta(minutes=4)},
+            {"datetime": t + timedelta(minutes=999)},
         ]
         filename = os.path.join(tmpdirname, "test.json")
         with open(filename, "w") as f:
