@@ -45,7 +45,7 @@ def test_node_pddataframe_filter():
     )
 
 
-def test_node_pddataframe_removeifclose():
+def test_node_pddataframe_removeifclose_0():
     t = datetime.datetime.now()
     df = pd.DataFrame(
         [
@@ -57,10 +57,27 @@ def test_node_pddataframe_removeifclose():
     df.set_index("t", inplace=True)
     assert isinstance(df.index, pd.DatetimeIndex)
 
-    p = 0
-
     a = Node_pandas_generate(df)
     b = Node_pandas_remove_close(a, timedelta(minutes=2), keep="first")
+    o = b.run()
+    assert o is not None
+    assert len(o) == 2
+
+
+def test_node_pddataframe_removeifclose_1():
+    """Like befote, but the index is not specified beforehand"""
+
+    t = datetime.datetime.now()
+    df = pd.DataFrame(
+        [
+            {"a": "a", "t": t + timedelta(minutes=0)},
+            {"a": "a", "t": t + timedelta(minutes=0)},  # Oh, it's dupe!
+            {"a": "a", "t": t + timedelta(minutes=999999)},
+        ]
+    )
+
+    a = Node_pandas_generate(df)
+    b = Node_pandas_remove_close(a, timedelta(minutes=2), column_name="t", keep="first")
     o = b.run()
     assert o is not None
     assert len(o) == 2

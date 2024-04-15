@@ -404,7 +404,7 @@ class Node_pandas_remove_close(Node_pandas_operation):
     def __init__(
         self,
         n0: Node_pandas,
-        max_time: datetime.timedelta,  # TODO_1: Remove int and float
+        max_time: datetime.timedelta,
         column_name: str | None = None,
         keep: str = "first",
     ):
@@ -436,9 +436,9 @@ class Node_pandas_remove_close(Node_pandas_operation):
             return df
 
         # Maybe this should be temporary?
-        assert isinstance(df.index, pd.DatetimeIndex)
+        assert isinstance(df.index, pd.DatetimeIndex) or column_name is not None
         assert isinstance(df, pd.DataFrame)
-        assert isinstance(df.index, pd.DatetimeIndex)
+        # assert isinstance(df.index, pd.DatetimeIndex)
         assert isinstance(column_name, str) or column_name is None
         assert isinstance(max_time, datetime.timedelta)
 
@@ -446,7 +446,15 @@ class Node_pandas_remove_close(Node_pandas_operation):
             # Deduplicate based on index
             df = df.sort_index()
             # df["time_diff"] = df.index.to_series().diff()
-            df = df.drop_duplicates()
+
+            # df = df.drop_duplicates()
+            # Instead, we drop the duplicates, but taking into account the index
+            index_names = df.index.names
+            df_reset = df.reset_index()
+            df_reset = df_reset.drop_duplicates()
+            df = df_reset.set_index(index_names)
+            del df_reset
+
             time_diff = df.index.to_series().diff()
         elif column_name is not None:
             if df[column_name].dtype != "datetime64[ns]":

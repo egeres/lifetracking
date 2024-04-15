@@ -249,6 +249,9 @@ class Node(ABC, Generic[T]):
         opacity: float | Callable[[T], float] = 1.0,
         hour_offset: float = 0,
     ) -> Node[T]:
+
+        assert path_filename.suffix == ".json"
+
         def default_export_method(t: Time_interval | None = None):
             self.export_to_longcalendar(
                 t,
