@@ -5,11 +5,11 @@ import json
 import os
 import pickle
 import tempfile
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from dateutil.parser import parse
+from freezegun import freeze_time
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.datatypes.Segments import Segments
@@ -128,8 +128,7 @@ def test_node_cache_save_tissomething():
         d = Node_cache(c, path_dir_caches=path_dir_caches)
 
         # 🍑 Step 1: First data gathering ----------------------------------------------
-        t = Time_interval.last_week() - timedelta(days=3)
-        o = d.run(t)  # ✨
+        o = d.run(Time_interval(a.start - timedelta(days=9), a.end - timedelta(days=3)))
 
         # Data validation
         assert o is not None
@@ -161,9 +160,9 @@ def test_node_cache_save_tissomething():
         assert sum(data_creation_dates) == len(o)
 
         # 🍑 Step 2: New data gathering ------------------------------------------------
-        time.sleep(1.1)  # To create different saving times ✌🏻
-        t = Time_interval.last_month()
-        o = d.run(t)  # ✨
+        freezer = freeze_time(datetime.now() + timedelta(days=1))  # Tweaks .now()
+        freezer.start()
+        o = d.run(Time_interval(a.start - timedelta(days=30), a.end))
 
         # Validation: data
         assert o is not None
@@ -193,6 +192,7 @@ def test_node_cache_save_tissomething():
         # They all sum correctly, e.g: "data_count": 2
         data_creation_dates = [int(v["data_count"]) for k, v in data["data"].items()]
         assert sum(data_creation_dates) == len(o)
+        freezer.stop()
 
 
 def test_node_cache_load_tisnone():  # Difficult!
