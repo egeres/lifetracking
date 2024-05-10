@@ -528,7 +528,7 @@ class Reader_pandas(Node_0child, Node_pandas):
 
     def __init__(
         self,
-        path_dir: str,
+        path_dir: str,  # TODO_2: Convert this into a Path
         dated_name: Callable[[str], datetime.datetime] | None = None,
         column_date_index: str | Callable | None = None,
         time_zone: None | datetime.tzinfo = None,

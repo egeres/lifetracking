@@ -6,6 +6,7 @@ import json
 import os
 import pickle
 from functools import reduce
+from pathlib import Path
 from typing import Any, Callable, TypeVar
 
 import pandas as pd
@@ -19,6 +20,10 @@ from lifetracking.graph.Time_interval import Time_interval, Time_resolution
 T = TypeVar("T")
 
 
+# REFACTOR: Remove the .strftime("%Y-%m-%d %H:%M:%S") thing
+# TODO_1:
+
+
 class Node_cache(Node[T]):
     """Cache for nodes, meant to be subclassed for type hints!!
 
@@ -30,7 +35,7 @@ class Node_cache(Node[T]):
         n0: Node[T],
         resolution: Time_resolution = Time_resolution.DAY,
         days_to_expire: float = 20.0,
-        path_dir_caches: str | None = None,
+        path_dir_caches: str | Path | None = None,
     ) -> None:
         # TODO Currently it gives an error if the input node is constant
         # (refactor this in the future pls)
@@ -42,6 +47,7 @@ class Node_cache(Node[T]):
         self.n0 = n0
         self.resolution = resolution
         self.days_to_expire = days_to_expire
+        # TODO_1: Add a method that gets a default temporary directory
         self.path_dir_caches = path_dir_caches or r"C:\Temp\lifetracking\caches"
         if not os.path.isdir(self.path_dir_caches):
             os.makedirs(self.path_dir_caches)
