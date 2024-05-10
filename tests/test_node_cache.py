@@ -6,11 +6,12 @@ import os
 import pickle
 import tempfile
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from dateutil.parser import parse
 
+from lifetracking.datatypes.Seg import Seg
 from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node_cache import Node_cache
 from lifetracking.graph.Node_segments import Node_segments_generate
@@ -21,17 +22,39 @@ def count_files_ending_with_x(path: Path, suffix: str) -> int:
     return len([x for x in path.iterdir() if x.suffix.endswith(suffix)])
 
 
+def test_node_cache_nodata():
+    """Just checking it doesn't crash"""
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        path_dir_caches = Path(path_dir_caches)
+
+        # Step 0: Data gen ✨
+        a = Seg(datetime(2024, 3, 5, 12, 0, 0), datetime(2024, 3, 5, 13, 0, 0))
+        b = Segments(
+            [
+                a - timedelta(days=100),
+                a - timedelta(days=101),
+                a - timedelta(days=102),
+                a - timedelta(days=103),
+                a - timedelta(days=104),
+                a - timedelta(days=105),
+            ],
+        )
+        c = Node_segments_generate(b)
+        d = Node_cache(c, path_dir_caches=path_dir_caches)
+        o = d.run(t=Time_interval(a.start - timedelta(days=2), a.end))
+        assert isinstance(o, Segments)
+        assert len(o) == 0
+
+
 def test_node_cache_save_tisnone():
     """A pipeline for `Segments` gets cached, then queried with t=None"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
         path_dir_caches = Path(path_dir_caches)
 
-        # Hehe, a Node_segments_generate ✨
-        a = Time_interval.today()
-        a.start = a.start.replace(hour=12, minute=0, second=0, microsecond=0)
-        a.end = a.end.replace(hour=13, minute=0, second=0, microsecond=0)
-        a = a.to_seg()
+        # Step 0: Data gen ✨
+        a = Seg(datetime(2024, 3, 5, 12, 0, 0), datetime(2024, 3, 5, 13, 0, 0))
         b = Segments(
             [
                 a - timedelta(hours=0.0),
@@ -83,14 +106,13 @@ def test_node_cache_save_tisnone():
 
 
 def test_node_cache_save_tissomething():
-    """We first get data with an offseted week and then with 1 month"""
+    """We first get data with an offseted week. Then with 1 month"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
+        path_dir_caches = Path(path_dir_caches)
+
         # Step 0: Data gen
-        a = Time_interval.today()
-        a.start = a.start.replace(hour=12, minute=0, second=0, microsecond=0)
-        a.end = a.end.replace(hour=12, minute=30, second=0, microsecond=0)
-        a = a.to_seg()
+        a = Seg(datetime(2024, 3, 5, 12, 0, 0), datetime(2024, 3, 5, 13, 0, 0))
         b = Segments(
             [
                 a - timedelta(days=0),
@@ -105,7 +127,7 @@ def test_node_cache_save_tissomething():
         c = Node_segments_generate(b)
         d = Node_cache(c, path_dir_caches=path_dir_caches)
 
-        # Step 1: First data gathering
+        # 🍑 Step 1: First data gathering ----------------------------------------------
         t = Time_interval.last_week() - timedelta(days=3)
         o = d.run(t)  # ✨
 
@@ -114,86 +136,71 @@ def test_node_cache_save_tissomething():
         assert len(o) == 4
 
         # Cache folder validation
-        path_dir_specific_cache = os.path.join(
-            path_dir_caches, os.listdir(path_dir_caches)[0]
-        )
-        assert len(os.listdir(path_dir_specific_cache)) == 4
+        dir_specific_cache = next(path_dir_caches.iterdir())  # First dir
+        assert len(os.listdir(dir_specific_cache)) == 4
 
         # cache.json validation
         path_fil_json = next(
-            os.path.join(path_dir_specific_cache, x)
-            for x in os.listdir(path_dir_specific_cache)
-            if x.endswith(".json")
+            dir_specific_cache / x
+            for x in dir_specific_cache.iterdir()
+            if x.suffix == ".json"
         )
-        with open(path_fil_json) as f:
-            data = json.load(f)
-            # assert data["start"] == b.min().strftime("%Y-%m-%d %H:%M:%S") # 🤔
-            # assert data["end"] == b.max().strftime("%Y-%m-%d %H:%M:%S") # 🤔
-            assert data["hash_node"] == d.hash_tree()
-            assert data["resolution"] == Time_resolution.DAY.value
-            assert data["type"] == "slice"
+        data = json.loads(path_fil_json.read_text())
+        # assert data["start"] == b.min().strftime("%Y-%m-%d %H:%M:%S") # 🤔
+        # assert data["end"] == b.max().strftime("%Y-%m-%d %H:%M:%S") # 🤔
+        assert data["hash_node"] == d.hash_tree()
+        assert data["resolution"] == Time_resolution.DAY.value
+        assert data["type"] == "slice"
+        # We assert all data_creation_dates are equal
+        data_creation_dates = [
+            v["creation_time"].split(".")[0] for k, v in data["data"].items()
+        ]
+        assert len(set(data_creation_dates)) == 1
+        # They all sum correctly, e.g: "data_count": 2
+        data_creation_dates = [int(v["data_count"]) for k, v in data["data"].items()]
+        assert sum(data_creation_dates) == len(o)
 
-            # We assert all data_creation_dates are equal
-            data_creation_dates = [
-                v["creation_time"].split(".")[0] for k, v in data["data"].items()
-            ]
-            assert len(set(data_creation_dates)) == 1
-
-            # They all sum correctly, e.g: "data_count": 2
-            data_creation_dates = [
-                int(v["data_count"]) for k, v in data["data"].items()
-            ]
-            assert sum(data_creation_dates) == len(o)
-
-        # Step 2: New data gathering
-        time.sleep(2.1)  # To create different saving times ✌🏻
+        # 🍑 Step 2: New data gathering ------------------------------------------------
+        time.sleep(1.1)  # To create different saving times ✌🏻
         t = Time_interval.last_month()
         o = d.run(t)  # ✨
 
-        # Data validation
+        # Validation: data
         assert o is not None
         assert len(o) == 7
 
-        # Cache folder validation
-        path_dir_specific_cache = os.path.join(
-            path_dir_caches, os.listdir(path_dir_caches)[0]
-        )
-        assert len(os.listdir(path_dir_specific_cache)) == 7
+        # Validation: cache folder
+        dir_specific_cache = next(path_dir_caches.iterdir())  # First dir
+        assert len(os.listdir(dir_specific_cache)) == 7
 
-        # cache.json validation
+        # Validation: cache.json
         path_fil_json = next(
-            os.path.join(path_dir_specific_cache, x)
-            for x in os.listdir(path_dir_specific_cache)
-            if x.endswith(".json")
+            dir_specific_cache / x
+            for x in dir_specific_cache.iterdir()
+            if x.suffix == ".json"
         )
-        with open(path_fil_json) as f:
-            data = json.load(f)
-            # assert data["start"] == b.min().strftime("%Y-%m-%d %H:%M:%S") # 🤔
-            # assert data["end"] == b.max().strftime("%Y-%m-%d %H:%M:%S") # 🤔
-            assert data["hash_node"] == d.hash_tree()
-            assert data["resolution"] == Time_resolution.DAY.value
-            assert data["type"] == "slice"
-
-            # We assert all data_creation_dates are equal
-            data_creation_dates = [
-                v["creation_time"].split(".")[0] for k, v in data["data"].items()
-            ]
-            assert len(set(data_creation_dates)) == 2
-
-            # They all sum correctly, e.g: "data_count": 2
-            data_creation_dates = [
-                int(v["data_count"]) for k, v in data["data"].items()
-            ]
-            assert sum(data_creation_dates) == len(o)
+        data = json.loads(path_fil_json.read_text())
+        # assert data["start"] == b.min().strftime("%Y-%m-%d %H:%M:%S") # 🤔
+        # assert data["end"] == b.max().strftime("%Y-%m-%d %H:%M:%S") # 🤔
+        assert data["hash_node"] == d.hash_tree()
+        assert data["resolution"] == Time_resolution.DAY.value
+        assert data["type"] == "slice"
+        # We assert all data_creation_dates are equal
+        data_creation_dates = [
+            v["creation_time"].split(".")[0] for k, v in data["data"].items()
+        ]
+        assert len(set(data_creation_dates)) == 2
+        # They all sum correctly, e.g: "data_count": 2
+        data_creation_dates = [int(v["data_count"]) for k, v in data["data"].items()]
+        assert sum(data_creation_dates) == len(o)
 
 
 def test_node_cache_load_tisnone():  # Difficult!
     with tempfile.TemporaryDirectory() as path_dir_caches:
-        # First run
-        a = Time_interval.today()
-        a.start = a.start.replace(hour=12, minute=0, second=0, microsecond=0)
-        a.end = a.end.replace(hour=13, minute=0, second=0, microsecond=0)
-        a = a.to_seg()
+        path_dir_caches = Path(path_dir_caches)
+
+        # Step 0: Data gen ✨
+        a = Seg(datetime(2024, 3, 5, 12, 0, 0), datetime(2024, 3, 5, 13, 0, 0))
         b = Segments(
             [
                 a - timedelta(hours=0.0),
@@ -206,9 +213,8 @@ def test_node_cache_load_tisnone():  # Difficult!
         d = Node_cache(c, path_dir_caches=path_dir_caches)
         _ = d.run(t=None)
 
-        # The part that we're actually interested in
-        o = d.run(t=None)  # ✨
-
+        # Running it again should yield the same data ✨
+        o = d.run(t=None)
         assert o is not None
         assert isinstance(o, Segments)
         assert len(o) == len(b)
@@ -218,11 +224,10 @@ def test_node_cache_load_tisnone():  # Difficult!
 
 def test_node_cache_load_tissomething():
     with tempfile.TemporaryDirectory() as path_dir_caches:
-        # First run
-        a = Time_interval.today()
-        a.start = a.start.replace(hour=12, minute=0, second=0, microsecond=0)
-        a.end = a.end.replace(hour=13, minute=0, second=0, microsecond=0)
-        a = a.to_seg()
+        path_dir_caches = Path(path_dir_caches)
+
+        # Step 0: Data gen ✨
+        a = Seg(datetime(2024, 3, 5, 12, 0, 0), datetime(2024, 3, 5, 13, 0, 0))
         b = Segments(
             [
                 a - timedelta(hours=0.0),
@@ -235,25 +240,21 @@ def test_node_cache_load_tissomething():
         d = Node_cache(c, path_dir_caches=path_dir_caches)
         _ = d.run(t=None)
 
-        # The part that we're actually interested in
-        a = Time_interval.today()
-        a.start -= timedelta(days=2)
-        a.end += timedelta(days=2)
-        o = d.run(t=a)  # ✨
-
+        # The part that we're actually interested in ✨
+        t = Time_interval(a.start - timedelta(days=2), a.end + timedelta(days=2))
+        o = d.run(t)
         assert o is not None
         assert isinstance(o, Segments)
         assert len(o) == 3
-        assert len(o[a]) == 3
+        assert len(o[t]) == 3
 
 
 def test_node_cache_dataisextended():
     with tempfile.TemporaryDirectory() as path_dir_caches:
-        # Setup
-        a = Time_interval.today()
-        a.start = a.start.replace(hour=12, minute=0, second=0, microsecond=0)
-        a.end = a.end.replace(hour=13, minute=0, second=0, microsecond=0)
-        a = a.to_seg()
+        path_dir_caches = Path(path_dir_caches)
+
+        # Step 0: Data gen ✨
+        a = Seg(datetime(2024, 3, 5, 12, 0, 0), datetime(2024, 3, 5, 13, 0, 0))
         b = Segments(
             [
                 a - timedelta(days=0),
@@ -267,25 +268,19 @@ def test_node_cache_dataisextended():
         )
         c = Node_segments_generate(b)
         d = Node_cache(c, path_dir_caches=path_dir_caches)
-        o = d.run(t=Time_interval.last_n_days(2))
+        o = d.run(t=Time_interval(a.start - timedelta(days=2), a.end))
 
         # We get `start`
-        path_dir_specific_cache = os.path.join(
-            path_dir_caches, os.listdir(path_dir_caches)[0]
-        )
-        with open(path_dir_specific_cache + "/cache.json") as f:
-            data = json.load(f)
+        dir_specific_cache = next(path_dir_caches.iterdir())  # First dir
+        data = json.loads((dir_specific_cache / "cache.json").read_text())
         date_start = parse(data["start"])
-
         assert o is not None
         assert data["type"] == "slice"
 
         # We get new `start`
-        o = d.run(t=Time_interval.last_n_days(4))
-        with open(path_dir_specific_cache + "/cache.json") as f:
-            data = json.load(f)
+        o = d.run(t=Time_interval(a.start - timedelta(days=4), a.end))
+        data = json.loads((dir_specific_cache / "cache.json").read_text())
         new_date_start = parse(data["start"])
-
         assert o is not None
         assert data["type"] == "slice"
         assert new_date_start < date_start
@@ -293,50 +288,19 @@ def test_node_cache_dataisextended():
         # We get all
         date_start = new_date_start
         o = d.run()
-        with open(path_dir_specific_cache + "/cache.json") as f:
-            data = json.load(f)
+        data = json.loads((dir_specific_cache / "cache.json").read_text())
         new_date_start = parse(data["start"])
-
         assert o is not None
         assert len(o) == len(b)
         assert data["type"] == "full"
         assert new_date_start < date_start
 
         # We get less
-        o = d.run(t=Time_interval.last_n_days(2))
+        o = d.run(t=Time_interval(a.start - timedelta(days=2), a.end))
         date_start = new_date_start
-        with open(path_dir_specific_cache + "/cache.json") as f:
-            data = json.load(f)
+        data = json.loads((dir_specific_cache / "cache.json").read_text())
         new_date_start = parse(data["start"])
-
         assert o is not None
         assert len(o) == 3
         assert data["type"] == "full"
         assert new_date_start == date_start
-
-
-def test_node_cache_nodata():
-    """Just checking it doesn't crash"""
-
-    with tempfile.TemporaryDirectory() as path_dir_caches:
-        # Setup
-        a = Time_interval.today()
-        a.start = a.start.replace(hour=12, minute=0, second=0, microsecond=0)
-        a.end = a.end.replace(hour=13, minute=0, second=0, microsecond=0)
-        a = a.to_seg()
-        b = Segments(
-            [
-                a - timedelta(days=100),
-                a - timedelta(days=101),
-                a - timedelta(days=102),
-                a - timedelta(days=103),
-                a - timedelta(days=104),
-                a - timedelta(days=105),
-            ],
-        )
-        c = Node_segments_generate(b)
-        d = Node_cache(c, path_dir_caches=path_dir_caches)
-        o = d.run(t=Time_interval.last_n_days(2))
-
-        assert isinstance(o, Segments)
-        assert len(o) == 0

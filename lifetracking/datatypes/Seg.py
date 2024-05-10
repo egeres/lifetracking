@@ -33,6 +33,10 @@ class Seg:
             or (other.end < self.end and other.end > self.start)
         )
 
+    def copy(self) -> Seg:
+        """🤷🏻‍♂️ like, bruh, why do we need to import copy?"""
+        return copy.copy(self)
+
     def __copy__(self):
         return Seg(self.start, self.end, copy.copy(self.value))
 
