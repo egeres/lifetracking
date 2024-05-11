@@ -8,6 +8,7 @@ import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import pytest
 from dateutil.parser import parse
 from freezegun import freeze_time
 
@@ -20,6 +21,53 @@ from lifetracking.graph.Time_interval import Time_interval, Time_resolution
 
 def count_files_ending_with_x(path: Path, suffix: str) -> int:
     return len([x for x in path.iterdir() if x.suffix.endswith(suffix)])
+
+
+# @pytest.fixture
+def make_node_cache(path_dir_caches: Path):
+    assert path_dir_caches.exists()
+
+    # Data generation
+    a = Seg(datetime(2024, 3, 5, 12, 0, 0), datetime(2024, 3, 5, 13, 0, 0))
+    b = Segments(
+        [
+            a - timedelta(days=0),
+            a - timedelta(days=1),
+            a - timedelta(days=2),
+            a - timedelta(days=3),
+            a - timedelta(days=4),
+            a - timedelta(days=5),
+        ]
+    )
+    c = Node_segments_generate(b)
+    return Node_cache(c, path_dir_caches=path_dir_caches)
+
+
+def test_node_cache_0():
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        path_dir_caches = Path(path_dir_caches)
+        node_cache = make_node_cache(path_dir_caches)
+        o = node_cache.run()
+        assert isinstance(o, Segments)
+        assert len(o) == len(node_cache.children[0].value)
+
+        assert len(list(path_dir_caches.iterdir())) == 1
+        dir_subcache = next(path_dir_caches.iterdir())  # First dir
+        assert len(os.listdir(dir_subcache
+)) == len(node_cache.children[0].value) + 1
+        assert count_files_ending_with_x(dir_subcache, ".json") == 1
+
+
+def test_node_cache_1(node_cache):
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        path_dir_caches = Path(path_dir_caches)
+
+        a = Seg(datetime(2024, 3, 5, 12, 0, 0), datetime(2024, 3, 5, 13, 0, 0))
+        t = Time_interval(a.start, a.end)
+        o = node_cache.run(t=t)
+        assert isinstance(o, Segments)
+        assert len(o) == 1
 
 
 def test_node_cache_nodata():

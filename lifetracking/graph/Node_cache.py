@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from abc import ABC
 import copy
+from enum import Enum
 import json
 import os
 import pickle
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import reduce
 from pathlib import Path
 from typing import Any, Callable, TypeVar
@@ -17,6 +19,133 @@ from prefect.utilities.asyncutils import Sync
 from lifetracking.graph.Node import Node
 from lifetracking.graph.Node_int import Node_int
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
+
+
+def to_day(dt):
+    return dt.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+class Cache_type(Enum):
+    NONE = 0
+    SLICE = 1
+    FULL = 2
+
+
+class Cache_AAA(ABC):
+
+    def __init__(
+        self,
+        dir: Path,
+        hash_node: str,
+        type: Cache_type,
+        resolution: Time_resolution,
+    ):
+        assert isinstance(dir, Path)
+        self.dir = dir
+        self.hash_node = hash_node
+        self.type = type
+        self.resolution = resolution
+
+    @staticmethod
+    def load_from_dir(
+        dir: Path,
+        hash_node: str,
+        resolution: Time_resolution,
+        # ) -> Cache_AAA_slice | Cache_AAA_full | None:
+    ) -> Cache_AAA:
+
+        assert isinstance(dir, Path)
+        assert isinstance(hash_node, str)
+
+        if not (dir / "cache.json").exists():
+            return Cache_AAA(dir, hash_node, Cache_type.NONE, resolution)
+
+        raise NotImplementedError
+
+    @property
+    def data(self) -> dict[datetime, Any]:
+        raise NotImplementedError
+
+    def update_all(self, data) -> None:
+        # raise NotImplementedError
+
+        self.dir.mkdir(parents=True, exist_ok=True)
+
+        if not self.resolution == Time_resolution.DAY:
+            print("For now I just have DAY!")
+            raise NotImplementedError
+        if len(data.content) == 0:
+            print("Make a special case for this!")
+            raise NotImplementedError
+
+        cache_info = {
+            "date_creation": datetime.now(timezone.utc).isoformat(),
+            "hash_node": self.hash_node,
+            "type": Cache_type.FULL,
+            "resolution": self.resolution,
+            "data": {},
+        }
+
+        def save_data(currentdata, data_to_save):
+            # TODO_2: Depending on the data that comes, avoid doing a .pickle
+            e = self.dir / f"{currentdata['creation_time'].strftime('%Y-%m-%d')}.pickle"
+            with open(e, "wb") as f:
+                pickle.dump(data_to_save, f)
+            cache_info[currentdata["creation_time"].strftime("%Y-%m-%d")] = currentdata
+
+        data_to_save = []
+        currentdata: dict[str, Any] = {
+            "data_count": 0,
+            "creation_time": to_day(data.content[0].start),
+        }
+        for seg in data.content:
+
+            if to_day(seg.start) == currentdata["creation_time"]:
+                currentdata["data_count"] += 1
+                data_to_save.append(seg)
+                continue
+
+            # Saving data in pickle & metadata
+            save_data(currentdata, data_to_save)
+            # a = self.dir / f"{currentdata['creation_time'].strftime('%Y-%m-%d')}.pickle"
+            # with open(a, "wb") as f:
+            #     pickle.dump(data, f)
+            # cache_info[currentdata["creation_time"].strftime("%Y-%m-%d")] = currentdata
+
+            # We reset stuff
+            currentdata = {"data_count": 1, "creation_time": to_day(seg.start)}
+            data_to_save = [seg]
+
+        # "After for"  # TODO: Duplicated code, refactor it
+        if data_to_save:
+            save_data(currentdata, data_to_save)
+            # a = self.dir / f"{currentdata['creation_time'].strftime('%Y-%m-%d')}.pickle"
+            # with open(a, "wb") as f:
+            #     pickle.dump(data, f)
+            # cache_info[currentdata["creation_time"].strftime("%Y-%m-%d")] = currentdata
+
+        # Saving the metadata
+        with open(self.dir / "cache.json", "w") as f:
+            json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
+
+    def update_slice(self, data: list[Node], t: Time_interval) -> None:
+        raise NotImplementedError
+
+
+class Cache_AAA_slice(Cache_AAA):
+
+    def __init__(self, dir: Path, hash_node: str):
+        super().__init__(dir, hash_node)
+
+        self.start = None
+        self.end = None
+
+
+class Cache_AAA_full(Cache_AAA):
+
+    def __init__(self, dir: Path, hash_node: str):
+        super().__init__(dir, hash_node)
+
 
 T = TypeVar("T")
 
@@ -73,6 +202,7 @@ class Node_cache(Node[T]):
         context: dict | None = None,
         prefect=False,
     ) -> T | None:
+
         # Cache dir management
         hash_node = self.hash_tree()
         if self.name is not None:
@@ -89,9 +219,55 @@ class Node_cache(Node[T]):
         # We have nothing? -> Make cache
         # We have something? -> Load what we can and recompute anything missing
 
-        if not self._is_cache_valid(hash_node, t):
-            return self._save_cache(t, n0, hash_node, context, prefect)
-        return self._load_cache(t, n0, hash_node, context, prefect)
+        # if not self._is_cache_valid(hash_node, t):
+        #     return self._save_cache(t, n0, hash_node, context, prefect)
+        # return self._load_cache(t, n0, hash_node, context, prefect)
+
+        # Get data
+        # (takes into account expiration date!!)
+        # valid_caches, backuptype : tuple[list, Cache_type] = self._get_valid_caches(hash_node, t)
+
+        # 🍑 Load cache
+        c = Cache_AAA.load_from_dir(self.path_dir_caches, hash_node, self.resolution)
+
+        # 🍑 What to compute
+        to_return, to_compute = [], []
+        if c.type == Cache_type.NONE:
+            to_compute = "all"
+        else:
+            raise NotImplementedError
+
+        # # What to compute
+        # to_return, to_compute = []
+        # if backuptype == Cache_type.NONE:
+        #     to_compute = [t]
+        # elif backuptype == Cache_type.FULL and t is None:
+        #     to_return = valid_caches
+        # elif backuptype == Cache_type.FULL and t is not None:
+        #     to_return = valid_caches[t]
+        # elif backuptype == Cache_type.SLICE and t is None:
+        #     to_return = valid_caches
+        #     ...
+        #     to_compute = [left, right]
+        # elif backuptype == Cache_type.SLICE and t is not None:
+        #     ...
+        #     to_return = overlap
+        #     to_compute = [non_overlap_left, non_overlap_right]
+        # else:
+        #     raise NotImplementedError
+
+        # 🍑 Compute missing data
+        if to_compute == "all":
+            o = n0._run_sequential(t, context)
+            p = 0
+
+        # 🍑 Update cache
+        if to_compute == "all":
+            c.update_all(o)
+
+        # 🍑 Return data
+        # return to_return + to_compute ??
+        return o
 
     def _run_sequential(self, t=None, context=None) -> T | None:
         return self._operation(self.n0, t, context)
@@ -479,3 +655,5 @@ class Node_cache(Node[T]):
         hour_offset: float = 0,
     ):
         raise NotImplementedError
+
+    # Complete rework

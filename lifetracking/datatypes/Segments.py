@@ -151,6 +151,11 @@ class Segments:
                     i.end = i.end.replace(tzinfo=tz)
 
         # TODO: After coverage has been extended, test if the 'sorted' could be removed
+
+        # TODO: Maybe the sorted thing can be skipped if we add a property "sorted
+        # segments" which is a boolean and we set it to True after sorting, if we add
+        # together 2 Segments objects, and both are sorted, and, they don't overlap we
+        # can do a simple concatenation
         return Segments(sorted(other.content + self.content))
 
     def _export_to_longcalendar_edit_dict(
