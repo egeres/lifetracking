@@ -79,33 +79,19 @@ class Node_cache(Node[T]):
             hash_node += "_" + self.name.replace(" ", "-")
 
         # assert isinstance(self.path_dir_caches, Path)  # TODO_2: Remove in the future
-        dir_cache = self.path_dir_caches / hash_node
+        # dir_cache = self.path_dir_caches / hash_node
         # dir_cache.mkdir(parents=True, exist_ok=True)
-
-        # We have nothing? -> Make cache
-        # We have something? -> Load what we can and recompute anything missing
 
         # TODO_2: Actually, it's pretty dumb to pass
         # - dir_cache since it's self.path_dir_caches / hash_node
         # Like, why not get it via self.path_dir_caches / self.hash_tree()?
 
+        # We have nothing? -> Make cache
+        # We have something? -> Load what we can and recompute anything missing
+
         if not self._is_cache_valid(hash_node, t):
-            return self._save_cache(
-                t,
-                n0,
-                # str(dir_cache),
-                hash_node,
-                context,
-                prefect,
-            )
-        return self._load_cache(
-            t,
-            n0,
-            # str(dir_cache),
-            hash_node,
-            context,
-            prefect,
-        )
+            return self._save_cache(t, n0, hash_node, context, prefect)
+        return self._load_cache(t, n0, hash_node, context, prefect)
 
     def _run_sequential(self, t=None, context=None) -> T | None:
         return self._operation(self.n0, t, context)
@@ -170,16 +156,6 @@ class Node_cache(Node[T]):
 
         path_fil_cache = self.path_dir_caches / "cache.json"
 
-        cache_info = {
-            "resolution": self.resolution.value,
-            "hash_node": hash_node,
-            "date_creation": datetime.now().isoformat(),
-            "start": None,
-            "end": None,
-            "data": {},  # Per-resolution-data
-            "type": None,
-        }
-
         # We get the data
         if prefect is False:
             o = n0._run_sequential(t, context)
@@ -192,10 +168,18 @@ class Node_cache(Node[T]):
         if len(o.content) == 0:
             return o
 
+        # REFACTOR: Maybe we should have a class for this `cache_info` thing?
+
         # We save the data
-        cache_info["start"] = o.min()
-        cache_info["end"] = o.max()
-        cache_info["type"] = "full" if t is None else "slice"
+        cache_info = {
+            "resolution": self.resolution.value,
+            "hash_node": hash_node,
+            "date_creation": datetime.now().isoformat(),
+            "start": o.min(),
+            "end": o.max(),
+            "data": {},  # Per-resolution-data
+            "type": "full" if t is None else "slice",
+        }
         cache_metadata: dict[str, dict] = {
             # "2023-01-01": {
             #     "creation_time" : "2023-05-21T00:00:00",
@@ -294,12 +278,15 @@ class Node_cache(Node[T]):
                     if not os.path.exists(filename_slice):
                         # TODO: Recompute & save
                         continue
+
                     # If the file has old data, we recompute
                     if False:
                         # TODO: Recompute & save
                         pass
+
                     with open(filename_slice, "rb") as f:
                         data_slice = pickle.load(f)[t_sub_sub]
+
                     # to_return.extend(data_slice.content)
                     to_return.append(data_slice)
                 else:
@@ -430,30 +417,32 @@ class Node_cache(Node[T]):
             datetime.fromisoformat(cache_info["end"]),
         )
 
+        # If we ask for everything, but we have a segment we compute left and right
+        #  <------| [data] |------>
         if t is None and cache_info["type"] == "slice":
             to_return += self._gather_existing_slices(
-                [t_cache],
-                str(self.path_dir_caches),
+                [t_cache], str(self.path_dir_caches)
             )
 
-            o_0 = n0._run_sequential(
+            data_left = n0._run_sequential(
                 Time_interval(
                     datetime.min,
                     datetime.fromisoformat(cache_info["start"]),
                 ),
                 context,
             )
-            if o_0 is not None:
-                to_return.append(o_0)
-            o_1 = n0._run_sequential(
+            if data_left is not None:
+                to_return.append(data_left)
+
+            data_right = n0._run_sequential(
                 Time_interval(
                     datetime.fromisoformat(cache_info["end"]),
                     datetime.max,
                 ),
                 context,
             )
-            if o_1 is not None:
-                to_return.append(o_1)
+            if data_right is not None:
+                to_return.append(data_right)
 
         else:
             t = t_cache if t is None else t
