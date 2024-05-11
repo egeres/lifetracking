@@ -304,3 +304,35 @@ def test_node_cache_dataisextended():
         assert len(o) == 3
         assert data["type"] == "full"
         assert new_date_start == date_start
+
+
+def test_node_cache_slicethenall():
+    """We first get a slice, then we get all"""
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        path_dir_caches = Path(path_dir_caches)
+
+        # Step 0: Data gen ✨
+        a = Seg(datetime(2024, 3, 10, 12, 0), datetime(2024, 3, 10, 13, 0))
+        b = Segments(
+            [
+                a - timedelta(days=0),
+                a - timedelta(days=1),
+                a - timedelta(days=2),
+                a - timedelta(days=3),
+                a - timedelta(days=4),
+                a - timedelta(days=5),
+                a - timedelta(days=6),
+            ],
+        )
+        c = Node_segments_generate(b)
+        d = Node_cache(c, path_dir_caches=path_dir_caches)
+        o = d.run(
+            t=Time_interval(a.start - timedelta(days=2), a.end - timedelta(days=2))
+        )
+        assert o is not None
+        assert len(o) == 1
+
+        o = d.run()
+
+        p = 0
