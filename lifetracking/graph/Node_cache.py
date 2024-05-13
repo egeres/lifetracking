@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from abc import ABC
 import copy
-from enum import Enum
 import json
 import os
 import pickle
 import tempfile
+from abc import ABC
 from datetime import datetime, timezone
+from enum import Enum
 from functools import reduce
 from pathlib import Path
 from typing import Any, Callable, TypeVar
@@ -16,6 +16,7 @@ import pandas as pd
 from prefect.futures import PrefectFuture
 from prefect.utilities.asyncutils import Sync
 
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node import Node
 from lifetracking.graph.Node_int import Node_int
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
@@ -71,7 +72,7 @@ class Cache_AAA(ABC):
         if len(list(dir.iterdir())) != len(c["data"]) + 1:
             print("Cache is invalid...")
             return Cache_AAA(dir, hash_node, Cache_type.NONE, resolution)
-        
+
         if c["type"] == Cache_type.FULL.value:
             return Cache_AAA(dir, hash_node, Cache_type.FULL, resolution)
         elif c["type"] == Cache_type.SLICE.value:
@@ -85,8 +86,18 @@ class Cache_AAA(ABC):
     def data(self) -> dict[datetime, Any]:
         raise NotImplementedError
 
-    def update_all(self, data) -> None:
-        # raise NotImplementedError
+    def update_all(
+        self,
+        data: Any,
+        type_of_cache: Cache_type = Cache_type.FULL,
+        slice: Time_interval | None = None,
+    ) -> None:
+
+        assert isinstance(type_of_cache, Cache_type)
+        if type_of_cache == Cache_type.SLICE:
+            assert isinstance(slice, Time_interval)
+        else:
+            assert slice is None
 
         self.dir.mkdir(parents=True, exist_ok=True)
 
@@ -100,9 +111,10 @@ class Cache_AAA(ABC):
         cache_info = {
             "date_creation": datetime.now(timezone.utc).isoformat(),
             "hash_node": self.hash_node,
-            "type": Cache_type.FULL.value,
+            "type": type_of_cache.value,
             "resolution": self.resolution.value,
             "data": {},
+            "datatype": data.__class__.__name__,
         }
 
         def save_data(currentdata, data_to_save):
@@ -140,10 +152,53 @@ class Cache_AAA(ABC):
             save_data(currentdata, data_to_save)
 
         # Saving the metadata
+        if type_of_cache == Cache_type.SLICE:
+            assert slice is not None
+            cache_info["start"] = slice.start
+            cache_info["end"] = slice.end
         with open(self.dir / "cache.json", "w") as f:
             json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
 
-    def update_slice(self, data: list[Node], t: Time_interval) -> None:
+    def update_slice(self, data: Any, t: Time_interval) -> None:
+
+        self.dir.mkdir(parents=True, exist_ok=True)
+
+        if not self.resolution == Time_resolution.DAY:
+            print("For now I just have DAY!")
+            raise NotImplementedError
+        if len(data.content) == 0:
+            print("Make a special case for this!")
+            raise NotImplementedError
+
+        cache_info = {
+            "date_creation": datetime.now(timezone.utc).isoformat(),
+            "hash_node": self.hash_node,
+            "type": Cache_type.SLICE.value,
+            "resolution": self.resolution.value,
+            "data": {},
+            "datatype": data.__class__.__name__,
+        }
+
+        raise NotImplementedError
+
+    def load_cache_all(self):
+
+        f = self.dir / "cache.json"
+        if not f.exists():
+            msg = f"Cache file '{f}' does not exist"
+            raise ValueError(msg)
+
+        c = json.loads(f.read_text())
+
+        to_return = []
+        for k, v in c["data"].items():
+            with open(self.dir / f"{k}.pickle", "rb") as f:
+                to_return.append(pickle.load(f))
+
+        if c["datatype"] == "Segments":
+            a = reduce(lambda x, y: x + y, to_return)
+            return Segments(a)
+
         raise NotImplementedError
 
 
@@ -246,11 +301,20 @@ class Node_cache(Node[T]):
         c = Cache_AAA.load_from_dir(self.path_dir_caches, hash_node, self.resolution)
 
         # 🍑 What to compute
-        to_return, to_compute = [], []
-        if c.type == Cache_type.NONE:
+        to_return: Any | None = None
+        to_compute: Time_interval | str | None = None
+
+        if c.type == Cache_type.NONE and t is None:
             to_compute = "all"
+        elif c.type == Cache_type.NONE and isinstance(t, Time_interval):
+            to_compute = t
         elif c.type == Cache_type.FULL and t is None:
             to_return = c.load_cache_all()
+            p = 0
+        elif c.type == Cache_type.SLICE and isinstance(t, Time_interval):
+            # to_return = ... lo ya existente
+            # to_compute = ... lo que falta
+            raise NotImplementedError
         else:
             raise NotImplementedError
 
@@ -274,17 +338,30 @@ class Node_cache(Node[T]):
         #     raise NotImplementedError
 
         # 🍑 Compute missing data
-        if to_compute == "all":
-            o = n0._run_sequential(t, context)
+        if isinstance(to_compute, str) and to_compute == "all":
+            to_return = n0._run_sequential(t, context)
             p = 0
+        elif isinstance(to_compute, Time_interval):
+            to_return = n0._run_sequential(t, context)
+            p = 0
+        elif to_compute is None:
+            p = 0
+        else:
+            raise NotImplementedError
 
         # 🍑 Update cache
-        if to_compute == "all":
-            c.update_all(o)
+        if isinstance(to_compute, str) and to_compute == "all":
+            c.update_all(to_return, Cache_type.FULL)
+        elif isinstance(to_compute, Time_interval):
+            c.update_all(to_return, Cache_type.SLICE, t)
+        elif to_compute is None:
+            p = 0
+        else:
+            raise NotImplementedError
 
         # 🍑 Return data
         # return to_return + to_compute ??
-        return o
+        return to_return
 
     def _run_sequential(self, t=None, context=None) -> T | None:
         return self._operation(self.n0, t, context)
