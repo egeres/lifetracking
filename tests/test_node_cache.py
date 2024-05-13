@@ -80,14 +80,35 @@ def test_node_cache_1():
         # 🥭 Evaluate: Cache folder
         assert len(list(path_dir_caches.iterdir())) == 1
         dirsubcache = next(path_dir_caches.iterdir())  # First dir
-        assert len(list(dirsubcache.iterdir())) < len(node_cache.children[0].value) + 1
+        assert len(list(dirsubcache.iterdir())) == 2
         assert count_files_ending_with_x(dirsubcache, ".json") == 1
+        assert count_files_ending_with_x(dirsubcache, ".pickle") == 2
 
         # 🔮 We run this with t=something
         o = node_cache.run(t=t)
         # 🥭 Evaluate: Data
         assert isinstance(o, Segments)
         assert len(o) == 1
+
+        # 🔮 We run this with t=something, but expanded
+        t = Time_interval(datetime(2024, 3, 4), datetime(2024, 3, 5, 13, 0))
+        o = node_cache.run(t=t)
+        assert isinstance(o, Segments)
+        assert len(o) == 2
+
+        assert len(list(path_dir_caches.iterdir())) == 1
+        dirsubcache = next(path_dir_caches.iterdir())  # First dir
+        assert len(list(dirsubcache.iterdir())) == 3
+        assert count_files_ending_with_x(dirsubcache, ".json") == 1
+        assert count_files_ending_with_x(dirsubcache, ".pickle") == 2
+
+        p = 0
+
+        # TODO_2: Test half
+
+        # TODO_2: Test no overlap
+
+        # TODO_2: Test full overlap
 
 
 def test_node_cache_nodata():

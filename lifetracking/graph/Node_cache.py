@@ -390,6 +390,12 @@ class Node_cache(Node[T]):
             p = 0
         elif to_compute == []:
             p = 0
+        # TODO_1: Make this into a TypeGuard when I upgrade to python 3.10 or 3.11
+        elif all(isinstance(x, Time_interval) for x in to_compute):
+            for t_sub in to_compute:
+                o = n0._run_sequential(t_sub, context)
+                if type(o) == type(to_return):
+                    to_return += o
         else:
             raise NotImplementedError
 
@@ -401,8 +407,16 @@ class Node_cache(Node[T]):
         elif to_compute is None:
             p = 0
         elif c.type == Cache_type.SLICE and isinstance(t, Time_interval):
-            if to_compute != []:
-                raise NotImplementedError
+            s, e = c.start, c.end
+            assert isinstance(s, datetime)
+            assert isinstance(e, datetime)
+            for t_sub in to_compute:
+                if isinstance(t_sub, Time_interval):
+                    s = min(t_sub.start, s)
+                    e = max(t_sub.end, e)
+                else:
+                    raise NotImplementedError
+            c.update(to_return, Cache_type.SLICE, Time_interval(s, e))
         else:
             raise NotImplementedError
 
