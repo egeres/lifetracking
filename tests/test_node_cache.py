@@ -48,21 +48,26 @@ def test_node_cache_0():
         path_dir_caches = Path(path_dir_caches)
         node_cache = make_node_cache(path_dir_caches)
         o = node_cache.run()
+        # 🥭 Evaluate: Data
         assert isinstance(o, Segments)
         assert len(o) == len(node_cache.children[0].value)
 
+        # 🥭 Evaluate: Cache folder
         assert len(list(path_dir_caches.iterdir())) == 1
         dir_subcache = next(path_dir_caches.iterdir())  # First dir
-        assert len(os.listdir(dir_subcache
-)) == len(node_cache.children[0].value) + 1
+        assert len(os.listdir(dir_subcache)) == len(node_cache.children[0].value) + 1
         assert count_files_ending_with_x(dir_subcache, ".json") == 1
 
+        o = node_cache.run()
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == len(node_cache.children[0].value)
 
-def test_node_cache_1(node_cache):
+def test_node_cache_1():
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
         path_dir_caches = Path(path_dir_caches)
-
+        node_cache = make_node_cache(path_dir_caches)
         a = Seg(datetime(2024, 3, 5, 12, 0, 0), datetime(2024, 3, 5, 13, 0, 0))
         t = Time_interval(a.start, a.end)
         o = node_cache.run(t=t)

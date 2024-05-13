@@ -60,6 +60,25 @@ class Cache_AAA(ABC):
         if not (dir / "cache.json").exists():
             return Cache_AAA(dir, hash_node, Cache_type.NONE, resolution)
 
+        # TODO_2: Assert the hash_node is valid
+
+        # TODO_2: Assert the resolution matches with the node
+
+        # TODO_2: Assert that it hasnt expired
+
+        c = json.loads((dir / "cache.json").read_text())
+
+        if len(list(dir.iterdir())) != len(c["data"]) + 1:
+            print("Cache is invalid...")
+            return Cache_AAA(dir, hash_node, Cache_type.NONE, resolution)
+        
+        if c["type"] == Cache_type.FULL.value:
+            return Cache_AAA(dir, hash_node, Cache_type.FULL, resolution)
+        elif c["type"] == Cache_type.SLICE.value:
+            return Cache_AAA(dir, hash_node, Cache_type.SLICE, resolution)
+        else:
+            raise NotImplementedError
+
         raise NotImplementedError
 
     @property
@@ -81,48 +100,44 @@ class Cache_AAA(ABC):
         cache_info = {
             "date_creation": datetime.now(timezone.utc).isoformat(),
             "hash_node": self.hash_node,
-            "type": Cache_type.FULL,
-            "resolution": self.resolution,
+            "type": Cache_type.FULL.value,
+            "resolution": self.resolution.value,
             "data": {},
         }
 
         def save_data(currentdata, data_to_save):
             # TODO_2: Depending on the data that comes, avoid doing a .pickle
-            e = self.dir / f"{currentdata['creation_time'].strftime('%Y-%m-%d')}.pickle"
+            e = self.dir / f"{currentdata['creation_time']}.pickle"
             with open(e, "wb") as f:
                 pickle.dump(data_to_save, f)
-            cache_info[currentdata["creation_time"].strftime("%Y-%m-%d")] = currentdata
+            c = copy.copy(currentdata)  # REFACTOR: Huh...
+            del c["creation_time"]
+            c["creation_time"] = datetime.now(timezone.utc).isoformat()
+            cache_info["data"][currentdata["creation_time"]] = c
 
         data_to_save = []
         currentdata: dict[str, Any] = {
             "data_count": 0,
-            "creation_time": to_day(data.content[0].start),
+            "creation_time": to_day(data.content[0].start).strftime("%Y-%m-%d"),
         }
         for seg in data.content:
-
-            if to_day(seg.start) == currentdata["creation_time"]:
+            if to_day(seg.start).strftime("%Y-%m-%d") == currentdata["creation_time"]:
                 currentdata["data_count"] += 1
                 data_to_save.append(seg)
                 continue
 
             # Saving data in pickle & metadata
             save_data(currentdata, data_to_save)
-            # a = self.dir / f"{currentdata['creation_time'].strftime('%Y-%m-%d')}.pickle"
-            # with open(a, "wb") as f:
-            #     pickle.dump(data, f)
-            # cache_info[currentdata["creation_time"].strftime("%Y-%m-%d")] = currentdata
 
             # We reset stuff
-            currentdata = {"data_count": 1, "creation_time": to_day(seg.start)}
             data_to_save = [seg]
+            currentdata = {
+                "data_count": 1,
+                "creation_time": to_day(seg.start).strftime("%Y-%m-%d"),
+            }
 
-        # "After for"  # TODO: Duplicated code, refactor it
         if data_to_save:
             save_data(currentdata, data_to_save)
-            # a = self.dir / f"{currentdata['creation_time'].strftime('%Y-%m-%d')}.pickle"
-            # with open(a, "wb") as f:
-            #     pickle.dump(data, f)
-            # cache_info[currentdata["creation_time"].strftime("%Y-%m-%d")] = currentdata
 
         # Saving the metadata
         with open(self.dir / "cache.json", "w") as f:
@@ -234,6 +249,8 @@ class Node_cache(Node[T]):
         to_return, to_compute = [], []
         if c.type == Cache_type.NONE:
             to_compute = "all"
+        elif c.type == Cache_type.FULL and t is None:
+            to_return = c.load_cache_all()
         else:
             raise NotImplementedError
 
