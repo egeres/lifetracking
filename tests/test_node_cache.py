@@ -87,7 +87,7 @@ def test_node_cache_1():
         o = node_cache.run(t=t)
         # 🥭 Evaluate: Data
         assert isinstance(o, Segments)
-        assert len(o) == len(node_cache.children[0].value)
+        assert len(o) == 1
 
 
 def test_node_cache_nodata():

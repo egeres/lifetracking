@@ -40,12 +40,23 @@ class Cache_AAA(ABC):
         hash_node: str,
         type: Cache_type,
         resolution: Time_resolution,
+        start: datetime | None = None,
+        end: datetime | None = None,
     ):
         assert isinstance(dir, Path)
+        assert isinstance(start, datetime) or start is None
+        assert isinstance(end, datetime) or end is None
+
+        if type == Cache_type.SLICE:
+            assert start is not None
+            assert end is not None
+
         self.dir = dir
         self.hash_node = hash_node
         self.type = type
         self.resolution = resolution
+        self.start = start
+        self.end = end
 
     @staticmethod
     def load_from_dir(
@@ -76,7 +87,14 @@ class Cache_AAA(ABC):
         if c["type"] == Cache_type.FULL.value:
             return Cache_AAA(dir, hash_node, Cache_type.FULL, resolution)
         elif c["type"] == Cache_type.SLICE.value:
-            return Cache_AAA(dir, hash_node, Cache_type.SLICE, resolution)
+            return Cache_AAA(
+                dir,
+                hash_node,
+                Cache_type.SLICE,
+                resolution,
+                datetime.fromisoformat(c["start"]),
+                datetime.fromisoformat(c["end"]),
+            )
         else:
             raise NotImplementedError
 
@@ -86,7 +104,7 @@ class Cache_AAA(ABC):
     def data(self) -> dict[datetime, Any]:
         raise NotImplementedError
 
-    def update_all(
+    def update(
         self,
         data: Any,
         type_of_cache: Cache_type = Cache_type.FULL,
@@ -119,6 +137,8 @@ class Cache_AAA(ABC):
 
         def save_data(currentdata, data_to_save):
             # TODO_2: Depending on the data that comes, avoid doing a .pickle
+            # TODO_2: Check the speed of https://github.com/ijl/orjson
+            # TODO_2: Actually, maybe my node types should include a .save() and .load()
             e = self.dir / f"{currentdata['creation_time']}.pickle"
             with open(e, "wb") as f:
                 pickle.dump(data_to_save, f)
@@ -159,41 +179,53 @@ class Cache_AAA(ABC):
         with open(self.dir / "cache.json", "w") as f:
             json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
 
-    def update_slice(self, data: Any, t: Time_interval) -> None:
-
-        self.dir.mkdir(parents=True, exist_ok=True)
-
-        if not self.resolution == Time_resolution.DAY:
-            print("For now I just have DAY!")
-            raise NotImplementedError
-        if len(data.content) == 0:
-            print("Make a special case for this!")
-            raise NotImplementedError
-
-        cache_info = {
-            "date_creation": datetime.now(timezone.utc).isoformat(),
-            "hash_node": self.hash_node,
-            "type": Cache_type.SLICE.value,
-            "resolution": self.resolution.value,
-            "data": {},
-            "datatype": data.__class__.__name__,
-        }
-
-        raise NotImplementedError
-
     def load_cache_all(self):
 
+        # Load cache descriptor
         f = self.dir / "cache.json"
         if not f.exists():
             msg = f"Cache file '{f}' does not exist"
             raise ValueError(msg)
-
         c = json.loads(f.read_text())
 
         to_return = []
         for k, v in c["data"].items():
             with open(self.dir / f"{k}.pickle", "rb") as f:
                 to_return.append(pickle.load(f))
+
+        if c["datatype"] == "Segments":
+            a = reduce(lambda x, y: x + y, to_return)
+            return Segments(a)
+
+        raise NotImplementedError
+
+    def load_cache_slice(self, t: Time_interval):
+
+        # Load cache descriptor
+        f = self.dir / "cache.json"
+        if not f.exists():
+            msg = f"Cache file '{f}' does not exist"
+            raise ValueError(msg)
+        c = json.loads(f.read_text())
+
+        to_return = []
+        for k, v in c["data"].items():
+            d = datetime.fromisoformat(k)
+            if self.resolution == Time_resolution.DAY:
+                corresponding_time_interval = Time_interval(
+                    d.replace(hour=0, minute=0, second=0, microsecond=0),
+                    d.replace(hour=23, minute=59, second=59, microsecond=999999),
+                )
+            else:
+                raise NotImplementedError
+
+            if t in corresponding_time_interval:
+
+                with open(self.dir / f"{k}.pickle", "rb") as f:
+                    to_return.append(pickle.load(f))
+
+                p = 0
+            p = 0
 
         if c["datatype"] == "Segments":
             a = reduce(lambda x, y: x + y, to_return)
@@ -302,7 +334,7 @@ class Node_cache(Node[T]):
 
         # 🍑 What to compute
         to_return: Any | None = None
-        to_compute: Time_interval | str | None = None
+        to_compute: Time_interval | str | list | None = None
 
         if c.type == Cache_type.NONE and t is None:
             to_compute = "all"
@@ -314,7 +346,17 @@ class Node_cache(Node[T]):
         elif c.type == Cache_type.SLICE and isinstance(t, Time_interval):
             # to_return = ... lo ya existente
             # to_compute = ... lo que falta
-            raise NotImplementedError
+
+            assert isinstance(c.start, datetime)
+            assert isinstance(c.end, datetime)
+            c_time_interval = Time_interval(c.start, c.end)
+            overlapping, non_overlapping = c_time_interval.get_overlap_innerouter(t)
+
+            if len(overlapping) == 1:
+                to_return = c.load_cache_slice(overlapping[0])
+            else:
+                raise NotImplementedError
+            to_compute = non_overlapping
         else:
             raise NotImplementedError
 
@@ -346,16 +388,21 @@ class Node_cache(Node[T]):
             p = 0
         elif to_compute is None:
             p = 0
+        elif to_compute == []:
+            p = 0
         else:
             raise NotImplementedError
 
         # 🍑 Update cache
         if isinstance(to_compute, str) and to_compute == "all":
-            c.update_all(to_return, Cache_type.FULL)
+            c.update(to_return, Cache_type.FULL)
         elif isinstance(to_compute, Time_interval):
-            c.update_all(to_return, Cache_type.SLICE, t)
+            c.update(to_return, Cache_type.SLICE, t)
         elif to_compute is None:
             p = 0
+        elif c.type == Cache_type.SLICE and isinstance(t, Time_interval):
+            if to_compute != []:
+                raise NotImplementedError
         else:
             raise NotImplementedError
 

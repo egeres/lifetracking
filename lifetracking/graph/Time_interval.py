@@ -36,9 +36,13 @@ class Time_interval:
     def __sub__(self, other: datetime.timedelta) -> Time_interval:
         return Time_interval(self.start - other, self.end - other)
 
-    def __contains__(self, another: datetime.datetime) -> bool:
-        assert isinstance(another, datetime.datetime)
-        return self.start <= another <= self.end
+    def __contains__(self, another: datetime.datetime | Time_interval) -> bool:
+        assert isinstance(another, (datetime.datetime, Time_interval))
+
+        if isinstance(another, datetime.datetime):
+            return self.start <= another <= self.end
+        if isinstance(another, Time_interval):
+            return self.start <= another.start and another.end <= self.end
 
     def __repr__(self) -> str:
         return (
