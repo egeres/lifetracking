@@ -9,6 +9,29 @@ from hypothesis import strategies as st
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
 
 
+def a(a: int, b: int) -> Time_interval:
+    assert a > 0
+    assert a < b
+    """To make sintax smaller"""
+    return Time_interval(
+        datetime.datetime(2000, 1, a),
+        datetime.datetime(2000, 1, b),
+    )
+
+
+def test_overlaps():
+    s = a(5, 8)
+    assert s.overlaps(a(1, 3)) == False
+    assert s.overlaps(a(1, 5)) == False
+    assert s.overlaps(a(1, 6)) == True
+    assert s.overlaps(a(1, 9)) == True
+    assert s.overlaps(a(6, 7)) == True
+    assert s.overlaps(a(8, 9)) == False
+    assert s.overlaps(a(9, 10)) == False
+    # TODO_1: Remove a unit (when possible) in all those values so that this last line
+    # has 2 single digit numbers
+
+
 def test_contains():
     # Is IIIIN
     a = Time_interval.last_week()
@@ -16,11 +39,9 @@ def test_contains():
     assert now in a
 
     # Is NOT in... 🥺
-    a = Time_interval.last_week()
-    a += timedelta(days=1000)
+    a = Time_interval.last_week() + timedelta(days=1000)
     assert now not in a
-    a = Time_interval.last_week()
-    a -= timedelta(days=1000)
+    a = Time_interval.last_week() - timedelta(days=1000)
     assert now not in a
 
 
@@ -67,6 +88,13 @@ def test_get_overlap_innerouter():
     )
     assert a.get_overlap_innerouter(f) == ([], [f])
     assert a.get_overlap_innerouter(g) == ([], [g])
+
+
+def test_inner_outer_list():
+    intervals = [a(1, 3), a(6, 8), a(10, 14)]
+    overlap, non_overlap = a(5, 12).get_overlap_innerouter_list(intervals)
+    assert overlap == [a(6, 8), a(10, 12)]
+    assert non_overlap == [a(5, 6), a(8, 10)]
 
 
 def test_normalize_ends():

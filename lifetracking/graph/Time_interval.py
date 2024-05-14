@@ -15,6 +15,9 @@ class Time_resolution(Enum):
     DAY = auto()
 
 
+# TODO_2: Maybe just rename as Interval ?
+
+
 class Time_interval:
     """Used to get the time interval between two dates (inclusively)."""
 
@@ -28,12 +31,15 @@ class Time_interval:
         self.end: datetime.datetime = end
 
     def __eq__(self, other: Time_interval) -> bool:
+        assert isinstance(other, Time_interval)
         return self.start == other.start and self.end == other.end
 
     def __add__(self, other: datetime.timedelta) -> Time_interval:
+        assert isinstance(other, datetime.timedelta)
         return Time_interval(self.start + other, self.end + other)
 
     def __sub__(self, other: datetime.timedelta) -> Time_interval:
+        assert isinstance(other, datetime.timedelta)
         return Time_interval(self.start - other, self.end - other)
 
     def __contains__(self, another: datetime.datetime | Time_interval) -> bool:
@@ -43,6 +49,13 @@ class Time_interval:
             return self.start <= another <= self.end
         if isinstance(another, Time_interval):
             return self.start <= another.start and another.end <= self.end
+
+    def __copy__(self) -> Time_interval:
+        return Time_interval(self.start, self.end)
+
+    def overlaps(self, another: Time_interval) -> bool:
+        """Touching intervals are NOT considered as overlapping (for now I guess)"""
+        return self.start < another.end and another.start < self.end
 
     def __repr__(self) -> str:
         return (
@@ -113,6 +126,41 @@ class Time_interval:
         msg = f"Unhandled case??: {self} {another}"
         raise ValueError(msg)
 
+    def get_overlap_innerouter_list(
+        self, another: list[Time_interval]
+    ) -> tuple[list[Time_interval], list[Time_interval]]:
+        """
+        You give me a list of Time_interval like this:
+        |---|      |---|   |-----------|
+        And if the interval is like this:
+               |--------------|
+
+        It retrieves 2 lists, the first one with overlapping invervals and the second
+        one with non-overlapping intervals.
+                   |---|   |--|
+               |---|   |---|
+
+        """
+        # TODO_2: Assert that everything is in order
+
+        current_seg = self.__copy__()
+        overlapping_intervals = []
+        non_overlapping_intervals = []
+        for s in another:
+            if current_seg.overlaps(s):
+                sub_overlap, sub_non_overlap = s.get_overlap_innerouter(current_seg)
+                if len(sub_non_overlap) == 2:
+                    non_overlapping_intervals.append(sub_non_overlap[0])
+                    current_seg = sub_non_overlap[1]
+                elif len(sub_non_overlap) == 1:
+                    current_seg = sub_non_overlap[0]
+                else:
+                    msg = "This should not happen??"
+                    raise ValueError(msg)
+                overlapping_intervals.extend(sub_overlap)
+        non_overlapping_intervals.append(current_seg)
+        return overlapping_intervals, non_overlapping_intervals
+
     def normalize_ends(self) -> Self:
         self.start = self.start.replace(hour=0, minute=0, second=0, microsecond=0)
         self.end = self.end.replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -171,6 +219,8 @@ class Time_interval:
                 hour=23, minute=59, second=59, microsecond=999999
             ),
         )
+
+    # The following methods are shortcuts to create time spans of common lengths
 
     @staticmethod
     def today():

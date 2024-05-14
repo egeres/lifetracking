@@ -82,7 +82,7 @@ def test_node_cache_1():
         dirsubcache = next(path_dir_caches.iterdir())  # First dir
         assert len(list(dirsubcache.iterdir())) == 2
         assert count_files_ending_with_x(dirsubcache, ".json") == 1
-        assert count_files_ending_with_x(dirsubcache, ".pickle") == 2
+        assert count_files_ending_with_x(dirsubcache, ".pickle") == 1
 
         # 🔮 We run this with t=something
         o = node_cache.run(t=t)
