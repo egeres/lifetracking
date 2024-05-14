@@ -151,14 +151,18 @@ class Time_interval:
                 sub_overlap, sub_non_overlap = s.get_overlap_innerouter(current_seg)
                 if len(sub_non_overlap) == 2:
                     non_overlapping_intervals.append(sub_non_overlap[0])
-                    current_seg = sub_non_overlap[1]
-                elif len(sub_non_overlap) == 1:
-                    current_seg = sub_non_overlap[0]
+                if len(sub_non_overlap) > 0:
+                    current_seg = sub_non_overlap[-1]
                 else:
-                    msg = "This should not happen??"
-                    raise ValueError(msg)
+                    current_seg = None
+                # elif len(sub_non_overlap) == 1:
+                #     current_seg = sub_non_overlap[0]
+                # else:
+                #     msg = "This should not happen??"
+                #     raise ValueError(msg)
                 overlapping_intervals.extend(sub_overlap)
-        non_overlapping_intervals.append(current_seg)
+        if current_seg is not None:
+            non_overlapping_intervals.append(current_seg)
         return overlapping_intervals, non_overlapping_intervals
 
     def normalize_ends(self) -> Self:

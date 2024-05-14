@@ -25,6 +25,7 @@ def test_overlaps():
     assert s.overlaps(a(1, 5)) == False
     assert s.overlaps(a(1, 6)) == True
     assert s.overlaps(a(1, 9)) == True
+    assert s.overlaps(a(5, 8)) == True
     assert s.overlaps(a(6, 7)) == True
     assert s.overlaps(a(8, 9)) == False
     assert s.overlaps(a(9, 10)) == False
@@ -90,11 +91,17 @@ def test_get_overlap_innerouter():
     assert a.get_overlap_innerouter(g) == ([], [g])
 
 
-def test_inner_outer_list():
+def test_get_overlap_innerouter_list_0():
     intervals = [a(1, 3), a(6, 8), a(10, 14)]
     overlap, non_overlap = a(5, 12).get_overlap_innerouter_list(intervals)
     assert overlap == [a(6, 8), a(10, 12)]
     assert non_overlap == [a(5, 6), a(8, 10)]
+
+
+def test_get_overlap_innerouter_list_1():
+    overlap, non_overlap = a(1, 5).get_overlap_innerouter_list([a(1, 5)])
+    assert overlap == [a(1, 5)]
+    assert non_overlap == []
 
 
 def test_normalize_ends():
