@@ -57,6 +57,36 @@ class Time_interval:
         """Touching intervals are NOT considered as overlapping (for now I guess)"""
         return self.start < another.end and another.start < self.end
 
+    @classmethod
+    def merge(cls, intervals: list[Time_interval]) -> list[Time_interval]:
+        """Given a list of Time_intervals, it returns a list of Time_intervals
+        where overlapping intervals are merged."""
+
+        if not intervals:
+            return []
+        intervals.sort(key=lambda x: x.start)
+        merged = [intervals[0]]
+        for current in intervals[1:]:
+            last = merged[-1]
+            if last.end >= current.start:
+                last.end = max(last.end, current.end)
+            else:
+                merged.append(current)
+        return merged
+
+    def to_json(self) -> dict[str, str]:
+        return {
+            "start": self.start.isoformat(),
+            "end": self.end.isoformat(),
+        }
+
+    @classmethod
+    def from_json(cls, data: dict[str, str]) -> Time_interval:
+        return Time_interval(
+            start=datetime.datetime.fromisoformat(data["start"]),
+            end=datetime.datetime.fromisoformat(data["end"]),
+        )
+
     def __repr__(self) -> str:
         return (
             f"<{self.start.strftime('%Y-%m-%d %H:%M')}"

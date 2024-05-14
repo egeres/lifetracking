@@ -104,6 +104,13 @@ def test_get_overlap_innerouter_list_1():
     assert non_overlap == []
 
 
+def test_merge():
+    assert Time_interval.merge([a(1, 5), a(4, 8), a(10, 14)]) == [a(1, 8), a(10, 14)]
+    assert Time_interval.merge([a(1, 2), a(4, 8)]) == [a(1, 2), a(4, 8)]
+    assert Time_interval.merge([a(1, 9), a(3, 5)]) == [a(1, 9)]
+    assert Time_interval.merge([a(1, 2), a(2, 3)]) == [a(1, 3)]
+
+
 def test_normalize_ends():
     now = datetime.datetime(2013, 1, 1, 12, 4, 23, 378654)
     a = Time_interval(
