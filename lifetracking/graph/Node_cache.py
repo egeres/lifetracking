@@ -5,7 +5,6 @@ import json
 import os
 import pickle
 import tempfile
-from abc import ABC
 from datetime import datetime, timezone
 from enum import Enum
 from functools import reduce
@@ -32,7 +31,7 @@ class Cache_type(Enum):
     FULL = 2
 
 
-class Cache_AAA(ABC):
+class Cache_AAA:
 
     def __init__(
         self,
@@ -40,17 +39,10 @@ class Cache_AAA(ABC):
         hash_node: str,
         type: Cache_type,
         resolution: Time_resolution,
-        # start: datetime | None = None,
-        # end: datetime | None = None,
         covered_slices: None | list[Time_interval] = None,
     ):
         assert isinstance(dir, Path)
-        # assert isinstance(start, datetime) or start is None
-        # assert isinstance(end, datetime) or end is None
-
         if type == Cache_type.SLICE:
-            # assert start is not None
-            # assert end is not None
             assert isinstance(covered_slices, list)
             assert len(covered_slices) > 0
 
@@ -58,8 +50,6 @@ class Cache_AAA(ABC):
         self.hash_node = hash_node
         self.type = type
         self.resolution = resolution
-        # self.start = start
-        # self.end = end
         self.covered_slices = covered_slices
 
     @staticmethod
@@ -67,7 +57,6 @@ class Cache_AAA(ABC):
         dir: Path,
         hash_node: str,
         resolution: Time_resolution,
-        # ) -> Cache_AAA_slice | Cache_AAA_full | None:
     ) -> Cache_AAA:
 
         assert isinstance(dir, Path)
@@ -85,30 +74,17 @@ class Cache_AAA(ABC):
         c = json.loads((dir / "cache.json").read_text())
 
         if len(list(dir.iterdir())) != len(c["data"]) + 1:
-            print("Cache is invalid...")
             return Cache_AAA(dir, hash_node, Cache_type.NONE, resolution)
-
         if c["type"] == Cache_type.FULL.value:
             return Cache_AAA(dir, hash_node, Cache_type.FULL, resolution)
-        elif c["type"] == Cache_type.SLICE.value:
-            # raise NotImplementedError
+        if c["type"] == Cache_type.SLICE.value:
             return Cache_AAA(
                 dir,
                 hash_node,
                 Cache_type.SLICE,
                 resolution,
-                covered_slices=[
-                    Time_interval.from_json(x)
-                    for x in c["covered_slices"]
-                    # Time_interval(
-                    #     datetime.fromisoformat(c["start"]),
-                    #     datetime.fromisoformat(c["end"]),
-                    # )
-                ],
+                [Time_interval.from_json(x) for x in c["covered_slices"]],
             )
-        else:
-            raise NotImplementedError
-
         raise NotImplementedError
 
     @property
@@ -119,7 +95,6 @@ class Cache_AAA(ABC):
         self,
         data: Any,
         type_of_cache: Cache_type = Cache_type.FULL,
-        # slice: Time_interval | None = None,
         slices: list[Time_interval] | None = None,
     ) -> None:
 
@@ -132,7 +107,7 @@ class Cache_AAA(ABC):
 
         self.dir.mkdir(parents=True, exist_ok=True)
 
-        if not self.resolution == Time_resolution.DAY:
+        if self.resolution != Time_resolution.DAY:
             print("For now I just have DAY!")
             raise NotImplementedError
         if len(data.content) == 0:
@@ -187,8 +162,6 @@ class Cache_AAA(ABC):
         # Saving the metadata
         if type_of_cache == Cache_type.SLICE:
             assert slices is not None
-            # cache_info["start"] = slice.start
-            # cache_info["end"] = slice.end
             cache_info["covered_slices"] = [x.to_json() for x in slices]
         with open(self.dir / "cache.json", "w") as f:
             json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
@@ -203,7 +176,7 @@ class Cache_AAA(ABC):
         c = json.loads(f.read_text())
 
         to_return = []
-        for k, v in c["data"].items():
+        for k, _ in c["data"].items():
             with open(self.dir / f"{k}.pickle", "rb") as f:
                 to_return.append(pickle.load(f))
 
@@ -223,7 +196,7 @@ class Cache_AAA(ABC):
         c = json.loads(f.read_text())
 
         to_return = []
-        for k, v in c["data"].items():
+        for k, _ in c["data"].items():
             d = datetime.fromisoformat(k)
             if self.resolution == Time_resolution.DAY:
                 corresponding_time_interval = Time_interval(
@@ -234,12 +207,8 @@ class Cache_AAA(ABC):
                 raise NotImplementedError
 
             if t in corresponding_time_interval:
-
                 with open(self.dir / f"{k}.pickle", "rb") as f:
                     to_return.append(pickle.load(f))
-
-                p = 0
-            p = 0
 
         if c["datatype"] == "Segments":
             a = reduce(lambda x, y: x + y, to_return)
@@ -248,22 +217,9 @@ class Cache_AAA(ABC):
         raise NotImplementedError
 
 
-# class Cache_AAA_slice(Cache_AAA):
-#     def __init__(self, dir: Path, hash_node: str):
-#         super().__init__(dir, hash_node)
-#         self.start = None
-#         self.end = None
-
-
-# class Cache_AAA_full(Cache_AAA):
-#     def __init__(self, dir: Path, hash_node: str):
-#         super().__init__(dir, hash_node)
-
-
 T = TypeVar("T")
 
 
-# REFACTOR: Remove the .strftime("%Y-%m-%d %H:%M:%S") thing
 # TODO_1: all .now() should include timezone I guess
 
 
@@ -338,7 +294,8 @@ class Node_cache(Node[T]):
 
         # Get data
         # (takes into account expiration date!!)
-        # valid_caches, backuptype : tuple[list, Cache_type] = self._get_valid_caches(hash_node, t)
+        # valid_caches, backuptype : tuple[list, Cache_type] =
+        # self._get_valid_caches(hash_node, t)
 
         # 🍑 Load cache
         c = Cache_AAA.load_from_dir(self.path_dir_caches, hash_node, self.resolution)
@@ -355,31 +312,10 @@ class Node_cache(Node[T]):
             to_return = c.load_cache_all()
             p = 0
         elif c.type == Cache_type.SLICE and isinstance(t, Time_interval):
-            # to_return = ... lo ya existente
-            # to_compute = ... lo que falta
-
-            # assert isinstance(c.start, datetime)
-            # assert isinstance(c.end, datetime)
-            # c_time_interval = Time_interval(c.start, c.end)
-            # overlapping, non_overlapping = c_time_interval.get_overlap_innerouter(t)
-            # if len(overlapping) == 1:
-            #     to_return = c.load_cache_slice(overlapping[0])
-            # else:
-            #     raise NotImplementedError
-            # to_compute = non_overlapping
-
             assert isinstance(c.covered_slices, list)
-            overlap, non_overlap = t.get_overlap_innerouter_list(c.covered_slices)
-            to_return_pre = overlap
-            to_compute = non_overlap
-
-            to_return = []
-            for t_sub in to_return_pre:
-                to_return.append(c.load_cache_slice(t_sub))
-            to_return = reduce(lambda x, y: x + y, to_return)
-
-            p = 0
-
+            overlap, to_compute = t.get_overlap_innerouter_list(c.covered_slices)
+            gathered = [c.load_cache_slice(t_sub) for t_sub in overlap]
+            to_return = reduce(lambda x, y: x + y, gathered)
         else:
             raise NotImplementedError
 
@@ -403,13 +339,13 @@ class Node_cache(Node[T]):
         #     raise NotImplementedError
 
         # 🍑 Compute missing data
-        if isinstance(to_compute, str) and to_compute == "all":
+        if isinstance(to_compute, str) and to_compute == "all":  # noqa: SIM114
             to_return = n0._run_sequential(t, context)
             p = 0
         elif isinstance(to_compute, Time_interval):
             to_return = n0._run_sequential(t, context)
             p = 0
-        elif to_compute is None:
+        elif to_compute is None:  # noqa: SIM114
             p = 0
         elif to_compute == []:
             p = 0
@@ -431,30 +367,12 @@ class Node_cache(Node[T]):
             p = 0
         elif c.type == Cache_type.SLICE and isinstance(t, Time_interval):
             assert isinstance(c.covered_slices, list)
-            new_slices = Time_interval.merge(c.covered_slices + [t])
-            p = 0
-            # c.covered_slices = new_slices
+            new_slices = Time_interval.merge([*c.covered_slices, t])
             c.update(to_return, Cache_type.SLICE, new_slices)
-
-            # s, e = c.start, c.end
-            # assert isinstance(s, datetime)
-            # assert isinstance(e, datetime)
-            # for t_sub in to_compute:
-            #     if isinstance(t_sub, Time_interval):
-            #         s = min(t_sub.start, s)
-            #         e = max(t_sub.end, e)
-            #     else:
-            #         raise NotImplementedError
-            # c.update(to_return, Cache_type.SLICE, Time_interval(s, e))
-
-            # # We expand the currenrly covered slices with the ones we needed to compute
-            # c.covered_slices
-
         else:
             raise NotImplementedError
 
         # 🍑 Return data
-        # return to_return + to_compute ??
         return to_return
 
     def _run_sequential(self, t=None, context=None) -> T | None:

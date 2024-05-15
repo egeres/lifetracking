@@ -50,6 +50,9 @@ class Time_interval:
         if isinstance(another, Time_interval):
             return self.start <= another.start and another.end <= self.end
 
+        msg = f"Unsupported type: {type(another)}"
+        raise TypeError(msg)
+
     def __copy__(self) -> Time_interval:
         return Time_interval(self.start, self.end)
 
@@ -171,7 +174,7 @@ class Time_interval:
                |---|   |---|
 
         """
-        # TODO_2: Assert that everything is in order
+        # TODO_2: Assert that the input is in order
 
         current_seg = self.__copy__()
         overlapping_intervals = []
@@ -181,15 +184,7 @@ class Time_interval:
                 sub_overlap, sub_non_overlap = s.get_overlap_innerouter(current_seg)
                 if len(sub_non_overlap) == 2:
                     non_overlapping_intervals.append(sub_non_overlap[0])
-                if len(sub_non_overlap) > 0:
-                    current_seg = sub_non_overlap[-1]
-                else:
-                    current_seg = None
-                # elif len(sub_non_overlap) == 1:
-                #     current_seg = sub_non_overlap[0]
-                # else:
-                #     msg = "This should not happen??"
-                #     raise ValueError(msg)
+                current_seg = sub_non_overlap[-1] if len(sub_non_overlap) > 0 else None
                 overlapping_intervals.extend(sub_overlap)
         if current_seg is not None:
             non_overlapping_intervals.append(current_seg)

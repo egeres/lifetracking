@@ -21,16 +21,14 @@ def a(a: int, b: int) -> Time_interval:
 
 def test_overlaps():
     s = a(5, 8)
-    assert s.overlaps(a(1, 3)) == False
-    assert s.overlaps(a(1, 5)) == False
-    assert s.overlaps(a(1, 6)) == True
-    assert s.overlaps(a(1, 9)) == True
-    assert s.overlaps(a(5, 8)) == True
-    assert s.overlaps(a(6, 7)) == True
-    assert s.overlaps(a(8, 9)) == False
-    assert s.overlaps(a(9, 10)) == False
-    # TODO_1: Remove a unit (when possible) in all those values so that this last line
-    # has 2 single digit numbers
+    assert not s.overlaps(a(1, 3))
+    assert not s.overlaps(a(1, 5))
+    assert s.overlaps(a(1, 6))
+    assert s.overlaps(a(1, 9))
+    assert s.overlaps(a(5, 8))
+    assert s.overlaps(a(6, 7))
+    assert not s.overlaps(a(8, 9))
+    assert not s.overlaps(a(9, 10))
 
 
 def test_contains():
