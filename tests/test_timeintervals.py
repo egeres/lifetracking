@@ -175,3 +175,16 @@ def test_time_iterator_hour():
         Time_interval.last_n_days(1 * n).iterate_over_interval(Time_resolution.HOUR)
     )
     assert len(a) == 24 + 24 * n  # (48h in 2 days!)
+
+
+def test_all_last_something():
+    """Just to check it doesnt crash"""
+
+    assert (
+        Time_interval.last_day().duration
+        < Time_interval.last_week().duration
+        < Time_interval.last_month().duration
+        < Time_interval.last_semester().duration
+        < Time_interval.last_year().duration
+        < Time_interval.last_decade().duration
+    )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import warnings
 from enum import Enum, auto
 from typing import Iterable
 
@@ -180,8 +181,8 @@ class Time_interval:
         overlapping_intervals = []
         non_overlapping_intervals = []
         for s in another:
-            if current_seg.overlaps(s):
-                sub_overlap, sub_non_overlap = s.get_overlap_innerouter(current_seg)
+            if current_seg.overlaps(s):  # type: ignore
+                sub_overlap, sub_non_overlap = s.get_overlap_innerouter(current_seg)  # type: ignore
                 if len(sub_non_overlap) == 2:
                     non_overlapping_intervals.append(sub_non_overlap[0])
                 current_seg = sub_non_overlap[-1] if len(sub_non_overlap) > 0 else None
@@ -234,7 +235,17 @@ class Time_interval:
         this is because it's not a week per se, but the last 7 days, starting
         and ending at 00:00 and 23:59 respectively."""
 
+        warnings.warn(
+            "duration_days is deprecated and will be removed in a future version",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         return (self.end - self.start).total_seconds() / 86400
+
+    @property
+    def duration(self) -> datetime.timedelta:
+        return self.end - self.start
 
     @staticmethod
     def last_n_days(n: int, now: datetime.datetime | None = None) -> Time_interval:

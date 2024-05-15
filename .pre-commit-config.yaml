@@ -10,7 +10,7 @@
 repos:
   # Basic ones
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v4.6.0
     hooks:
       - id: trailing-whitespace
       - id: check-ast
@@ -26,7 +26,7 @@ repos:
 
   # Conventional commits
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v3.1.0
+    rev: v3.2.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
@@ -34,13 +34,13 @@ repos:
 
   # Blaaack
   - repo: https://github.com/psf/black
-    rev: 24.3.0
+    rev: 24.4.2
     hooks:
       - id: black
 
   # Ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.4
+    rev: v0.4.4
     hooks:
       - id: ruff
         types_or: [python, pyi, jupyter]

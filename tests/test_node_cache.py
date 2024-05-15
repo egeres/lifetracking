@@ -55,9 +55,9 @@ def test_node_cache_0():
 
         # 🥭 Evaluate: Cache folder
         assert len(list(path_dir_caches.iterdir())) == 1
-        dirsubcache = next(path_dir_caches.iterdir())  # First dir
-        assert len(list(dirsubcache.iterdir())) == len(node_cache.children[0].value) + 1
-        assert count_files_ending_with_x(dirsubcache, ".json") == 1
+        dir_first = next(path_dir_caches.iterdir())
+        assert len(list(dir_first.iterdir())) == len(node_cache.children[0].value) + 1
+        assert count_files_ending_with_x(dir_first, ".json") == 1
 
         # 🔮 We run this with t=None, again
         o = node_cache.run()
@@ -79,10 +79,10 @@ def test_node_cache_1():
 
         # 🥭 Evaluate: Cache folder
         assert len(list(path_dir_caches.iterdir())) == 1
-        dirsubcache = next(path_dir_caches.iterdir())  # First dir
-        assert len(list(dirsubcache.iterdir())) == 2
-        assert count_files_ending_with_x(dirsubcache, ".json") == 1
-        assert count_files_ending_with_x(dirsubcache, ".pickle") == 1
+        dir_first = next(path_dir_caches.iterdir())
+        assert len(list(dir_first.iterdir())) == 2
+        assert count_files_ending_with_x(dir_first, ".json") == 1
+        assert count_files_ending_with_x(dir_first, ".pickle") == 1
 
         # 🔮 We run this with t=something
         o = node_cache.run(t=t)
@@ -97,10 +97,10 @@ def test_node_cache_1():
         assert len(o) == 2
 
         assert len(list(path_dir_caches.iterdir())) == 1
-        dirsubcache = next(path_dir_caches.iterdir())  # First dir
-        assert len(list(dirsubcache.iterdir())) == 3
-        assert count_files_ending_with_x(dirsubcache, ".json") == 1
-        assert count_files_ending_with_x(dirsubcache, ".pickle") == 2
+        dir_first = next(path_dir_caches.iterdir())
+        assert len(list(dir_first.iterdir())) == 3
+        assert count_files_ending_with_x(dir_first, ".json") == 1
+        assert count_files_ending_with_x(dir_first, ".pickle") == 2
 
         p = 0
 
