@@ -51,8 +51,8 @@ class Time_interval:
         if isinstance(another, Time_interval):
             return self.start <= another.start and another.end <= self.end
 
-        msg = f"Unsupported type: {type(another)}"
-        raise TypeError(msg)
+        msg = f"Unsupported type: {type(another)}"  # pragma: no cover
+        raise TypeError(msg)  # pragma: no cover
 
     def __copy__(self) -> Time_interval:
         return Time_interval(self.start, self.end)
@@ -113,8 +113,8 @@ class Time_interval:
                 self.start.replace(hour=0, minute=0, second=0, microsecond=0),
                 self.end.replace(hour=23, minute=59, second=59, microsecond=999999),
             )
-        msg = f"Unsupported time resolution: {time_res}"
-        raise ValueError(msg)
+        msg = f"Unsupported time resolution: {time_res}"  # pragma: no cover
+        raise ValueError(msg)  # pragma: no cover
 
     def get_overlap_innerouter(
         self, another: Time_interval
@@ -157,8 +157,8 @@ class Time_interval:
                 Time_interval(self.end, another.end),
             ]
 
-        msg = f"Unhandled case??: {self} {another}"
-        raise ValueError(msg)
+        msg = f"Unhandled case??: {self} {another}"  # pragma: no cover
+        raise ValueError(msg)  # pragma: no cover
 
     def get_overlap_innerouter_list(
         self, another: list[Time_interval]
@@ -226,8 +226,8 @@ class Time_interval:
                 current += datetime.timedelta(hours=1)
 
         else:
-            msg = f"Unsupported time resolution: {resolution}"
-            raise ValueError(msg)
+            msg = f"Unsupported time resolution: {resolution}"  # pragma: no cover
+            raise ValueError(msg)  # pragma: no cover
 
     @property
     def duration_days(self) -> float:

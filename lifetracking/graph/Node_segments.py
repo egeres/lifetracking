@@ -24,6 +24,9 @@ from lifetracking.utils import hash_method
 
 
 class Node_segments(Node[Segments]):
+
+    sub_type = Segments
+
     def __init__(self) -> None:
         super().__init__()
 

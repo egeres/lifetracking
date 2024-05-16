@@ -26,6 +26,9 @@ U = TypeVar("U")
 class Node(ABC, Generic[T]):
     """Abstract class for a node in the graph"""
 
+    # TODO_2: Finish this implementation, we should check that all subclasses have it
+    sub_type: type = None  # type: ignore
+
     def __init__(self):
         self.last_run_info: dict[str, Any] | None = None
         self.name: str | None = None

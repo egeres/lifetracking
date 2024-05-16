@@ -47,11 +47,14 @@ class Cache_AAA:
             assert isinstance(covered_slices, list)
             assert len(covered_slices) > 0
 
-        if type is not Cache_type.NONE:
-            if isinstance(datatype, str) and datatype == "Segments":
-                datatype = Segments
-            else:
-                raise NotImplementedError
+        if (
+            type is not Cache_type.NONE
+            and isinstance(datatype, str)
+            and datatype == "Segments"
+        ):
+            datatype = Segments
+        # else:
+        #     raise NotImplementedError
 
         self.dir = dir
         self.hash_node = hash_node
@@ -70,6 +73,7 @@ class Cache_AAA:
         dir: Path,
         hash_node: str,
         resolution: Time_resolution,
+        datatype: str | Any,
     ) -> Cache_AAA:
 
         assert isinstance(dir, Path)
@@ -87,16 +91,16 @@ class Cache_AAA:
         c = json.loads((dir / "cache.json").read_text())
 
         if len(list(dir.iterdir())) != len(c["data"]) + 1:
-            return Cache_AAA(dir, hash_node, Cache_type.NONE, resolution)
+            return Cache_AAA(dir, hash_node, Cache_type.NONE, resolution, datatype)
         if c["type"] == Cache_type.FULL.value:
-            return Cache_AAA(dir, hash_node, Cache_type.FULL, resolution, c["datatype"])
+            return Cache_AAA(dir, hash_node, Cache_type.FULL, resolution, datatype)
         if c["type"] == Cache_type.SLICE.value:
             return Cache_AAA(
                 dir,
                 hash_node,
                 Cache_type.SLICE,
                 resolution,
-                c["datatype"],
+                datatype,
                 [Time_interval.from_json(x) for x in c["covered_slices"]],
             )
         raise NotImplementedError
@@ -127,11 +131,13 @@ class Cache_AAA:
         self.dir.mkdir(parents=True, exist_ok=True)
 
         if self.resolution != Time_resolution.DAY:
-            print("For now I just have DAY!")
+            print("For now I just have DAY! 😭")
             raise NotImplementedError
-        if len(data.content) == 0:
-            print("Make a special case for this!")
-            raise NotImplementedError
+        # if len(data.content) == 0:
+        #     if self.datatype == Segments:
+        #         data = Segments([])
+        #     else:
+        #         raise NotImplementedError  # pragma: no cover
 
         cache_info = {
             "date_creation": datetime.now(timezone.utc).isoformat(),
@@ -157,7 +163,11 @@ class Cache_AAA:
         data_to_save = []
         currentdata: dict[str, Any] = {
             "data_count": 0,
-            "creation_time": to_day(data.content[0].start).strftime("%Y-%m-%d"),
+            "creation_time": (
+                to_day(data.content[0].start).strftime("%Y-%m-%d")
+                if len(data.content) > 0
+                else None
+            ),
         }
         for seg in data.content:
             if to_day(seg.start).strftime("%Y-%m-%d") == currentdata["creation_time"]:
@@ -226,13 +236,15 @@ class Cache_AAA:
             else:
                 raise NotImplementedError
 
-            if t in corresponding_time_interval:
+            # if t in corresponding_time_interval:
+            if t.overlaps(corresponding_time_interval):
                 with open(self.dir / f"{k}.pickle", "rb") as f:
                     to_return.append(pickle.load(f))
 
         if c["datatype"] == "Segments":
-            a = reduce(lambda x, y: x + y, to_return)
-            return Segments(a)
+            if len(to_return) == 0:
+                return Segments([])
+            return Segments(reduce(lambda x, y: x + y, to_return))
 
         raise NotImplementedError
 
@@ -318,7 +330,12 @@ class Node_cache(Node[T]):
         # self._get_valid_caches(hash_node, t)
 
         # 🍑 Load cache
-        c = Cache_AAA.load_from_dir(self.path_dir_caches, hash_node, self.resolution)
+        c = Cache_AAA.load_from_dir(
+            self.path_dir_caches,
+            hash_node,
+            self.resolution,
+            n0.__class__.sub_type,
+        )
 
         # 🍑 What to compute
         to_return: Any | None = None
@@ -345,8 +362,8 @@ class Node_cache(Node[T]):
                 to_return = c.datatype([])
             else:
                 to_return = reduce(lambda x, y: x + y, gathered)
-        else:
-            raise NotImplementedError
+        else:  # pragma: no cover
+            raise NotImplementedError  # pragma: no cover
 
         # # What to compute
         # to_return, to_compute = []

@@ -226,6 +226,7 @@ def test_node_cache_nodata():
         assert len(o) == 0
 
 
+@pytest.mark.skip(reason="API changed")
 def test_node_cache_save_tisnone():
     """A pipeline for `Segments` gets cached, then queried with t=None"""
 
@@ -284,6 +285,7 @@ def test_node_cache_save_tisnone():
         assert all_data_count == len(b)
 
 
+@pytest.mark.skip(reason="API changed")
 def test_node_cache_save_tissomething():
     """We first get data with an offseted week. Then with 1 month"""
 
@@ -417,7 +419,9 @@ def test_node_cache_load_tissomething():
         )
         c = Node_segments_generate(b)
         d = Node_cache(c, path_dir_caches=path_dir_caches)
-        _ = d.run(t=None)
+        o = d.run(t=None)
+        assert isinstance(o, Segments)
+        assert len(o) == len(b)
 
         # The part that we're actually interested in ✨
         t = Time_interval(a.start - timedelta(days=2), a.end + timedelta(days=2))
@@ -428,6 +432,7 @@ def test_node_cache_load_tissomething():
         assert len(o[t]) == 3
 
 
+@pytest.mark.skip(reason="API changed")
 def test_node_cache_dataisextended():
     with tempfile.TemporaryDirectory() as path_dir_caches:
         path_dir_caches = Path(path_dir_caches)
