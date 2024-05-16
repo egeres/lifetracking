@@ -23,6 +23,14 @@ def count_files_ending_with_x(path: Path, suffix: str) -> int:
     return len([x for x in path.iterdir() if x.suffix.endswith(suffix)])
 
 
+def load_first_json(path: Path) -> dict:
+    assert path.exists()
+    assert path.is_dir()
+    return json.loads(
+        next(path / x for x in path.iterdir() if x.suffix == ".json").read_text()
+    )
+
+
 # @pytest.fixture
 def make_node_cache(path_dir_caches: Path):
     assert path_dir_caches.exists()
@@ -44,6 +52,8 @@ def make_node_cache(path_dir_caches: Path):
 
 
 def test_node_cache_0():
+    """We retrieve all"""
+
     with tempfile.TemporaryDirectory() as path_dir_caches:
         # 🔮 We run this with t=None
         path_dir_caches = Path(path_dir_caches)
@@ -67,6 +77,8 @@ def test_node_cache_0():
 
 
 def test_node_cache_1():
+    """We retrieve a slice"""
+
     with tempfile.TemporaryDirectory() as path_dir_caches:
         # 🔮 We run this with t=something
         path_dir_caches = Path(path_dir_caches)
@@ -85,11 +97,7 @@ def test_node_cache_1():
         assert count_files_ending_with_x(dir_first, ".pickle") == 1
 
         # 🥭 Evaluate: cache.json
-        data_json_file = json.loads(
-            next(
-                dir_first / x for x in dir_first.iterdir() if x.suffix == ".json"
-            ).read_text()
-        )
+        data_json_file = load_first_json(dir_first)
         assert len(data_json_file["covered_slices"]) == 1
 
         # 🔮 We run this with t=something, but the same t
@@ -99,11 +107,7 @@ def test_node_cache_1():
         assert len(o) == 1
 
         # 🥭 Evaluate: cache.json
-        data_json_file = json.loads(
-            next(
-                dir_first / x for x in dir_first.iterdir() if x.suffix == ".json"
-            ).read_text()
-        )
+        data_json_file = load_first_json(dir_first)
         assert len(data_json_file["covered_slices"]) == 1
 
         # 🔮 We run this with t=something, but with half overlap
@@ -121,11 +125,7 @@ def test_node_cache_1():
         assert count_files_ending_with_x(dir_first, ".pickle") == 2
 
         # 🥭 Evaluate: cache.json
-        data_json_file = json.loads(
-            next(
-                dir_first / x for x in dir_first.iterdir() if x.suffix == ".json"
-            ).read_text()
-        )
+        data_json_file = load_first_json(dir_first)
         assert len(data_json_file["covered_slices"]) == 1
         assert data_json_file["covered_slices"][0]["start"] == "2024-03-04T00:00:00"
         assert data_json_file["covered_slices"][0]["end"] == "2024-03-05T13:00:00"
@@ -135,11 +135,7 @@ def test_node_cache_1():
         o = node_cache.run(Time_interval(datetime(2024, 3, 1), datetime(2024, 3, 3)))
 
         # 🥭 Evaluate: cache.json
-        data_json_file = json.loads(
-            next(
-                dir_first / x for x in dir_first.iterdir() if x.suffix == ".json"
-            ).read_text()
-        )
+        data_json_file = load_first_json(dir_first)
         assert len(data_json_file["covered_slices"]) == 2
         assert set(data_json_file["data"].keys()) == {
             "2024-03-01",
@@ -152,13 +148,57 @@ def test_node_cache_1():
             {"end": "2024-03-05T13:00:00", "start": "2024-03-04T00:00:00"},
         ]
 
-        p = 0
 
-        # TODO_2: Test half
+def test_node_cache_2():
+    """We retrieve all, then a slice"""
 
-        # TODO_2: Test no overlap
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        # 🔮 We run this with t=None
+        path_dir_caches = Path(path_dir_caches)
+        node_cache = make_node_cache(path_dir_caches)
+        o = node_cache.run()
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == len(node_cache.children[0].value)
 
-        # TODO_2: Test full overlap
+        # 🥭 Evaluate: cache.json
+        dir_first = next(path_dir_caches.iterdir())
+        data_json_file = load_first_json(dir_first)
+        assert len(data_json_file["data"].keys()) == len(node_cache.children[0].value)
+
+        # 🔮 We run this with t=something
+        t = Time_interval(datetime(2024, 3, 5, 12, 0), datetime(2024, 3, 5, 13, 0))
+        o = node_cache.run(t)
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == 1
+
+        # 🥭 Evaluate: cache.json
+        dir_first = next(path_dir_caches.iterdir())
+        data_json_file = load_first_json(dir_first)
+        assert len(data_json_file["data"].keys()) == len(node_cache.children[0].value)
+
+
+def test_node_cache_3():
+    """We retrieve a slice, then all"""
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        # 🔮 We run this with t=something
+        path_dir_caches = Path(path_dir_caches)
+        node_cache = make_node_cache(path_dir_caches)
+        t = Time_interval(datetime(2024, 3, 5, 12, 0), datetime(2024, 3, 5, 13, 0))
+        o = node_cache.run(t=t)
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == 1
+
+        # 🔮 We run this with t=None
+        path_dir_caches = Path(path_dir_caches)
+        node_cache = make_node_cache(path_dir_caches)
+        o = node_cache.run()
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == len(node_cache.children[0].value)
 
 
 def test_node_cache_nodata():

@@ -324,13 +324,18 @@ class Node_cache(Node[T]):
         to_return: Any | None = None
         to_compute: Time_interval | str | list | None = None
 
-        if c.type == Cache_type.NONE and t is None:
+        if False:
+            pass
+        elif c.type == Cache_type.NONE and t is None:
             to_compute = "all"
         elif c.type == Cache_type.NONE and isinstance(t, Time_interval):
             to_compute = t
         elif c.type == Cache_type.FULL and t is None:
             to_return = c.load_cache_all()
-            p = 0
+        elif c.type == Cache_type.FULL and isinstance(t, Time_interval):
+            to_return = c.load_cache_slice(t)
+        elif c.type == Cache_type.SLICE and t is None:
+            to_compute = "all"  # TODO_2: Optimize this
         elif c.type == Cache_type.SLICE and isinstance(t, Time_interval):
             assert isinstance(c.covered_slices, list)
             overlap, to_compute = t.get_overlap_innerouter_list(c.covered_slices)
