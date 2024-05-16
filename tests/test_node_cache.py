@@ -84,23 +84,73 @@ def test_node_cache_1():
         assert count_files_ending_with_x(dir_first, ".json") == 1
         assert count_files_ending_with_x(dir_first, ".pickle") == 1
 
-        # 🔮 We run this with t=something
+        # 🥭 Evaluate: cache.json
+        data_json_file = json.loads(
+            next(
+                dir_first / x for x in dir_first.iterdir() if x.suffix == ".json"
+            ).read_text()
+        )
+        assert len(data_json_file["covered_slices"]) == 1
+
+        # 🔮 We run this with t=something, but the same t
         o = node_cache.run(t=t)
         # 🥭 Evaluate: Data
         assert isinstance(o, Segments)
         assert len(o) == 1
 
-        # 🔮 We run this with t=something, but expanded
-        t = Time_interval(datetime(2024, 3, 4), datetime(2024, 3, 5, 13, 0))
+        # 🥭 Evaluate: cache.json
+        data_json_file = json.loads(
+            next(
+                dir_first / x for x in dir_first.iterdir() if x.suffix == ".json"
+            ).read_text()
+        )
+        assert len(data_json_file["covered_slices"]) == 1
+
+        # 🔮 We run this with t=something, but with half overlap
+        t = Time_interval(datetime(2024, 3, 4), datetime(2024, 3, 5, 12, 30))
         o = node_cache.run(t=t)
+        # 🥭 Evaluate: Data
         assert isinstance(o, Segments)
         assert len(o) == 2
 
+        # 🥭 Evaluate: Cache folder
         assert len(list(path_dir_caches.iterdir())) == 1
         dir_first = next(path_dir_caches.iterdir())
         assert len(list(dir_first.iterdir())) == 3
         assert count_files_ending_with_x(dir_first, ".json") == 1
         assert count_files_ending_with_x(dir_first, ".pickle") == 2
+
+        # 🥭 Evaluate: cache.json
+        data_json_file = json.loads(
+            next(
+                dir_first / x for x in dir_first.iterdir() if x.suffix == ".json"
+            ).read_text()
+        )
+        assert len(data_json_file["covered_slices"]) == 1
+        assert data_json_file["covered_slices"][0]["start"] == "2024-03-04T00:00:00"
+        assert data_json_file["covered_slices"][0]["end"] == "2024-03-05T13:00:00"
+        assert set(data_json_file["data"].keys()) == {"2024-03-04", "2024-03-05"}
+
+        # 🔮 We run this with t=something, but with no overlap
+        o = node_cache.run(Time_interval(datetime(2024, 3, 1), datetime(2024, 3, 3)))
+
+        # 🥭 Evaluate: cache.json
+        data_json_file = json.loads(
+            next(
+                dir_first / x for x in dir_first.iterdir() if x.suffix == ".json"
+            ).read_text()
+        )
+        assert len(data_json_file["covered_slices"]) == 2
+        assert set(data_json_file["data"].keys()) == {
+            "2024-03-01",
+            "2024-03-02",
+            "2024-03-04",
+            "2024-03-05",
+        }
+        assert data_json_file["covered_slices"] == [
+            {"end": "2024-03-03T00:00:00", "start": "2024-03-01T00:00:00"},
+            {"end": "2024-03-05T13:00:00", "start": "2024-03-04T00:00:00"},
+        ]
 
         p = 0
 

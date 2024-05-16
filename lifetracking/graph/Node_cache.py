@@ -39,6 +39,7 @@ class Cache_AAA:
         hash_node: str,
         type: Cache_type,
         resolution: Time_resolution,
+        datatype: str | Any | None = None,
         covered_slices: None | list[Time_interval] = None,
     ):
         assert isinstance(dir, Path)
@@ -46,11 +47,23 @@ class Cache_AAA:
             assert isinstance(covered_slices, list)
             assert len(covered_slices) > 0
 
+        if type is not Cache_type.NONE:
+            if isinstance(datatype, str) and datatype == "Segments":
+                datatype = Segments
+            else:
+                raise NotImplementedError
+
         self.dir = dir
         self.hash_node = hash_node
         self.type = type
         self.resolution = resolution
+        self.datatype = datatype
         self.covered_slices = covered_slices
+
+        self._data: None | dict = None
+        if type is not Cache_type.NONE:
+            cache = json.loads((dir / "cache.json").read_text())
+            self._data = cache["data"]
 
     @staticmethod
     def load_from_dir(
@@ -76,20 +89,26 @@ class Cache_AAA:
         if len(list(dir.iterdir())) != len(c["data"]) + 1:
             return Cache_AAA(dir, hash_node, Cache_type.NONE, resolution)
         if c["type"] == Cache_type.FULL.value:
-            return Cache_AAA(dir, hash_node, Cache_type.FULL, resolution)
+            return Cache_AAA(dir, hash_node, Cache_type.FULL, resolution, c["datatype"])
         if c["type"] == Cache_type.SLICE.value:
             return Cache_AAA(
                 dir,
                 hash_node,
                 Cache_type.SLICE,
                 resolution,
+                c["datatype"],
                 [Time_interval.from_json(x) for x in c["covered_slices"]],
             )
         raise NotImplementedError
 
     @property
     def data(self) -> dict[datetime, Any]:
-        raise NotImplementedError
+        assert self._data is not None
+        return self._data
+
+    @data.setter
+    def data(self, value: dict[datetime, Any]) -> None:
+        self._data = value
 
     def update(
         self,
@@ -119,7 +138,7 @@ class Cache_AAA:
             "hash_node": self.hash_node,
             "type": type_of_cache.value,
             "resolution": self.resolution.value,
-            "data": {},
+            "data": self.data if self._data is not None else {},
             "datatype": data.__class__.__name__,
         }
 
@@ -160,6 +179,7 @@ class Cache_AAA:
             save_data(currentdata, data_to_save)
 
         # Saving the metadata
+        self.data = cache_info["data"]
         if type_of_cache == Cache_type.SLICE:
             assert slices is not None
             cache_info["covered_slices"] = [x.to_json() for x in slices]
@@ -315,7 +335,11 @@ class Node_cache(Node[T]):
             assert isinstance(c.covered_slices, list)
             overlap, to_compute = t.get_overlap_innerouter_list(c.covered_slices)
             gathered = [c.load_cache_slice(t_sub) for t_sub in overlap]
-            to_return = reduce(lambda x, y: x + y, gathered)
+            if len(gathered) == 0:
+                assert isinstance(c.datatype, type)
+                to_return = c.datatype([])
+            else:
+                to_return = reduce(lambda x, y: x + y, gathered)
         else:
             raise NotImplementedError
 
@@ -454,13 +478,14 @@ class Node_cache(Node[T]):
 
         # We save the data
         cache_info = {
-            "resolution": self.resolution.value,
-            "hash_node": hash_node,
             "date_creation": datetime.now().isoformat(),
+            "hash_node": hash_node,
+            "type": "full" if t is None else "slice",
+            "resolution": self.resolution.value,
+            "data": {},  # Per-resolution-data
+            "datatype": o.__class__.__name__,
             "start": o.min(),
             "end": o.max(),
-            "data": {},  # Per-resolution-data
-            "type": "full" if t is None else "slice",
         }
         cache_metadata: dict[str, dict] = {
             # "2023-01-01": {
