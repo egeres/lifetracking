@@ -519,4 +519,56 @@ def test_node_cache_slicethenall():
 
         o = d.run()
 
-        p = 0
+
+def test_node_skip_currentresolution_0():
+    """So, actually, cache systems shouldn't save data if it matches with the current
+    resolution"""
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        path_dir_caches = Path(path_dir_caches)
+
+        # Step 0: Data gen ✨
+        today = datetime.now().replace(hour=12)
+        a = Seg(today, today + timedelta(hours=1))
+        b = Segments(
+            [a - timedelta(days=0), a - timedelta(days=1), a - timedelta(days=2)]
+        )
+        c = Node_segments_generate(b)
+        d = Node_cache(c, Time_resolution.DAY, path_dir_caches=path_dir_caches)
+        o = d.run()
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == 3
+
+        # 🥭 Evaluate: cache.json
+        dir_first = next(path_dir_caches.iterdir())
+        data_json_file = load_first_json(dir_first)
+        assert today.strftime("%Y-%m-%d") not in data_json_file["data"]
+
+
+def test_node_skip_currentresolution_1():
+    """Same as before but I use time slices"""
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        path_dir_caches = Path(path_dir_caches)
+
+        # Step 0: Data gen ✨
+        today = datetime.now().replace(hour=12)
+        a = Seg(today, today + timedelta(hours=1))
+        b = Segments(
+            [a - timedelta(days=0), a - timedelta(days=1), a - timedelta(days=2)]
+        )
+        c = Node_segments_generate(b)
+        d = Node_cache(c, Time_resolution.DAY, path_dir_caches=path_dir_caches)
+        o = d.run(t=Time_interval.last_n_days(5))
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == 3
+
+        # 🥭 Evaluate: cache.json
+        dir_first = next(path_dir_caches.iterdir())
+        data_json_file = load_first_json(dir_first)
+        assert today.strftime("%Y-%m-%d") not in data_json_file["data"]
+        assert datetime.fromisoformat(
+            data_json_file["covered_slices"][0]["end"]
+        ) <= today.replace(hour=0, minute=0, second=0, microsecond=0)

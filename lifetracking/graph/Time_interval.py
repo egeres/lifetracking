@@ -43,12 +43,12 @@ class Time_interval:
         assert isinstance(other, datetime.timedelta)
         return Time_interval(self.start - other, self.end - other)
 
-    def __contains__(self, another: datetime.datetime | Time_interval) -> bool:
-        assert isinstance(another, (datetime.datetime, Time_interval))
+    def __contains__(self, another: datetime.datetime | Time_interval | Seg) -> bool:
+        assert isinstance(another, (datetime.datetime, Time_interval, Seg))
 
         if isinstance(another, datetime.datetime):
             return self.start <= another <= self.end
-        if isinstance(another, Time_interval):
+        if isinstance(another, (Time_interval, Seg)):
             return self.start <= another.start and another.end <= self.end
 
         msg = f"Unsupported type: {type(another)}"  # pragma: no cover
