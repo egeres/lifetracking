@@ -6,8 +6,10 @@ import hashlib
 import inspect
 import json
 import os
+import warnings
 
 # from bisect import insort  # TODO_2: Python 3.11 because of key=
+from pathlib import Path
 from typing import Any, Callable, overload
 
 import numpy as np
@@ -192,7 +194,7 @@ class Segments:
 
     def export_to_longcalendar(
         self,
-        path_filename: str,
+        path_filename: str | Path,
         hour_offset: float = 0.0,
         color: str | Callable[[Seg], str] | None = None,
         opacity: float | Callable[[Seg], float] = 1.0,
@@ -203,6 +205,9 @@ class Segments:
         my data."""
 
         # Assertions
+        if isinstance(path_filename, Path):
+            warnings.warn("Bruuuh, implement Path here", stacklevel=2)
+            path_filename = str(path_filename)
         assert isinstance(path_filename, str)
         if not path_filename.endswith(".json"):
             msg = "path_filename must end with .json"

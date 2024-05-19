@@ -9,10 +9,10 @@ from hypothesis import strategies as st
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
 
 
-def a(a: int, b: int) -> Time_interval:
+def s(a: int, b: int) -> Time_interval:
     assert a > 0
     assert a < b
-    """To make sintax smaller"""
+    """To make syntax smaller"""
     return Time_interval(
         datetime.datetime(2000, 1, a),
         datetime.datetime(2000, 1, b),
@@ -20,28 +20,25 @@ def a(a: int, b: int) -> Time_interval:
 
 
 def test_overlaps():
-    s = a(5, 8)
-    assert not s.overlaps(a(1, 3))
-    assert not s.overlaps(a(1, 5))
-    assert s.overlaps(a(1, 6))
-    assert s.overlaps(a(1, 9))
-    assert s.overlaps(a(5, 8))
-    assert s.overlaps(a(6, 7))
-    assert not s.overlaps(a(8, 9))
-    assert not s.overlaps(a(9, 10))
+    a = s(5, 8)
+    assert not a.overlaps(s(1, 3))
+    assert not a.overlaps(s(1, 5))
+    assert a.overlaps(s(1, 6))
+    assert a.overlaps(s(1, 9))
+    assert a.overlaps(s(5, 8))
+    assert a.overlaps(s(6, 7))
+    assert not a.overlaps(s(8, 9))
+    assert not a.overlaps(s(9, 10))
 
 
 def test_contains():
     # Is IIIIN
-    a = Time_interval.last_week()
-    now = datetime.datetime.now() - timedelta(days=1)
-    assert now in a
+    a = datetime.datetime.now() - timedelta(days=1)
+    assert a in Time_interval.last_week()
 
     # Is NOT in... 🥺
-    a = Time_interval.last_week() + timedelta(days=1000)
-    assert now not in a
-    a = Time_interval.last_week() - timedelta(days=1000)
-    assert now not in a
+    assert a not in (Time_interval.last_week() + timedelta(days=1000))
+    assert a not in (Time_interval.last_week() - timedelta(days=1000))
 
 
 def test_timeinterval_truncate():
@@ -90,33 +87,31 @@ def test_get_overlap_innerouter():
 
 
 def test_get_overlap_innerouter_list_0():
-    intervals = [a(1, 3), a(6, 8), a(10, 14)]
-    overlap, non_overlap = a(5, 12).get_overlap_innerouter_list(intervals)
-    assert overlap == [a(6, 8), a(10, 12)]
-    assert non_overlap == [a(5, 6), a(8, 10)]
+    intervals = [s(1, 3), s(6, 8), s(10, 14)]
+    overlap, non_overlap = s(5, 12).get_overlap_innerouter_list(intervals)
+    assert overlap == [s(6, 8), s(10, 12)]
+    assert non_overlap == [s(5, 6), s(8, 10)]
 
 
 def test_get_overlap_innerouter_list_1():
-    overlap, non_overlap = a(1, 5).get_overlap_innerouter_list([a(1, 5)])
-    assert overlap == [a(1, 5)]
+    overlap, non_overlap = s(1, 5).get_overlap_innerouter_list([s(1, 5)])
+    assert overlap == [s(1, 5)]
     assert non_overlap == []
 
 
 def test_merge():
-    assert Time_interval.merge([a(1, 5), a(4, 8), a(10, 14)]) == [a(1, 8), a(10, 14)]
-    assert Time_interval.merge([a(1, 2), a(4, 8)]) == [a(1, 2), a(4, 8)]
-    assert Time_interval.merge([a(1, 9), a(3, 5)]) == [a(1, 9)]
-    assert Time_interval.merge([a(1, 2), a(2, 3)]) == [a(1, 3)]
+    assert Time_interval.merge([]) == []
+    assert Time_interval.merge([s(1, 5), s(4, 8), s(10, 14)]) == [s(1, 8), s(10, 14)]
+    assert Time_interval.merge([s(1, 2), s(4, 8)]) == [s(1, 2), s(4, 8)]
+    assert Time_interval.merge([s(1, 9), s(3, 5)]) == [s(1, 9)]
+    assert Time_interval.merge([s(1, 2), s(2, 3)]) == [s(1, 3)]
 
 
 def test_normalize_ends():
     now = datetime.datetime(2013, 1, 1, 12, 4, 23, 378654)
     a = Time_interval(
         now,
-        now
-        + datetime.timedelta(
-            hours=1, minutes=1, seconds=1, microseconds=1, milliseconds=1
-        ),
+        now + timedelta(hours=1, minutes=1, seconds=1, microseconds=1, milliseconds=1),
     )
     a_normalized = copy.copy(a).normalize_ends()
     assert a_normalized.start != a.start
@@ -143,13 +138,10 @@ def test_lastnext_n_something():
 
 
 def test_time_iterator_days():
-    # Day resolution
-    a = list(Time_interval.today().iterate_over_interval())
-    assert len(a) == 1
-    a = list(Time_interval.last_n_days(1).iterate_over_interval())
-    assert len(a) == 2
-    a = list(Time_interval.last_week().iterate_over_interval())
-    assert len(a) == 8
+    # Uses Time_resolution.DAY by default
+    assert len(list(Time_interval.today().iterate_over_interval())) == 1
+    assert len(list(Time_interval.last_n_days(1).iterate_over_interval())) == 2
+    assert len(list(Time_interval.last_week().iterate_over_interval())) == 8
 
 
 # TODO add st.choice for st.sampled_from(Time_resolution)

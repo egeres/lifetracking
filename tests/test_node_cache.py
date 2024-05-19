@@ -578,7 +578,8 @@ def test_nodecache_skipcurrentresolution_1():
 
 
 def test_nodecache_99():
-    """Same as before but I use time slices"""
+    """If the node graph changes, the hash used by the cache to save stuff should change
+    as well"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
         path_dir_caches = Path(path_dir_caches)
@@ -613,4 +614,5 @@ def test_nodecache_99():
         d = Node_segments_operation(c, fn=fuu)
         e = Node_cache(d, path_dir_caches=path_dir_caches)
         _ = e.run()
+        # ✨ Actually, this is the interesting part of the test:
         assert len(list(path_dir_caches.iterdir())) == 2

@@ -6,6 +6,7 @@ import json
 import os
 import tempfile
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 from hypothesis import given, settings
@@ -98,27 +99,21 @@ def test_export_to_longcalendar(opacity: float):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         # Ok
-        filename = os.path.join(tmpdirname, "a", "b", "c", "test.json")
+        filename = Path(tmpdirname) / "a" / "b" / "c" / "test.json"
         a.export_to_longcalendar(filename)
         a.export_to_longcalendar(filename, opacity=opacity)
         a.export_to_longcalendar(filename, tooltip=lambda x: "test")
 
         # Failure
-        filename = os.path.join(
-            tmpdirname, "a_nice_subfolder", "another_sub_folder", "test.csv"
-        )
+        filename = Path(tmpdirname) / "a_nice_subfolder" / "uuh_sub_folder" / "test.csv"
         with pytest.raises(ValueError, match="path_filename must end with .json"):
             a.export_to_longcalendar(filename, opacity=opacity)
 
 
 def test_export_to_longcalendar_multidays():
-    a = Segments(
-        [
-            Time_interval.last_n_days(1).to_seg(),
-        ]
-    )
+    a = Segments([Time_interval.last_n_days(1).to_seg()])
     with tempfile.TemporaryDirectory() as tmpdirname:
-        filename = os.path.join(tmpdirname, "a", "b", "c", "test.json")
+        filename = Path(tmpdirname) / "a" / "b" / "c" / "test.json"
         a.export_to_longcalendar(filename)
 
         with open(filename) as f:
