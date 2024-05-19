@@ -15,7 +15,10 @@ from freezegun import freeze_time
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node_cache import Node_cache
-from lifetracking.graph.Node_segments import Node_segments_generate
+from lifetracking.graph.Node_segments import (
+    Node_segments_generate,
+    Node_segments_operation,
+)
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
 
 
@@ -51,7 +54,7 @@ def make_node_cache(path_dir_caches: Path):
     return Node_cache(c, path_dir_caches=path_dir_caches)
 
 
-def test_node_cache_0():
+def test_nodecache_0():
     """We retrieve all"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
@@ -76,7 +79,7 @@ def test_node_cache_0():
         assert len(o) == len(node_cache.children[0].value)
 
 
-def test_node_cache_1():
+def test_nodecache_1():
     """We retrieve a slice"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
@@ -149,7 +152,7 @@ def test_node_cache_1():
         ]
 
 
-def test_node_cache_2():
+def test_nodecache_2():
     """We retrieve all, then a slice"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
@@ -179,7 +182,7 @@ def test_node_cache_2():
         assert len(data_json_file["data"].keys()) == len(node_cache.children[0].value)
 
 
-def test_node_cache_3():
+def test_nodecache_3():
     """We retrieve a slice, then all"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
@@ -201,7 +204,7 @@ def test_node_cache_3():
         assert len(o) == len(node_cache.children[0].value)
 
 
-def test_node_cache_nodata():
+def test_nodecache_nodata():
     """Just checking it doesn't crash"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
@@ -227,7 +230,7 @@ def test_node_cache_nodata():
 
 
 @pytest.mark.skip(reason="API changed")
-def test_node_cache_save_tisnone():
+def test_nodecache_save_tisnone():
     """A pipeline for `Segments` gets cached, then queried with t=None"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
@@ -286,7 +289,7 @@ def test_node_cache_save_tisnone():
 
 
 @pytest.mark.skip(reason="API changed")
-def test_node_cache_save_tissomething():
+def test_nodecache_save_tissomething():
     """We first get data with an offseted week. Then with 1 month"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
@@ -376,7 +379,7 @@ def test_node_cache_save_tissomething():
         freezer.stop()
 
 
-def test_node_cache_load_tisnone():  # Difficult!
+def test_nodecache_load_tisnone():  # Difficult!
     with tempfile.TemporaryDirectory() as path_dir_caches:
         path_dir_caches = Path(path_dir_caches)
 
@@ -403,7 +406,7 @@ def test_node_cache_load_tisnone():  # Difficult!
         assert o.max() == b.max()
 
 
-def test_node_cache_load_tissomething():
+def test_nodecache_load_tissomething():
     with tempfile.TemporaryDirectory() as path_dir_caches:
         path_dir_caches = Path(path_dir_caches)
 
@@ -433,7 +436,7 @@ def test_node_cache_load_tissomething():
 
 
 @pytest.mark.skip(reason="API changed")
-def test_node_cache_dataisextended():
+def test_nodecache_dataisextended():
     with tempfile.TemporaryDirectory() as path_dir_caches:
         path_dir_caches = Path(path_dir_caches)
 
@@ -490,7 +493,7 @@ def test_node_cache_dataisextended():
         assert new_date_start == date_start
 
 
-def test_node_cache_slicethenall():
+def test_nodecache_slicethenall():
     """We first get a slice, then we get all"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
@@ -520,7 +523,7 @@ def test_node_cache_slicethenall():
         o = d.run()
 
 
-def test_node_skip_currentresolution_0():
+def test_nodecache_skipcurrentresolution_0():
     """So, actually, cache systems shouldn't save data if it matches with the current
     resolution"""
 
@@ -546,7 +549,7 @@ def test_node_skip_currentresolution_0():
         assert today.strftime("%Y-%m-%d") not in data_json_file["data"]
 
 
-def test_node_skip_currentresolution_1():
+def test_nodecache_skipcurrentresolution_1():
     """Same as before but I use time slices"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
@@ -572,3 +575,42 @@ def test_node_skip_currentresolution_1():
         assert datetime.fromisoformat(
             data_json_file["covered_slices"][0]["end"]
         ) <= today.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def test_nodecache_99():
+    """Same as before but I use time slices"""
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        path_dir_caches = Path(path_dir_caches)
+
+        def foo(x):
+            return x
+
+        b = Segments([Seg(datetime(2024, 3, 5, 12), datetime(2024, 3, 5, 13))])
+        c = Node_segments_generate(b)
+        d = Node_segments_operation(c, foo)
+        e = Node_cache(d, path_dir_caches=path_dir_caches)
+        _ = e.run()
+        assert len(list(path_dir_caches.iterdir())) == 1
+
+        def faa(x):
+            return x
+
+        b = Segments([Seg(datetime(2024, 3, 5, 12), datetime(2024, 3, 5, 13))])
+        c = Node_segments_generate(b)
+        d = Node_segments_operation(c, faa)
+        e = Node_cache(d, path_dir_caches=path_dir_caches)
+        _ = e.run()
+        assert len(list(path_dir_caches.iterdir())) == 1
+
+        def fuu(x):
+            a = 0
+            a += 1
+            return x
+
+        b = Segments([Seg(datetime(2024, 3, 5, 12), datetime(2024, 3, 5, 13))])
+        c = Node_segments_generate(b)
+        d = Node_segments_operation(c, fn=fuu)
+        e = Node_cache(d, path_dir_caches=path_dir_caches)
+        _ = e.run()
+        assert len(list(path_dir_caches.iterdir())) == 2

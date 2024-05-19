@@ -33,6 +33,7 @@ class Cache_type(Enum):
 
 
 class CacheData:
+    """Pretty much only used by Node_cache"""
 
     def __init__(
         self,
@@ -132,20 +133,13 @@ class CacheData:
             assert all(isinstance(x, Time_interval) for x in slices)
         else:
             assert slices is None
-
-        self.dir.mkdir(parents=True, exist_ok=True)
-
         if self.resolution != Time_resolution.DAY:
             print("For now I just have DAY! 😭")
             raise NotImplementedError
-        # if len(data.content) == 0:
-        #     if self.datatype == Segments:
-        #         data = Segments([])
-        #     else:
-        #         raise NotImplementedError  # pragma: no cover
 
-        today = datetime.now()
-        seg_truncated = Time_interval(today, today).truncate(self.resolution)
+        self.dir.mkdir(parents=True, exist_ok=True)
+        now = datetime.now()
+        seg_truncated = Time_interval(now, now).truncate(self.resolution)
 
         cache_info = {
             "date_creation": datetime.now(timezone.utc).isoformat(),
