@@ -382,9 +382,9 @@ class Node_pandas_operation(Node_1child, Node_pandas):
     def _operation(
         self,
         n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
-        t: Time_interval | None = None,
+        t: Time_interval | Quantity | None = None,
     ) -> pd.DataFrame:
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, Quantity))
         if len(n0) == 0:
             return n0
         return self.fn_operation(n0)

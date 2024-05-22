@@ -20,6 +20,7 @@ from rich import print
 from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
+from lifetracking.graph.warnings import DataWarning
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -36,6 +37,7 @@ class Node(ABC, Generic[T]):
         self.name: str | None = None
         self.default_export: Callable = self._print_default_export_hasnt_been_defined
         self.final: bool = False
+        self._warnings: list[DataWarning] = []
 
     def __repr__(self) -> str:
         if getattr(self, "name", None) is not None:
@@ -281,6 +283,17 @@ class Node(ABC, Generic[T]):
             f"Woops! Default export hasn't been defined for {self}. "
             "Please, use the method set_default_export to define it 🙃"
         )
+
+    def add_warning(self, w: DataWarning) -> None:
+        """Adds a warning to the node"""
+
+        assert isinstance(w, DataWarning)
+        w.node = self
+        self._warnings.append(w)
+
+    @property
+    def warnings(self) -> dict[DataWarning, bool]:
+        return {w: w.run() for w in self._warnings}
 
 
 class Node_0child(Node[T]):
