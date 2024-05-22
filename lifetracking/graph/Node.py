@@ -4,6 +4,7 @@ import copy
 import hashlib
 import time
 from abc import ABC, abstractmethod
+from datetime import datetime, timedelta
 from functools import reduce
 from pathlib import Path
 from typing import Any, Callable, Generic, Iterable, TypeVar
@@ -82,17 +83,26 @@ class Node(ABC, Generic[T]):
 
     def run(
         self,
-        t: Time_interval | None = None,
+        t: Time_interval | int | timedelta | None = None,
         prefect: bool = False,
         context: dict[Node, Any] | None = None,
     ) -> T | None:
-        """Entry point to run the graph"""
+        """Entry point to run the graph
+
+        if t is a number, it's interpreted as the last n days
+        """
 
         assert context is None or isinstance(context, dict)
         assert isinstance(prefect, bool)
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, int, timedelta))
 
-        t = copy.copy(t)
+        if isinstance(t, int):
+            t = Time_interval.last_n_days(t)
+        if isinstance(t, timedelta):
+            now = datetime.now()
+            t = Time_interval(now - t, now)
+
+        t = copy.copy(t)  # TODO_2: Try to remove it and see what breaks in tests etc
 
         # Prepare stuff
         context = {} if context is None else context  # context is changed
