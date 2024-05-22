@@ -18,6 +18,7 @@ from prefect.utilities.asyncutils import Sync
 from rich import print
 
 from lifetracking.datatypes.Segments import Segments
+from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 
 T = TypeVar("T")
@@ -83,7 +84,7 @@ class Node(ABC, Generic[T]):
 
     def run(
         self,
-        t: Time_interval | int | timedelta | None = None,
+        t: Time_interval | int | timedelta | Quantity | None = None,
         prefect: bool = False,
         context: dict[Node, Any] | None = None,
     ) -> T | None:
@@ -94,7 +95,7 @@ class Node(ABC, Generic[T]):
 
         assert context is None or isinstance(context, dict)
         assert isinstance(prefect, bool)
-        assert t is None or isinstance(t, (Time_interval, int, timedelta))
+        assert t is None or isinstance(t, (Time_interval, int, timedelta, Quantity))
 
         if isinstance(t, int):
             t = Time_interval.last_n_days(t)

@@ -22,6 +22,7 @@ from prefect.utilities.asyncutils import Sync
 from rich import print
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
+from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.plots.graphs import (
     graph_annotate_annotations,
@@ -582,7 +583,7 @@ class Reader_pandas(Node_0child, Node_pandas):
         return (
             os.path.isdir(self.path_dir)
             and os.path.exists(self.path_dir)
-            and len(
+            and len(  # TODO_2: Add a any(generator) here to speed up the process
                 [
                     i
                     for i in os.listdir(self.path_dir)
@@ -598,6 +599,9 @@ class Reader_pandas(Node_0child, Node_pandas):
         filename: str,
         dated_name: Callable[[str], datetime.datetime],
     ) -> bool:
+        assert t is None or isinstance(t, Time_interval)
+        assert isinstance(filename, str)
+
         if t is not None:
             try:
                 filename_date = dated_name(os.path.split(filename)[1])
@@ -612,32 +616,84 @@ class Reader_pandas(Node_0child, Node_pandas):
 
         return False
 
-    def _operation_load_raw_data(
+    def _operation_load_raw_data_basedonquantity(
         self,
-        t: Time_interval | None,
-    ):
+        t: Quantity,
+    ) -> pd.DataFrame:
+        # assert t is None or isinstance(t, Time_interval)
+
         # Get files
-        files_to_read = (
-            [self.path_dir]
-            if self.path_dir.endswith(self.file_extension)
-            else (
+        if self.path_dir.endswith(self.file_extension):
+            files_to_read = [self.path_dir]
+        else:
+            files_to_read = (
                 x for x in os.listdir(self.path_dir) if x.endswith(self.file_extension)
             )
-        )
 
         # Sort the files by the name if self.dated_name is not None
         if self.dated_name is not None:
-            # The fn thing is to shush pylance/mypy
-            fn = self.dated_name
+            fn = self.dated_name  # This fn thing is to shush pylance/mypy
             assert callable(fn)
-            files_to_read = sorted(
-                files_to_read,
-                key=lambda x: fn(os.path.split(x)[1]),
-            )
+            files_to_read = sorted(files_to_read, key=lambda x: fn(os.path.split(x)[1]))
 
         # Load them
         to_return = []
         for filename in files_to_read:
+
+            # Filter by date
+            if self.dated_name is not None and self._operation_filter_by_date(
+                None, filename, self.dated_name
+            ):
+                continue
+
+            # Read
+            try:
+                to_return.append(
+                    self.reading_method(os.path.join(self.path_dir, filename))
+                )
+            except pd.errors.ParserError:
+                print(f"[red]Error reading {filename}")
+            except ValueError:
+                print(f"[red]Error reading {filename} (value)")
+
+        # Hehe, will I concat?? ╰(*°▽°*)╯
+        if len(to_return) == 0:
+            return pd.DataFrame()
+        df = pd.concat(to_return, axis=0)
+
+        # Has Nans check?
+        # It can happen if you mix df's with different column manes, like "Date", "date"
+        # if df.isnull().values.any():
+        #     print(f"[red]Nans in {self.path_dir}")
+
+        df = df.iloc[-t.value :]
+
+        return df  # noqa: RET504
+
+    def _operation_load_raw_data_basedontime(
+        self,
+        t: Time_interval | None,
+    ) -> pd.DataFrame:
+        assert t is None or isinstance(t, Time_interval)
+
+        # Get files
+        if self.path_dir.endswith(self.file_extension):
+            files_to_read = [self.path_dir]
+        else:
+            files_to_read = (
+                x for x in os.listdir(self.path_dir) if x.endswith(self.file_extension)
+            )
+
+        # Sort the files by the name if self.dated_name is not None
+        if self.dated_name is not None:
+            fn = self.dated_name  # This fn thing is to shush pylance/mypy
+            assert callable(fn)
+            files_to_read = sorted(files_to_read, key=lambda x: fn(os.path.split(x)[1]))
+
+        # Load them
+        to_return = []
+        for filename in files_to_read:
+
             # Filter by date
             if self.dated_name is not None and self._operation_filter_by_date(
                 t, filename, self.dated_name
@@ -666,10 +722,15 @@ class Reader_pandas(Node_0child, Node_pandas):
 
         return df  # noqa: RET504
 
-    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        assert t is None or isinstance(t, Time_interval)
+    def _operation(self, t: Time_interval | Quantity | None = None) -> pd.DataFrame:
+        assert t is None or isinstance(t, (Time_interval, Quantity))
 
-        df = self._operation_load_raw_data(t)
+        if t is None or isinstance(t, Time_interval):
+            df = self._operation_load_raw_data_basedontime(t)
+        elif isinstance(t, Quantity):
+            df = self._operation_load_raw_data_basedonquantity(t)
+        else:
+            raise NotImplementedError
 
         if df.shape[0] == 0:
             return df
@@ -682,7 +743,7 @@ class Reader_pandas(Node_0child, Node_pandas):
                 format="mixed",
             )
             # df = df.set_index(self.column_date_index) # Hums.....
-            if t is not None:
+            if isinstance(t, Time_interval):
                 # TODO: Remove this after refactors of tzinfo
                 if t.start.tzinfo is None and df[self.column_date_index].iloc[0].tzinfo:
                     t.start = t.start.replace(
