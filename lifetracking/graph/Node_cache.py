@@ -139,7 +139,17 @@ class CacheData:
 
         self.dir.mkdir(parents=True, exist_ok=True)
         now = datetime.now()
+        # if len(data.content) > 0:
+        #     now = datetime.now(data.content[0].start.tzinfo)
         seg_truncated = Time_interval(now, now).truncate(self.resolution)
+        # TODO_3: Do the tzinfo thingy
+        if len(data.content) > 0:
+            seg_truncated.start = seg_truncated.start.replace(
+                tzinfo=data.content[0].start.tzinfo
+            )
+            seg_truncated.end = seg_truncated.end.replace(
+                tzinfo=data.content[0].start.tzinfo
+            )
 
         cache_info = {
             "date_creation": datetime.now(timezone.utc).isoformat(),
@@ -201,6 +211,15 @@ class CacheData:
             self.dont_save_after_or_eq_resolution_interval
             and type_of_cache == Cache_type.SLICE
         ):
+            # TODO_3: Do the tzinfo thingy
+            if isinstance(slices, list) and len(slices) > 0:
+                seg_truncated.start = seg_truncated.start.replace(
+                    tzinfo=slices[0].start.tzinfo
+                )
+                seg_truncated.end = seg_truncated.end.replace(
+                    tzinfo=slices[0].start.tzinfo
+                )
+
             slices = [x for x in slices if x.start < seg_truncated.start]  # Filter
             for i, s in enumerate(slices):  # Crop the slices
                 if s.end > seg_truncated.start:

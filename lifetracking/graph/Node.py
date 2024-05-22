@@ -94,11 +94,8 @@ class Node(ABC, Generic[T]):
 
         t = copy.copy(t)
 
-        # context is changed
-        if context is None:
-            context = {}
-
         # Prepare stuff
+        context = {} if context is None else context  # context is changed
         self.last_run_info = {}
         t0 = time.time()
 
