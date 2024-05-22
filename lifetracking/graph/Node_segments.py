@@ -24,6 +24,9 @@ from lifetracking.utils import hash_method
 
 
 class Node_segments(Node[Segments]):
+
+    sub_type = Segments
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -96,7 +99,7 @@ class Node_segments(Node[Segments]):
 
         o = self.run(t)
         if o is None:
-            print("🔺")
+            print("🔺 Could not export to long calendar...")
             return
         assert o is not None
         o.export_to_longcalendar(

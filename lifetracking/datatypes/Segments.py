@@ -6,8 +6,10 @@ import hashlib
 import inspect
 import json
 import os
+import warnings
 
 # from bisect import insort  # TODO_2: Python 3.11 because of key=
+from pathlib import Path
 from typing import Any, Callable, overload
 
 import numpy as np
@@ -151,6 +153,11 @@ class Segments:
                     i.end = i.end.replace(tzinfo=tz)
 
         # TODO: After coverage has been extended, test if the 'sorted' could be removed
+
+        # TODO: Maybe the sorted thing can be skipped if we add a property "sorted
+        # segments" which is a boolean and we set it to True after sorting, if we add
+        # together 2 Segments objects, and both are sorted, and, they don't overlap we
+        # can do a simple concatenation
         return Segments(sorted(other.content + self.content))
 
     def _export_to_longcalendar_edit_dict(
@@ -187,7 +194,7 @@ class Segments:
 
     def export_to_longcalendar(
         self,
-        path_filename: str,
+        path_filename: str | Path,
         hour_offset: float = 0.0,
         color: str | Callable[[Seg], str] | None = None,
         opacity: float | Callable[[Seg], float] = 1.0,
@@ -198,6 +205,9 @@ class Segments:
         my data."""
 
         # Assertions
+        if isinstance(path_filename, Path):
+            warnings.warn("Bruuuh, implement Path here", stacklevel=2)
+            path_filename = str(path_filename)
         assert isinstance(path_filename, str)
         if not path_filename.endswith(".json"):
             msg = "path_filename must end with .json"

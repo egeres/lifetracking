@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 from datetime import timedelta
+from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -178,23 +179,20 @@ def test_node_pddataframe_readdata_1(file_format: str):
     df_a = pd.DataFrame([{"a": 1}, {"a": 2}, {"a": 3}, {"a": 4}])
     df_b = pd.DataFrame([{"a": 5}, {"a": 6}, {"a": 7}, {"a": 8}])
     with tempfile.TemporaryDirectory() as tmpdirname:
+        tmpdir = Path(tmpdirname)
         # File creation n stuff
         if file_format == "csv":
-            df_a.to_csv(
-                os.path.join(tmpdirname, f"test_1000_01_01.{file_format}"), index=False
-            )
-            df_b.to_csv(
-                os.path.join(tmpdirname, f"test_2023_01_01.{file_format}"), index=False
-            )
+            df_a.to_csv(tmpdir / f"test_1000_01_01.{file_format}", index=False)
+            df_b.to_csv(tmpdir / f"test_2023_01_01.{file_format}", index=False)
             reader = Reader_csvs(
-                tmpdirname,
+                tmpdir,
                 lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         elif file_format == "json":
-            df_a.to_json(os.path.join(tmpdirname, f"test_1000_01_01.{file_format}"))
-            df_b.to_json(os.path.join(tmpdirname, f"test_2023_01_01.{file_format}"))
+            df_a.to_json(tmpdir / f"test_1000_01_01.{file_format}")
+            df_b.to_json(tmpdir / f"test_2023_01_01.{file_format}")
             reader = Reader_jsons(
-                tmpdirname,
+                tmpdir,
                 lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         else:
@@ -238,10 +236,11 @@ def test_node_pddataframe_readjson_0():
             {"datetime": t + timedelta(minutes=4)},
             {"datetime": t + timedelta(minutes=999)},
         ]
-        filename = os.path.join(tmpdirname, "test.json")
-        with open(filename, "w") as f:
+        tmpdir = Path(tmpdirname)
+        filename = tmpdir / "test.json"
+        with filename.open("w") as f:
             json.dump(b, f, indent=4, default=str)
-        a = Reader_jsons(filename, column_date_index="datetime")
+        a = Reader_jsons(str(filename), column_date_index="datetime")
         o = a.run()
 
         assert isinstance(o, pd.DataFrame)
@@ -262,19 +261,13 @@ def test_node_pddataframe_readjson_1():
 
 def test_node_pddataframe_filecreation_0():
     with tempfile.TemporaryDirectory() as tmpdirname:
-        filename = os.path.join(tmpdirname, "2020-05-30.txt")
-        with open(filename, "w") as _:
-            pass
-        filename = os.path.join(tmpdirname, "2019-05-30.txt")
-        with open(filename, "w") as _:
-            pass
+        tmpdir = Path(tmpdirname)
+        (tmpdir / "2020-05-30.txt").touch()
+        (tmpdir / "2019-05-30.txt").touch()
 
         a = Reader_filecreation(
-            tmpdirname,
-            lambda x: pd.to_datetime(
-                x.name.split(".")[0],
-                format="%Y-%m-%d",
-            ),
+            str(tmpdir),
+            lambda x: pd.to_datetime(x.name.split(".")[0], format="%Y-%m-%d"),
         )
         o = a.run()
 
@@ -285,10 +278,7 @@ def test_node_pddataframe_filecreation_0():
 def test_node_pddataframe_filecreation_1():
     a = Reader_filecreation(
         "/this_dir_does_not_exist",
-        lambda x: pd.to_datetime(
-            x.name.split(".")[0],
-            format="%Y-%m-%d",
-        ),
+        lambda x: pd.to_datetime(x.name.split(".")[0], format="%Y-%m-%d"),
     )
     o = a.run()
 

@@ -25,3 +25,7 @@ lifetracking/plots/__pycache__/
 .tox/
 
 lifetracking/dataloggers/__pycache__/
+
+cov_html/
+
+htmlcov/

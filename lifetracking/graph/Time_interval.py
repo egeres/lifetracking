@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import warnings
 from enum import Enum, auto
 from typing import Iterable
 
@@ -13,6 +14,9 @@ from lifetracking.datatypes.Seg import Seg
 class Time_resolution(Enum):
     HOUR = auto()
     DAY = auto()
+
+
+# TODO_2: Maybe just rename as Interval ?
 
 
 class Time_interval:
@@ -28,17 +32,64 @@ class Time_interval:
         self.end: datetime.datetime = end
 
     def __eq__(self, other: Time_interval) -> bool:
+        assert isinstance(other, Time_interval)
         return self.start == other.start and self.end == other.end
 
     def __add__(self, other: datetime.timedelta) -> Time_interval:
+        assert isinstance(other, datetime.timedelta)
         return Time_interval(self.start + other, self.end + other)
 
     def __sub__(self, other: datetime.timedelta) -> Time_interval:
+        assert isinstance(other, datetime.timedelta)
         return Time_interval(self.start - other, self.end - other)
 
-    def __contains__(self, another: datetime.datetime) -> bool:
-        assert isinstance(another, datetime.datetime)
-        return self.start <= another <= self.end
+    def __contains__(self, another: datetime.datetime | Time_interval | Seg) -> bool:
+        assert isinstance(another, (datetime.datetime, Time_interval, Seg))
+
+        if isinstance(another, datetime.datetime):
+            return self.start <= another <= self.end
+        if isinstance(another, (Time_interval, Seg)):
+            return self.start <= another.start and another.end <= self.end
+
+        msg = f"Unsupported type: {type(another)}"  # pragma: no cover
+        raise TypeError(msg)  # pragma: no cover
+
+    def __copy__(self) -> Time_interval:
+        return Time_interval(self.start, self.end)
+
+    def overlaps(self, another: Time_interval) -> bool:
+        """Touching intervals are NOT considered as overlapping (for now I guess)"""
+        return self.start < another.end and another.start < self.end
+
+    @classmethod
+    def merge(cls, intervals: list[Time_interval]) -> list[Time_interval]:
+        """Given a list of Time_intervals, it returns a list of Time_intervals
+        where overlapping intervals are merged."""
+
+        if not intervals:
+            return []
+        intervals.sort(key=lambda x: x.start)
+        merged = [intervals[0]]
+        for current in intervals[1:]:
+            last = merged[-1]
+            if last.end >= current.start:
+                last.end = max(last.end, current.end)
+            else:
+                merged.append(current)
+        return merged
+
+    def to_json(self) -> dict[str, str]:
+        return {
+            "start": self.start.isoformat(),
+            "end": self.end.isoformat(),
+        }
+
+    @classmethod
+    def from_json(cls, data: dict[str, str]) -> Time_interval:
+        return Time_interval(
+            start=datetime.datetime.fromisoformat(data["start"]),
+            end=datetime.datetime.fromisoformat(data["end"]),
+        )
 
     def __repr__(self) -> str:
         return (
@@ -62,8 +113,8 @@ class Time_interval:
                 self.start.replace(hour=0, minute=0, second=0, microsecond=0),
                 self.end.replace(hour=23, minute=59, second=59, microsecond=999999),
             )
-        msg = f"Unsupported time resolution: {time_res}"
-        raise ValueError(msg)
+        msg = f"Unsupported time resolution: {time_res}"  # pragma: no cover
+        raise ValueError(msg)  # pragma: no cover
 
     def get_overlap_innerouter(
         self, another: Time_interval
@@ -106,8 +157,39 @@ class Time_interval:
                 Time_interval(self.end, another.end),
             ]
 
-        msg = f"Unhandled case??: {self} {another}"
-        raise ValueError(msg)
+        msg = f"Unhandled case??: {self} {another}"  # pragma: no cover
+        raise ValueError(msg)  # pragma: no cover
+
+    def get_overlap_innerouter_list(
+        self, another: list[Time_interval]
+    ) -> tuple[list[Time_interval], list[Time_interval]]:
+        """
+        You give me a list of Time_interval like this:
+        |---|      |---|   |-----------|
+        And if the interval is like this:
+               |--------------|
+
+        It retrieves 2 lists, the first one with overlapping invervals and the second
+        one with non-overlapping intervals.
+                   |---|   |--|
+               |---|   |---|
+
+        """
+        # TODO_2: Assert that the input is in order
+
+        current_seg = self.__copy__()
+        overlapping_intervals = []
+        non_overlapping_intervals = []
+        for s in another:
+            if current_seg.overlaps(s):  # type: ignore
+                sub_overlap, sub_non_overlap = s.get_overlap_innerouter(current_seg)  # type: ignore
+                if len(sub_non_overlap) == 2:
+                    non_overlapping_intervals.append(sub_non_overlap[0])
+                current_seg = sub_non_overlap[-1] if len(sub_non_overlap) > 0 else None
+                overlapping_intervals.extend(sub_overlap)
+        if current_seg is not None:
+            non_overlapping_intervals.append(current_seg)
+        return overlapping_intervals, non_overlapping_intervals
 
     def normalize_ends(self) -> Self:
         self.start = self.start.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -144,8 +226,8 @@ class Time_interval:
                 current += datetime.timedelta(hours=1)
 
         else:
-            msg = f"Unsupported time resolution: {resolution}"
-            raise ValueError(msg)
+            msg = f"Unsupported time resolution: {resolution}"  # pragma: no cover
+            raise ValueError(msg)  # pragma: no cover
 
     @property
     def duration_days(self) -> float:
@@ -153,7 +235,17 @@ class Time_interval:
         this is because it's not a week per se, but the last 7 days, starting
         and ending at 00:00 and 23:59 respectively."""
 
+        warnings.warn(
+            "duration_days is deprecated and will be removed in a future version",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         return (self.end - self.start).total_seconds() / 86400
+
+    @property
+    def duration(self) -> datetime.timedelta:
+        return self.end - self.start
 
     @staticmethod
     def last_n_days(n: int, now: datetime.datetime | None = None) -> Time_interval:
@@ -167,6 +259,8 @@ class Time_interval:
                 hour=23, minute=59, second=59, microsecond=999999
             ),
         )
+
+    # The following methods are shortcuts to create time spans of common lengths
 
     @staticmethod
     def today():

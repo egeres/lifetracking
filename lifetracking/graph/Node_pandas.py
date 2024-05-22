@@ -528,7 +528,7 @@ class Reader_pandas(Node_0child, Node_pandas):
 
     def __init__(
         self,
-        path_dir: str,  # TODO_2: Convert this into a Path
+        path_dir: str | Path,  # TODO_2: Convert this into a Path
         dated_name: Callable[[str], datetime.datetime] | None = None,
         column_date_index: str | Callable | None = None,
         time_zone: None | datetime.tzinfo = None,
@@ -539,6 +539,13 @@ class Reader_pandas(Node_0child, Node_pandas):
         assert len(self.file_extension) > 1
         self.reading_method = self._gen_reading_method()
         assert callable(self.reading_method)
+
+        if isinstance(path_dir, Path):
+            warnings.warn(
+                "Path should be a string, not a Path object",
+                stacklevel=2,
+            )
+            path_dir = str(path_dir)
 
         if Path(path_dir).is_file() and not path_dir.endswith(self.file_extension):
             msg = (

@@ -8,13 +8,17 @@ import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import pytest
 from dateutil.parser import parse
 from freezegun import freeze_time
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node_cache import Node_cache
-from lifetracking.graph.Node_segments import Node_segments_generate
+from lifetracking.graph.Node_segments import (
+    Node_segments_generate,
+    Node_segments_operation,
+)
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
 
 
@@ -22,7 +26,185 @@ def count_files_ending_with_x(path: Path, suffix: str) -> int:
     return len([x for x in path.iterdir() if x.suffix.endswith(suffix)])
 
 
-def test_node_cache_nodata():
+def load_first_json(path: Path) -> dict:
+    assert path.exists()
+    assert path.is_dir()
+    return json.loads(
+        next(path / x for x in path.iterdir() if x.suffix == ".json").read_text()
+    )
+
+
+# @pytest.fixture
+def make_node_cache(path_dir_caches: Path):
+    assert path_dir_caches.exists()
+
+    # Data generation
+    a = Seg(datetime(2024, 3, 5, 12, 0, 0), datetime(2024, 3, 5, 13, 0, 0))
+    b = Segments(
+        [
+            a - timedelta(days=0),
+            a - timedelta(days=1),
+            a - timedelta(days=2),
+            a - timedelta(days=3),
+            a - timedelta(days=4),
+            a - timedelta(days=5),
+        ]
+    )
+    c = Node_segments_generate(b)
+    return Node_cache(c, path_dir_caches=path_dir_caches)
+
+
+def test_nodecache_0():
+    """We retrieve all"""
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        # 🔮 We run this with t=None
+        path_dir_caches = Path(path_dir_caches)
+        node_cache = make_node_cache(path_dir_caches)
+        o = node_cache.run()
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == len(node_cache.children[0].value)
+
+        # 🥭 Evaluate: Cache folder
+        assert len(list(path_dir_caches.iterdir())) == 1
+        dir_first = next(path_dir_caches.iterdir())
+        assert len(list(dir_first.iterdir())) == len(node_cache.children[0].value) + 1
+        assert count_files_ending_with_x(dir_first, ".json") == 1
+
+        # 🔮 We run this with t=None, again
+        o = node_cache.run()
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == len(node_cache.children[0].value)
+
+
+def test_nodecache_1():
+    """We retrieve a slice"""
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        # 🔮 We run this with t=something
+        path_dir_caches = Path(path_dir_caches)
+        node_cache = make_node_cache(path_dir_caches)
+        t = Time_interval(datetime(2024, 3, 5, 12, 0), datetime(2024, 3, 5, 13, 0))
+        o = node_cache.run(t=t)
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == 1
+
+        # 🥭 Evaluate: Cache folder
+        assert len(list(path_dir_caches.iterdir())) == 1
+        dir_first = next(path_dir_caches.iterdir())
+        assert len(list(dir_first.iterdir())) == 2
+        assert count_files_ending_with_x(dir_first, ".json") == 1
+        assert count_files_ending_with_x(dir_first, ".pickle") == 1
+
+        # 🥭 Evaluate: cache.json
+        data_json_file = load_first_json(dir_first)
+        assert len(data_json_file["covered_slices"]) == 1
+
+        # 🔮 We run this with t=something, but the same t
+        o = node_cache.run(t=t)
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == 1
+
+        # 🥭 Evaluate: cache.json
+        data_json_file = load_first_json(dir_first)
+        assert len(data_json_file["covered_slices"]) == 1
+
+        # 🔮 We run this with t=something, but with half overlap
+        t = Time_interval(datetime(2024, 3, 4), datetime(2024, 3, 5, 12, 30))
+        o = node_cache.run(t=t)
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == 2
+
+        # 🥭 Evaluate: Cache folder
+        assert len(list(path_dir_caches.iterdir())) == 1
+        dir_first = next(path_dir_caches.iterdir())
+        assert len(list(dir_first.iterdir())) == 3
+        assert count_files_ending_with_x(dir_first, ".json") == 1
+        assert count_files_ending_with_x(dir_first, ".pickle") == 2
+
+        # 🥭 Evaluate: cache.json
+        data_json_file = load_first_json(dir_first)
+        assert len(data_json_file["covered_slices"]) == 1
+        assert data_json_file["covered_slices"][0]["start"] == "2024-03-04T00:00:00"
+        assert data_json_file["covered_slices"][0]["end"] == "2024-03-05T13:00:00"
+        assert set(data_json_file["data"].keys()) == {"2024-03-04", "2024-03-05"}
+
+        # 🔮 We run this with t=something, but with no overlap
+        o = node_cache.run(Time_interval(datetime(2024, 3, 1), datetime(2024, 3, 3)))
+
+        # 🥭 Evaluate: cache.json
+        data_json_file = load_first_json(dir_first)
+        assert len(data_json_file["covered_slices"]) == 2
+        assert set(data_json_file["data"].keys()) == {
+            "2024-03-01",
+            "2024-03-02",
+            "2024-03-04",
+            "2024-03-05",
+        }
+        assert data_json_file["covered_slices"] == [
+            {"end": "2024-03-03T00:00:00", "start": "2024-03-01T00:00:00"},
+            {"end": "2024-03-05T13:00:00", "start": "2024-03-04T00:00:00"},
+        ]
+
+
+def test_nodecache_2():
+    """We retrieve all, then a slice"""
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        # 🔮 We run this with t=None
+        path_dir_caches = Path(path_dir_caches)
+        node_cache = make_node_cache(path_dir_caches)
+        o = node_cache.run()
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == len(node_cache.children[0].value)
+
+        # 🥭 Evaluate: cache.json
+        dir_first = next(path_dir_caches.iterdir())
+        data_json_file = load_first_json(dir_first)
+        assert len(data_json_file["data"].keys()) == len(node_cache.children[0].value)
+
+        # 🔮 We run this with t=something
+        t = Time_interval(datetime(2024, 3, 5, 12, 0), datetime(2024, 3, 5, 13, 0))
+        o = node_cache.run(t)
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == 1
+
+        # 🥭 Evaluate: cache.json
+        dir_first = next(path_dir_caches.iterdir())
+        data_json_file = load_first_json(dir_first)
+        assert len(data_json_file["data"].keys()) == len(node_cache.children[0].value)
+
+
+def test_nodecache_3():
+    """We retrieve a slice, then all"""
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        # 🔮 We run this with t=something
+        path_dir_caches = Path(path_dir_caches)
+        node_cache = make_node_cache(path_dir_caches)
+        t = Time_interval(datetime(2024, 3, 5, 12, 0), datetime(2024, 3, 5, 13, 0))
+        o = node_cache.run(t=t)
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == 1
+
+        # 🔮 We run this with t=None
+        path_dir_caches = Path(path_dir_caches)
+        node_cache = make_node_cache(path_dir_caches)
+        o = node_cache.run()
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == len(node_cache.children[0].value)
+
+
+def test_nodecache_nodata():
     """Just checking it doesn't crash"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
@@ -47,7 +229,8 @@ def test_node_cache_nodata():
         assert len(o) == 0
 
 
-def test_node_cache_save_tisnone():
+@pytest.mark.skip(reason="API changed")
+def test_nodecache_save_tisnone():
     """A pipeline for `Segments` gets cached, then queried with t=None"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
@@ -105,7 +288,8 @@ def test_node_cache_save_tisnone():
         assert all_data_count == len(b)
 
 
-def test_node_cache_save_tissomething():
+@pytest.mark.skip(reason="API changed")
+def test_nodecache_save_tissomething():
     """We first get data with an offseted week. Then with 1 month"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
@@ -195,7 +379,7 @@ def test_node_cache_save_tissomething():
         freezer.stop()
 
 
-def test_node_cache_load_tisnone():  # Difficult!
+def test_nodecache_load_tisnone():  # Difficult!
     with tempfile.TemporaryDirectory() as path_dir_caches:
         path_dir_caches = Path(path_dir_caches)
 
@@ -222,7 +406,7 @@ def test_node_cache_load_tisnone():  # Difficult!
         assert o.max() == b.max()
 
 
-def test_node_cache_load_tissomething():
+def test_nodecache_load_tissomething():
     with tempfile.TemporaryDirectory() as path_dir_caches:
         path_dir_caches = Path(path_dir_caches)
 
@@ -238,7 +422,9 @@ def test_node_cache_load_tissomething():
         )
         c = Node_segments_generate(b)
         d = Node_cache(c, path_dir_caches=path_dir_caches)
-        _ = d.run(t=None)
+        o = d.run(t=None)
+        assert isinstance(o, Segments)
+        assert len(o) == len(b)
 
         # The part that we're actually interested in ✨
         t = Time_interval(a.start - timedelta(days=2), a.end + timedelta(days=2))
@@ -249,7 +435,8 @@ def test_node_cache_load_tissomething():
         assert len(o[t]) == 3
 
 
-def test_node_cache_dataisextended():
+@pytest.mark.skip(reason="API changed")
+def test_nodecache_dataisextended():
     with tempfile.TemporaryDirectory() as path_dir_caches:
         path_dir_caches = Path(path_dir_caches)
 
@@ -306,7 +493,7 @@ def test_node_cache_dataisextended():
         assert new_date_start == date_start
 
 
-def test_node_cache_slicethenall():
+def test_nodecache_slicethenall():
     """We first get a slice, then we get all"""
 
     with tempfile.TemporaryDirectory() as path_dir_caches:
@@ -335,4 +522,97 @@ def test_node_cache_slicethenall():
 
         o = d.run()
 
-        p = 0
+
+def test_nodecache_skipcurrentresolution_0():
+    """So, actually, cache systems shouldn't save data if it matches with the current
+    resolution"""
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        path_dir_caches = Path(path_dir_caches)
+
+        # Step 0: Data gen ✨
+        today = datetime.now().replace(hour=12)
+        a = Seg(today, today + timedelta(hours=1))
+        b = Segments(
+            [a - timedelta(days=0), a - timedelta(days=1), a - timedelta(days=2)]
+        )
+        c = Node_segments_generate(b)
+        d = Node_cache(c, Time_resolution.DAY, path_dir_caches=path_dir_caches)
+        o = d.run()
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == 3
+
+        # 🥭 Evaluate: cache.json
+        dir_first = next(path_dir_caches.iterdir())
+        data_json_file = load_first_json(dir_first)
+        assert today.strftime("%Y-%m-%d") not in data_json_file["data"]
+
+
+def test_nodecache_skipcurrentresolution_1():
+    """Same as before but I use time slices"""
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        path_dir_caches = Path(path_dir_caches)
+
+        # Step 0: Data gen ✨
+        today = datetime.now().replace(hour=12)
+        a = Seg(today, today + timedelta(hours=1))
+        b = Segments(
+            [a - timedelta(days=0), a - timedelta(days=1), a - timedelta(days=2)]
+        )
+        c = Node_segments_generate(b)
+        d = Node_cache(c, Time_resolution.DAY, path_dir_caches=path_dir_caches)
+        o = d.run(t=Time_interval.last_n_days(5))
+        # 🥭 Evaluate: Data
+        assert isinstance(o, Segments)
+        assert len(o) == 3
+
+        # 🥭 Evaluate: cache.json
+        dir_first = next(path_dir_caches.iterdir())
+        data_json_file = load_first_json(dir_first)
+        assert today.strftime("%Y-%m-%d") not in data_json_file["data"]
+        assert datetime.fromisoformat(
+            data_json_file["covered_slices"][0]["end"]
+        ) <= today.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def test_nodecache_99():
+    """If the node graph changes, the hash used by the cache to save stuff should change
+    as well"""
+
+    with tempfile.TemporaryDirectory() as path_dir_caches:
+        path_dir_caches = Path(path_dir_caches)
+
+        def foo(x):
+            return x
+
+        b = Segments([Seg(datetime(2024, 3, 5, 12), datetime(2024, 3, 5, 13))])
+        c = Node_segments_generate(b)
+        d = Node_segments_operation(c, foo)
+        e = Node_cache(d, path_dir_caches=path_dir_caches)
+        _ = e.run()
+        assert len(list(path_dir_caches.iterdir())) == 1
+
+        def faa(x):
+            return x
+
+        b = Segments([Seg(datetime(2024, 3, 5, 12), datetime(2024, 3, 5, 13))])
+        c = Node_segments_generate(b)
+        d = Node_segments_operation(c, faa)
+        e = Node_cache(d, path_dir_caches=path_dir_caches)
+        _ = e.run()
+        assert len(list(path_dir_caches.iterdir())) == 1
+
+        def fuu(x):
+            a = 0
+            a += 1
+            return x
+
+        b = Segments([Seg(datetime(2024, 3, 5, 12), datetime(2024, 3, 5, 13))])
+        c = Node_segments_generate(b)
+        d = Node_segments_operation(c, fn=fuu)
+        e = Node_cache(d, path_dir_caches=path_dir_caches)
+        _ = e.run()
+        # ✨ Actually, this is the interesting part of the test:
+        assert len(list(path_dir_caches.iterdir())) == 2
