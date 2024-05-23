@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import datetime
 import hashlib
 import os
 import warnings
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable
 
 import geopandas as gpd
@@ -15,6 +16,7 @@ from rich import print
 from shapely.geometry import Point, Polygon
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
+from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import export_pddataframe_to_lc_single, hash_method
 
@@ -113,33 +115,36 @@ class Reader_geojson(Node_0child, Node_geopandas):
             > 0
         )
 
-    def _operation(self, t: Time_interval | None = None) -> gpd.GeoDataFrame | None:
-        assert t is None or isinstance(t, Time_interval)
+    def _operation(
+        self, t: Time_interval | Quantity | None = None
+    ) -> gpd.GeoDataFrame | None:
+        assert t is None or isinstance(t, (Time_interval, Quantity))
+
+        diiiict = {
+            datetime.strptime(filename.split("_")[-1], "%Y%m%d.geojson"): filename
+            for filename in os.listdir(self.path_dir)
+            if filename.endswith(".geojson")
+        }
+        total_rows_so_far = 0
         to_return: list = []
-        for filename in os.listdir(self.path_dir):
-            if filename.endswith(".geojson"):
-                filename_date = datetime.datetime.strptime(
-                    filename.split("_")[-1],
-                    "%Y%m%d.geojson",
-                )
-                if isinstance(t, Time_interval) and t.start.tzinfo is not None:
-                    filename_date = filename_date.replace(tzinfo=t.start.tzinfo)
-                if t is not None and not (t.start <= filename_date <= t.end):
+        for date, filename in sorted(diiiict.items(), reverse=True):
+            if isinstance(t, Time_interval):
+                date = date.replace(tzinfo=t.start.tzinfo)
+                if not t.start <= date <= t.end:
                     continue
-                try:
-                    to_return.append(
-                        gpd.read_file(
-                            os.path.join(
-                                self.path_dir,
-                                filename,
-                            )
-                        )
-                    )
-                except DriverError:
-                    print(f"[red]Error reading {filename}")
+            try:
+                contents = gpd.read_file(Path(self.path_dir) / filename)
+                total_rows_so_far += len(contents)
+                to_return.append(contents)
+                if isinstance(t, Quantity) and total_rows_so_far >= t.value:
+                    break
+            except DriverError:
+                print(f"[red]Error reading {filename}")
+
         if len(to_return) == 0:
             return None
-        df = pd.concat(to_return, axis=0)
+        df = to_return[0] if len(to_return) == 1 else pd.concat(to_return, axis=0)
+
         if self.column_date_index is not None:
             # Parse to datetime
             df[self.column_date_index] = pd.to_datetime(
@@ -148,6 +153,10 @@ class Reader_geojson(Node_0child, Node_geopandas):
             )
             # Set as index
             df = df.set_index(self.column_date_index)
+
+        if isinstance(t, Quantity):
+            df = df.tail(t.value)
+
         return df
 
 
@@ -200,8 +209,10 @@ class Label_geopandas(Node_1child, Node_geopandas):
             ).encode()
         ).hexdigest()
 
-    def _operation(self, n0, t: Time_interval | None = None) -> gpd.GeoDataFrame:
-        assert t is None or isinstance(t, Time_interval)
+    def _operation(
+        self, n0, t: Time_interval | Quantity | None = None
+    ) -> gpd.GeoDataFrame:
+        assert t is None or isinstance(t, (Time_interval, Quantity))
 
         # Ensure the input GeoDataFrame is using the correct CRS
         n0 = n0.to_crs("EPSG:4326")

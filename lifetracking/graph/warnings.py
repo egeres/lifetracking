@@ -58,7 +58,7 @@ class DataWarning_NotUpdated(DataWarning):
             return True
         if isinstance(last_data, pd.DataFrame):
             last_date = last_data.index.max()
-            return last_date < pd.Timestamp.now() - self.interval
+            return last_date < pd.Timestamp.now(tz=last_date.tzinfo) - self.interval
 
         raise NotImplementedError
 
