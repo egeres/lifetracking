@@ -648,8 +648,11 @@ class Reader_pandas(Node_0child, Node_pandas):
 
             # Read
             try:
+                kwargs = {}
+                if self.file_extension == ".tsv":
+                    kwargs["sep"] = "\t"
                 to_return.append(
-                    self.reading_method(os.path.join(self.path_dir, filename))
+                    self.reading_method(os.path.join(self.path_dir, filename), **kwargs)
                 )
             except pd.errors.ParserError:
                 print(f"[red]Error reading {filename}")
@@ -702,8 +705,11 @@ class Reader_pandas(Node_0child, Node_pandas):
 
             # Read
             try:
+                kwargs = {}
+                if self.file_extension == ".tsv":
+                    kwargs["sep"] = "\t"
                 to_return.append(
-                    self.reading_method(os.path.join(self.path_dir, filename))
+                    self.reading_method(os.path.join(self.path_dir, filename), **kwargs)
                 )
             except pd.errors.ParserError:
                 print(f"[red]Error reading {filename}")
@@ -768,6 +774,16 @@ class Reader_csvs(Reader_pandas):
 
     def _gen_file_extension(self) -> str:
         return ".csv"
+
+    def _gen_reading_method(self) -> Callable:
+        return pd.read_csv
+
+
+class Reader_tsvs(Reader_pandas):
+    """Can be used to read a .csv or a directory of .csv files"""
+
+    def _gen_file_extension(self) -> str:
+        return ".tsv"
 
     def _gen_reading_method(self) -> Callable:
         return pd.read_csv
