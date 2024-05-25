@@ -38,12 +38,14 @@ class DataWarning(ABC):
 
 class DataWarning_NotUpdated(DataWarning):
 
-    def __init__(self, interval: timedelta | int):
-        """Assumes ints as days."""
+    def __init__(self, interval: timedelta | int | float):
+        """Assumes ints and floats as days."""
 
         super().__init__()
         if isinstance(interval, int):
             interval = timedelta(days=interval)
+        elif isinstance(interval, float):
+            interval = timedelta(seconds=int(interval * 24 * 60 * 60))
         assert isinstance(interval, timedelta)
         self.interval = interval
         self.node: None | Node = None

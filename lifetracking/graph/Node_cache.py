@@ -432,4 +432,10 @@ class Node_cache(Node[T]):
         opacity: float | Callable[[None], float] = 1.0,
         hour_offset: float = 0,
     ):
-        raise NotImplementedError
+        return self.n0.export_to_longcalendar(
+            t=t,
+            path_filename=path_filename,
+            color=color,
+            opacity=opacity,
+            hour_offset=hour_offset,
+        )

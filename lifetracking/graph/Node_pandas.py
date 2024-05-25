@@ -560,8 +560,8 @@ class Reader_pandas(Node_0child, Node_pandas):
         assert isinstance(column_date_index, (str, type(None)))
         if not path_dir.endswith(self.file_extension) and dated_name is None:
             warnings.warn(
-                "No dated_name function provided,"
-                " so the files will not be filtered by date",
+                f"No dated_name function provided for reading '{path_dir}', "
+                "so the files will not be filtered by date",
                 stacklevel=2,
             )
         super().__init__()
