@@ -67,11 +67,13 @@ class Reader_videos(Node_segments, Node_0child):
 
         for filename in (
             file
-            for file in self.path_dir.glob("*")
+            for file in self.path_dir.iterdir()
             if file.suffix in {".mp4", ".mkv", ".avi", ".mov", ".webm"}
         ):
-            # Date filtering
-            date_creation = datetime.fromtimestamp(os.stat(filename).st_ctime)
+
+            # os.stat(filename).st_ctime doesn't seem to be the right one but I have
+            # questions
+            date_creation = datetime.fromtimestamp(os.stat(filename).st_mtime)
             if t is not None and date_creation not in t:
                 continue
 
@@ -81,8 +83,8 @@ class Reader_videos(Node_segments, Node_0child):
                 continue  # TODO This should be registered as faulty data
             to_return.append(
                 Seg(
-                    start=date_creation,
-                    end=date_creation + duration,
+                    date_creation,
+                    date_creation + duration,
                     value={"duration_in_s": duration, "filename": filename},
                 )
             )

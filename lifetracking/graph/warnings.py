@@ -37,6 +37,7 @@ class DataWarning(ABC):
 
 
 class DataWarning_NotUpdated(DataWarning):
+    """Warning to indicate data is outdated"""
 
     def __init__(self, interval: timedelta | int | float):
         """Assumes ints and floats as days."""
@@ -54,15 +55,11 @@ class DataWarning_NotUpdated(DataWarning):
         if self.node is None:
             msg = "Node not set for this warning"
             raise ValueError(msg)
-        last_data = self.node.run(Quantity(1))
 
-        if last_data is None:
+        o = self.node.time_since_last_entry()
+        if o is None:
             return True
-        if isinstance(last_data, pd.DataFrame):
-            last_date = last_data.index.max()
-            return last_date < pd.Timestamp.now(tz=last_date.tzinfo) - self.interval
-
-        raise NotImplementedError
+        return o > self.interval
 
     def error_message(self) -> str:
         return f"Data not updated at least in the last {self.interval}"
@@ -74,3 +71,6 @@ class DataWarning_NotUpdated(DataWarning):
 
     def __hash__(self) -> int:
         return hash(self.interval)
+
+
+# TODO_2: Warning, data overlap

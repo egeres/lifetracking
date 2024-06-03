@@ -295,6 +295,22 @@ class Node(ABC, Generic[T]):
     def warnings(self) -> dict[DataWarning, bool]:
         return {w: w.run() for w in self._warnings}
 
+    def time_since_last_entry(self) -> timedelta | None:
+        """Returns the time since the last entry"""
+
+        last_data = self.run(Quantity(1))
+
+        if last_data is None:
+            return None
+
+        if isinstance(last_data, pd.DataFrame):
+            if len(last_data) == 0:
+                return None
+            last_date = last_data.index.max()
+            return pd.Timestamp.now(tz=last_date.tzinfo) - last_date
+
+        raise NotImplementedError
+
 
 class Node_0child(Node[T]):
     def _get_children(self) -> list[Node]:
