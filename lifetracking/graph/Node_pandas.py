@@ -976,9 +976,10 @@ class Reader_filecreation(Node_0child, Node_pandas):
         df = df.set_index("date")
 
         # t filtering
-        if t is not None:
+        if isinstance(t, Time_interval):
             df = df[df.index >= t.start]
             df = df[df.index <= t.end]
+
         return df
 
 
@@ -1084,10 +1085,7 @@ class Reader_openAI_history(Node_0child, Node_pandas):
     - **author**: The author of the message.
     """
 
-    def __init__(
-        self,
-        path_to_data: str | Path | None = None,
-    ):
+    def __init__(self, path_to_data: str | Path | None = None):
         if isinstance(path_to_data, str):
             path_to_data = Path(path_to_data)
         assert isinstance(path_to_data, Path)
@@ -1151,3 +1149,64 @@ class Reader_openAI_history(Node_0child, Node_pandas):
 
             df = pd.DataFrame(to_return)
             return df.set_index("date")
+
+
+class Reader_loguru(Node_0child, Node_pandas):
+    """Takes a path to a .log file and returns a pandas dataframe"""
+
+    def __init__(self, path_to_data: str | Path | None = None):
+        if isinstance(path_to_data, str):
+            path_to_data = Path(path_to_data)
+        assert isinstance(path_to_data, Path)
+        assert path_to_data.name.endswith(".log")
+        assert path_to_data.exists(), f"{path_to_data} does not exist"
+        assert path_to_data.is_file(), f"{path_to_data} is not a file"
+        self.path_to_data: Path = path_to_data
+
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (
+                # TODO_2: Add hash of fn
+                super()._hashstr()
+                + str(self.path_to_data)
+            ).encode()
+        ).hexdigest()
+
+    def _operation(
+        self, t: Time_interval | Quantity | None = None
+    ) -> pd.DataFrame | None:
+
+        # Log data looks like:
+        # 2022-12-01 11:31:04.001 | INFO     | __main__:<module>:43 - Started!
+        # 2022-12-02 19:19:16.715 | INFO     | __main__:<module>:43 - Started!
+
+        # We load the entries
+        log_entries = []
+        for line in self.path_to_data.read_text().split("\n"):
+            if line.strip() == "":
+                continue
+            parts = line.split(" | ")
+            timestamp = parts[0].strip()
+            log_level = parts[1].strip()
+            module_info, message = parts[2].strip().split(" - ")
+            module_name_a, module_name_b, line_number = module_info.split(":", 2)
+            log_entries.append(
+                {
+                    "timestamp": timestamp,
+                    "log_level": log_level,
+                    "module_name": f"{module_name_a}:{module_name_b}",
+                    "line_number": int(line_number),
+                    "message": message.strip(),
+                }
+            )
+
+        # df time
+        df = pd.DataFrame(log_entries)
+        if isinstance(t, Quantity):
+            df = df.iloc[-t.value :]
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df.set_index("timestamp", inplace=True)
+        if isinstance(t, Time_interval):
+            df = df[df.index >= t.start]
+            df = df[df.index <= t.end]
+        return df
