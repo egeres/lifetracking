@@ -4,12 +4,8 @@ from abc import ABC, abstractmethod
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-import pandas as pd
-
 if TYPE_CHECKING:
     from lifetracking.graph.Node import Node
-
-from lifetracking.graph.quantity import Quantity
 
 
 class DataWarning(ABC):

@@ -3,7 +3,6 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
-import os
 from pathlib import Path
 from typing import Any, Callable, Literal
 
@@ -11,7 +10,6 @@ from lifetracking.graph.Node import Node, Node_0child, Node_1child
 
 # TODO_2: We whould refactor the names of the readers, right now it is
 #
-from lifetracking.graph.Node_pandas import Reader_jsons
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import hash_method
 

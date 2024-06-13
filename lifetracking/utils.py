@@ -4,7 +4,6 @@ import dis
 import hashlib
 import inspect
 import json
-import os
 import pickle
 import tempfile
 from datetime import timedelta

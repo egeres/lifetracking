@@ -94,7 +94,7 @@ class Time_interval:
     def __repr__(self) -> str:
         return (
             f"<{self.start.strftime('%Y-%m-%d %H:%M')}"
-            + f",{self.end.strftime('%Y-%m-%d %H:%M')}>"
+            f",{self.end.strftime('%Y-%m-%d %H:%M')}>"
         )
 
     def tz_convert(self, tz: datetime.tzinfo) -> Time_interval:
