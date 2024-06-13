@@ -27,12 +27,14 @@ class Reader_videos(Node_segments, Node_0child):
             path_dir = Path(path_dir)
         assert isinstance(path_dir, Path)
         assert dir_tmp is None or isinstance(dir_tmp, Path)
-
+        if not path_dir.exists():
+            msg = f"{path_dir} doesn't exist"
+            raise ValueError(msg)
         if not path_dir.is_dir():
             msg = f"{path_dir} is not a directory"
             raise ValueError(msg)
-        self.path_dir = path_dir
 
+        self.path_dir = path_dir
         self._get_video_length = cache_singleargument(
             "cache_videos_length",
             dir_tmp,
@@ -78,7 +80,11 @@ class Reader_videos(Node_segments, Node_0child):
                 continue
 
             # Info extraction
-            duration = self._get_video_length(str(filename))
+            try:
+                duration = self._get_video_length(str(filename))
+            except Exception as e:
+                print(f"Error with {filename}: {e}")
+                continue
             if duration is None:
                 continue  # TODO This should be registered as faulty data
             to_return.append(

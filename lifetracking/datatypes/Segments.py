@@ -205,14 +205,13 @@ class Segments:
         my data."""
 
         # Assertions
-        if isinstance(path_filename, Path):
-            warnings.warn("Bruuuh, implement Path here", stacklevel=2)
-            path_filename = str(path_filename)
-        assert isinstance(path_filename, str)
-        if not path_filename.endswith(".json"):
+        if isinstance(path_filename, str):
+            path_filename = Path(path_filename)
+        assert isinstance(path_filename, Path)
+        if path_filename.suffix != ".json":
             msg = "path_filename must end with .json"
             raise ValueError(msg)
-        assert os.path.split(path_filename)[-1] != "config.json"
+        assert path_filename.name != "config.json"
 
         # Assertion of color, opacity and tooltip
         assert color is None or isinstance(color, str) or callable(color)
@@ -243,14 +242,11 @@ class Segments:
 
         # Changes at config.json
         if isinstance(color, str) or isinstance(opacity, float):
-            # Data parsing
-            path_fil_config = os.path.join(
-                os.path.split(path_filename)[0], "config.json"
-            )
+            path_fil_config = path_filename.parent / "config.json"
             with open(path_fil_config) as f:
                 data = json.load(f)
             assert isinstance(data, dict)
-            key_name = os.path.split(path_filename)[1].split(".")[0]
+            key_name = path_filename.name.split(".")[0]
             if key_name not in data["data"]:
                 data["data"][key_name] = {}
 

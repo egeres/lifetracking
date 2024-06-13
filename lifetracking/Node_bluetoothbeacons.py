@@ -14,6 +14,7 @@ from lifetracking.datatypes.Segments import Seg, Segments
 from lifetracking.graph.Node import Node, Node_1child
 from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Node_segments import Node_segments
+from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 
 
@@ -64,10 +65,10 @@ class Parse_BLE_info(Node_1child, Node_segments):
     def _operation(
         self,
         n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
-        t: Time_interval | None = None,
+        t: Time_interval | Quantity | None = None,
     ) -> Segments:
         assert n0 is not None
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, Quantity))
 
         df: pd.DataFrame = n0  # type: ignore
         df.replace(9999.0, np.nan, inplace=True)
