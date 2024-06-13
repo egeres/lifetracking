@@ -243,7 +243,7 @@ class Segments:
         # Changes at config.json
         if isinstance(color, str) or isinstance(opacity, float):
             path_fil_config = path_filename.parent / "config.json"
-            with open(path_fil_config) as f:
+            with path_fil_config.open() as f:
                 data = json.load(f)
             assert isinstance(data, dict)
             key_name = path_filename.name.split(".")[0]
@@ -256,7 +256,7 @@ class Segments:
             if isinstance(opacity, float) and opacity != 1.0:
                 data["data"][key_name]["opacity"] = opacity
 
-            with open(path_fil_config, "w") as f:
+            with path_fil_config.open("w") as f:
                 json.dump(data, f, indent=4, default=str)
 
         # Export itself
@@ -279,7 +279,7 @@ class Segments:
                     color,
                     opacity,
                 )
-        with open(path_filename, "w") as f:
+        with path_filename.open("w") as f:
             json.dump(to_export, f, indent=4, default=str)
 
     @staticmethod

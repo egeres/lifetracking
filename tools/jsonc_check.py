@@ -1,6 +1,7 @@
 # ruff: noqa: PERF203
 
 import sys
+from pathlib import Path
 
 import json5
 
@@ -8,7 +9,7 @@ import json5
 def main():
     for filename in sys.argv[1:]:
         try:
-            with open(filename) as file:
+            with Path(filename).open() as file:
                 json5.load(file)
             print(f"{filename}: Valid JSONC")
         except Exception as e:

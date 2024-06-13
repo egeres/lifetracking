@@ -88,14 +88,16 @@ class Node_geopandas_operation(Node_1child, Node_geopandas):
 class Reader_geojson(Node_0child, Node_geopandas):
     def __init__(
         self,
-        path_dir: str,
+        path_dir: Path | str,
         column_date_index: str | None = None,
     ) -> None:
-        assert isinstance(path_dir, str)
+
+        if isinstance(path_dir, str):
+            path_dir = Path(path_dir)
+        assert isinstance(path_dir, Path)
         assert column_date_index is None or isinstance(column_date_index, str)
-        if not os.path.isdir(path_dir):
-            # raise ValueError(f"{path_dir} is not a directory")
-            warnings.warn(f"{path_dir} is not a directory", stacklevel=2)
+        assert path_dir.exists()
+        assert path_dir.is_dir()
         super().__init__()
         self.path_dir = path_dir
         self.column_date_index = column_date_index
@@ -106,14 +108,7 @@ class Reader_geojson(Node_0child, Node_geopandas):
         ).hexdigest()
 
     def _available(self) -> bool:
-        return (
-            os.path.isdir(self.path_dir)
-            # TODO_2: Optimize the "len(...)" to see if there is at least one file with
-            # the extension we want by just adding an iterator that fucking stops when
-            # it encounters the corresponding file?
-            and len([i for i in os.listdir(self.path_dir) if i.endswith(".geojson")])
-            > 0
-        )
+        return self.path_dir.is_dir() and any(self.path_dir.glob("*.geojson"))
 
     def _operation(
         self, t: Time_interval | Quantity | None = None
@@ -121,9 +116,8 @@ class Reader_geojson(Node_0child, Node_geopandas):
         assert t is None or isinstance(t, (Time_interval, Quantity))
 
         diiiict = {
-            datetime.strptime(filename.split("_")[-1], "%Y%m%d.geojson"): filename
-            for filename in os.listdir(self.path_dir)
-            if filename.endswith(".geojson")
+            datetime.strptime(filename.name.split("_")[-1], "%Y%m%d.geojson"): filename
+            for filename in self.path_dir.glob("*.geojson")
         }
         total_rows_so_far = 0
         to_return: list = []
@@ -133,7 +127,7 @@ class Reader_geojson(Node_0child, Node_geopandas):
                 if not t.start <= date <= t.end:
                     continue
             try:
-                contents = gpd.read_file(Path(self.path_dir) / filename)
+                contents = gpd.read_file(self.path_dir / filename)
                 total_rows_so_far += len(contents)
                 to_return.append(contents)
                 if isinstance(t, Quantity) and total_rows_so_far >= t.value:

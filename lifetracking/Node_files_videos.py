@@ -75,7 +75,7 @@ class Reader_videos(Node_segments, Node_0child):
 
             # os.stat(filename).st_ctime doesn't seem to be the right one but I have
             # questions
-            date_creation = datetime.fromtimestamp(os.stat(filename).st_mtime)
+            date_creation = datetime.fromtimestamp(filename.stat().st_mtime)
             if t is not None and date_creation not in t:
                 continue
 

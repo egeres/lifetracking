@@ -4,6 +4,7 @@ import datetime
 import json
 import os
 import tempfile
+from pathlib import Path
 
 import pandas as pd
 from hypothesis import given, settings
@@ -294,16 +295,13 @@ def test_node_segments_segmentize_byduration_1():
     #     )
 
     with tempfile.TemporaryDirectory() as tmpdirname:
-        filename = os.path.join(
-            tmpdirname, "a", "basdasd", "cad44ad", "kandknasdknasd.json"
-        )
+        filename = Path(tmpdirname) / "a" / "asdasd" / "kjnsdnjsd.json"
         o.export_to_longcalendar(
             filename,
             hour_offset=+2.0,
             tooltip="a_title?",
         )
-
-        with open(filename) as f:
+        with filename.open() as f:
             data = json.load(f)
 
         assert [x["tooltip"] for x in data] == [

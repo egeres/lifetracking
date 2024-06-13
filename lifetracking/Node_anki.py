@@ -3,8 +3,8 @@ from __future__ import annotations
 import datetime
 import hashlib
 import multiprocessing
-import os
 import warnings
+from pathlib import Path
 
 import ankipandas
 import pandas as pd
@@ -16,14 +16,16 @@ from lifetracking.graph.Time_interval import Time_interval
 
 
 class Parse_anki_study(Node_pandas, Node_0child):
-    path_dir_datasource: str = os.path.join(
-        os.path.expanduser("~"), "AppData", "Roaming", "Anki2"
-    )
-    path_file_anki = os.path.join(path_dir_datasource, "User 1", "collection.anki2")
+    path_dir_datasource = Path.home() / "AppData" / "Roaming" / "Anki2"
+    path_file_anki = path_dir_datasource / "User 1" / "collection.anki2"
 
-    def __init__(self, path_dir: str | None = None) -> None:
+    def __init__(self, path_dir: Path | str | None = None) -> None:
         if path_dir is None:
             path_dir = self.path_dir_datasource
+        if isinstance(path_dir, str):
+            path_dir = Path(path_dir)
+        assert path_dir.exists()
+        assert path_dir.is_dir()
         super().__init__()
         self.path_dir = path_dir
 
@@ -33,7 +35,7 @@ class Parse_anki_study(Node_pandas, Node_0child):
         ).hexdigest()
 
     def _available(self) -> bool:
-        return os.path.exists(self.path_dir)
+        return self.path_dir.exists()
 
     def _get_raw_data(self, path_file, return_dict):
         try:

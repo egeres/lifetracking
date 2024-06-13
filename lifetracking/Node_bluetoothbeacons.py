@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -21,13 +22,13 @@ from lifetracking.graph.Time_interval import Time_interval
 class Parse_BLE_info(Node_1child, Node_segments):
     class Config:
         def __init__(self, config) -> None:
-            if isinstance(config, str):
-                self._config = self._load_config(config)
+            if isinstance(config, (str, Path)):
+                self._config = self._load_config(Path(config))
             else:
                 self._config = config
 
-        def _load_config(self, path_file: str) -> dict[str, Any]:
-            with open(path_file) as f:
+        def _load_config(self, path_file: Path) -> dict[str, Any]:
+            with path_file.open() as f:
                 return json.load(f)
 
         @property

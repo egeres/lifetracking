@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-import os
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -21,49 +21,49 @@ class Social_telegram(Node_pandas, Node_0child):
         self,
         names: list[str] | None = None,
         type_of_chat: str | None = "personal_chat",
-        path_to_data: str | None = None,
+        path_to_data: Path | None = None,
     ) -> None:
         super().__init__()
         assert type_of_chat is None or isinstance(type_of_chat, str)
         assert names is None or isinstance(names, list)
-        assert path_to_data is None or isinstance(path_to_data, str)
+        assert path_to_data is None or isinstance(path_to_data, Path)
 
         self.type_of_chat = (
             [type_of_chat] if isinstance(type_of_chat, str) else type_of_chat
         )
         self.names = names if names is not None else []
 
+        if path_to_data is None:
+            path_to_data = Path.home() / "Downloads" / "Telegram Desktop"
         self.path_to_data = path_to_data
-        if self.path_to_data is None:
-            self.path_to_data = rf"C:\Users\{os.getlogin()}\Downloads\Telegram Desktop"
-        # TODO_2: Support linux/mac path
 
     def _hashstr(self) -> str:
         return super()._hashstr()
 
-    def _get_chat_exports_dirs(self, path_dir_root: str) -> list[str]:
-        assert os.path.exists(path_dir_root)
-        to_return = []
-        for x in os.listdir(path_dir_root):
-            if os.path.isdir(os.path.join(path_dir_root, x)) and x.startswith(
-                "ChatExport"
-            ):
-                to_return.append(os.path.join(path_dir_root, x))
-        return to_return
+    def _get_chat_exports_dirs(self, path_dir_root: Path) -> list[Path]:
+        assert path_dir_root.exists()
 
-    def _get_datajsons(self, path_dir_root: str) -> list[str]:
+        return [
+            i
+            for i in path_dir_root.iterdir()
+            if i.is_dir() and i.name.startswith("ChatExport")
+        ]
+
+    def _get_datajsons(self, path_dir_root: Path) -> list[Path]:
+        assert path_dir_root.exists()
+
         to_return = []
         for i in self._get_chat_exports_dirs(path_dir_root):
-            for j in os.listdir(i):
-                if j.endswith(".json") and os.path.isfile(os.path.join(i, j)):
-                    to_return.append(os.path.join(i, j))
+            for j in i.iterdir():
+                if j.suffix == ".json" and j.is_file():
+                    to_return.append(j)
         return to_return
 
     def get_most_recent_personal_chats(self) -> dict[str, dict[str, Any]]:
         to_return = {}
 
         for filename in self._get_datajsons(self.path_to_data):
-            with open(filename, encoding="utf-8") as f:
+            with filename.open(encoding="utf-8") as f:
                 try:
                     data = json.load(f)
                 except json.decoder.JSONDecodeError:
@@ -113,7 +113,7 @@ class Social_telegram(Node_pandas, Node_0child):
         to_return = []
         for k, v in chats.items():
             # Read messages
-            with open(v["filename"], encoding="utf-8") as f:
+            with Path(v["filename"]).open(encoding="utf-8") as f:
                 try:
                     data = json.load(f)
                 except json.decoder.JSONDecodeError:

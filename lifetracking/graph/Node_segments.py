@@ -30,10 +30,7 @@ class Node_segments(Node[Segments]):
     def __init__(self) -> None:
         super().__init__()
 
-    def apply(
-        self,
-        fn: Callable[[Segments], Segments],
-    ) -> Node_segments:
+    def apply(self, fn: Callable[[Segments], Segments]) -> Node_segments:
         return Node_segments_operation(self, fn)  # type: ignore
 
     def assign_value_all(self, key: str, value: Any) -> Node_segments:
@@ -716,7 +713,7 @@ class Reader_segmentsinjson(Node_0child, Node_segments):
 
         to_return = []
         for f in files:
-            with open(f) as f:
+            with f.open() as f:
                 data = json.load(f)
             for i in data:
                 to_return.append(

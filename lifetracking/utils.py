@@ -37,9 +37,8 @@ def _lc_export_prepare_dir(path_filename: Path) -> None:
         path_filename.write_text("{}")
 
     # If file is empty, it is filled with an empty dict
-    with open(path_filename) as f:
-        if f.read().strip() == "":
-            path_filename.write_text("{}")
+    if path_filename.read_text().strip() == "":
+        path_filename.write_text("{}")
 
     # If config.json does not exist, it is created
     path_fil_config = path_filename.parent / "config.json"
@@ -65,7 +64,7 @@ def _lc_export_configchanges(
     if isinstance(color, str) or isinstance(opacity, float):
         # Data parsing
         path_fil_config = path_filename.parent / "config.json"
-        with open(path_fil_config) as f:
+        with path_fil_config.open() as f:
             data = json.load(f)
             assert isinstance(data, dict)
             key_name = path_filename.stem
@@ -78,7 +77,7 @@ def _lc_export_configchanges(
         if isinstance(opacity, float) and opacity != 1.0:
             data["data"][key_name]["opacity"] = opacity
 
-        with open(path_fil_config, "w") as f:
+        with path_fil_config.open("w") as f:
             json.dump(data, f, indent=4)
 
 
@@ -141,7 +140,7 @@ def export_pddataframe_to_lc_single(
         else:
             msg = "Index must be a pd.Timestamp"
             raise TypeError(msg)
-    with open(path_filename, "w") as f:
+    with path_filename.open("w") as f:
         json.dump(to_export, f, indent=4, default=str)
 
 
@@ -167,10 +166,12 @@ def hash_string(string: str) -> str:
     return hashlib.md5(string.encode()).hexdigest()
 
 
-def cache_singleargument(dirname: str, rootdir: Path | None = None) -> Callable:
+def cache_singleargument(dirname: str, rootdir: Path | str | None = None) -> Callable:
 
     if rootdir is None:
         rootdir = Path(tempfile.gettempdir())
+    if isinstance(rootdir, str):
+        rootdir = Path(rootdir)
     assert isinstance(rootdir, Path)
     assert rootdir.is_dir()
     assert isinstance(dirname, str)
@@ -182,11 +183,11 @@ def cache_singleargument(dirname: str, rootdir: Path | None = None) -> Callable:
         def wrapper(arg: str) -> str:
             arg_hash = hash_string(arg)
             if arg_hash in {x.name[:-7] for x in d.glob("*.pickle")}:
-                with open(d / f"{arg_hash}.pickle", "rb") as f:
+                with (d / f"{arg_hash}.pickle").open("rb") as f:
                     return pickle.load(f)
             to_return = method(arg)
             if to_return is not None:  # Huh, should I?
-                with open(d / f"{arg_hash}.pickle", "wb") as f:
+                with (d / f"{arg_hash}.pickle").open("wb") as f:
                     pickle.dump(to_return, f)
             return to_return
 

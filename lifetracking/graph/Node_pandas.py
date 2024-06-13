@@ -1007,7 +1007,7 @@ class Reader_telegramchat(Node_0child, Node_pandas):
 
     # REFACTOR: All this stuff overlaps with: Social_telegram
     # REFACTOR: All of these use Path instead of str
-    def _get_chat_exports_dirs(self, path_dir_root: Path) -> list[str]:
+    def _get_chat_exports_dirs(self, path_dir_root: Path) -> list[Path]:
         assert isinstance(path_dir_root, Path)
         assert path_dir_root.is_dir()
         assert path_dir_root.exists()
@@ -1018,7 +1018,7 @@ class Reader_telegramchat(Node_0child, Node_pandas):
             if x.is_dir() and x.name.startswith("ChatExport")
         ]
 
-    def _get_datajsons(self, path_dir_root: Path) -> list[str]:
+    def _get_datajsons(self, path_dir_root: Path) -> list[Path]:
         assert isinstance(path_dir_root, Path)
 
         to_return = []
@@ -1028,11 +1028,11 @@ class Reader_telegramchat(Node_0child, Node_pandas):
                     to_return.append(j)
         return to_return
 
-    def get_most_recent_personal_chats(self) -> str | None:
+    def get_most_recent_personal_chats(self) -> Path | None:
         global_filename = None
         global_last_update = datetime.datetime.min
         for filename in self._get_datajsons(self.path_to_data):
-            with open(filename, encoding="utf-8") as f:
+            with filename.open(encoding="utf-8") as f:
                 try:
                     data = json.load(f)
                 except json.decoder.JSONDecodeError:
@@ -1052,7 +1052,7 @@ class Reader_telegramchat(Node_0child, Node_pandas):
         chat = self.get_most_recent_personal_chats()
         if chat is None:
             return None
-        with open(chat, encoding="utf-8") as f:
+        with chat.open(encoding="utf-8") as f:
             data = json.load(f)
 
         # df time
@@ -1120,9 +1120,11 @@ class Reader_openAI_history(Node_0child, Node_pandas):
         return messages
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame | None:
-        assert (self.path_dir_tmp / "conversations.json").exists()
 
-        with open(self.path_dir_tmp / "conversations.json", encoding="utf-8") as f:
+        convs = self.path_dir_tmp / "conversations.json"
+        assert convs.exists()
+
+        with convs.open(encoding="utf-8") as f:
             data = json.load(f, strict=False)
 
             to_return = []
