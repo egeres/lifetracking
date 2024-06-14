@@ -77,9 +77,9 @@ class Node_geopandas_operation(Node_1child, Node_geopandas):
     def _operation(
         self,
         n0: gpd.GeoDataFrame | PrefectFuture[gpd.GeoDataFrame, Sync],
-        t: Time_interval | None = None,
+        t: Time_interval | Quantity | None = None,
     ) -> gpd.GeoDataFrame:
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, Quantity))
         return self.fn_operation(n0)
 
 

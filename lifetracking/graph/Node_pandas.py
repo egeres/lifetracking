@@ -346,10 +346,12 @@ class Node_pandas_generate(Node_0child, Node_pandas):
         return self.df is not None
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, Quantity))
         df = self.df.copy()
-        if t is not None:
+        if isinstance(t, Time_interval):
             return df[t.end : t.start]
+        if isinstance(t, Quantity):
+            return df.iloc[-t.value :]
         return df
 
 

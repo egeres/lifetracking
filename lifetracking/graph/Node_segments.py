@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+from datetime import timedelta
 from functools import reduce
 from pathlib import Path
 from typing import Any, Callable
@@ -19,6 +20,7 @@ from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
 from lifetracking.graph.Node_cache import Node_cache
 from lifetracking.graph.Node_pandas import Node_pandas
+from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import hash_method
 
@@ -375,7 +377,7 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
     def __init__(
         self,
         n0: Node_pandas,
-        time_to_split_in_mins: float = 5.0,
+        time_to_split: timedelta = timedelta(minutes=5.0),
         min_count: int = 1,
         # TODO: Next line is unused
         segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
@@ -384,15 +386,13 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
         assert isinstance(min_count, int)
         super().__init__()
         self.n0 = n0
-        self.time_to_split_in_mins = time_to_split_in_mins
+        self.time_to_split = time_to_split
         self.min_count = min_count
 
     def _hashstr(self) -> str:
         return hashlib.md5(
             (
-                super()._hashstr()
-                + str(self.time_to_split_in_mins)
-                + str(self.min_count)
+                super()._hashstr() + str(self.time_to_split) + str(self.min_count)
             ).encode()
         ).hexdigest()
 
@@ -403,9 +403,9 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
     def _operation(
         self,
         n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
-        t: Time_interval | None = None,
+        t: Time_interval | Quantity | None = None,
     ) -> Segments:
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, Quantity))
 
         # Variable loading
         df: pd.DataFrame = n0  # type: ignore
@@ -417,7 +417,7 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
 
         # Pre
         to_return = []
-        time_delta = pd.Timedelta(minutes=self.time_to_split_in_mins)
+        time_delta = pd.Timedelta(self.time_to_split)
         count = 1
         if len(df) == 0:
             return Segments(to_return)
@@ -450,7 +450,7 @@ class Node_segmentize_pandas(Node_1child, Node_segments):
         self,
         n0: Node_pandas,
         config: Any,
-        time_to_split_in_mins: float = 5.0,
+        time_to_split: timedelta = timedelta(minutes=5.0),
         min_count: int = 1,
         segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
     ) -> None:
@@ -459,7 +459,7 @@ class Node_segmentize_pandas(Node_1child, Node_segments):
         super().__init__()
         self.n0 = n0
         self.config = config
-        self.time_to_split_in_mins = time_to_split_in_mins
+        self.time_to_split = time_to_split
         self.min_count = min_count
 
         if segment_metadata is not None:
@@ -470,7 +470,7 @@ class Node_segmentize_pandas(Node_1child, Node_segments):
             (
                 super()._hashstr()
                 + str(self.config)
-                + str(self.time_to_split_in_mins)
+                + str(self.time_to_split)
                 + str(self.min_count)
             ).encode()
         ).hexdigest()
@@ -501,7 +501,7 @@ class Node_segmentize_pandas(Node_1child, Node_segments):
 
         # Pre
         to_return = []
-        time_delta = pd.Timedelta(minutes=self.time_to_split_in_mins)
+        time_delta = pd.Timedelta(self.time_to_split)
         count = 1
         start = df.index[0]
         end = df.index[0]
