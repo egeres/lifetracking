@@ -536,7 +536,7 @@ class Reader_pandas(Node_0child, Node_pandas):
 
     def __init__(
         self,
-        path_dir: str | Path,
+        path_dir_or_file: str | Path,
         dated_name: Callable[[str], datetime.datetime] | None = None,
         column_date_index: str | Callable | None = None,
         time_zone: None | datetime.tzinfo = None,
@@ -547,26 +547,29 @@ class Reader_pandas(Node_0child, Node_pandas):
         assert len(self.file_extension) > 1
         self.reading_method = self._gen_reading_method()
         assert callable(self.reading_method)
-        if isinstance(path_dir, str):
-            path_dir = Path(path_dir)
-        assert isinstance(path_dir, Path)
-        if path_dir.is_file() and path_dir.suffix != self.file_extension:
+        if isinstance(path_dir_or_file, str):
+            path_dir_or_file = Path(path_dir_or_file)
+        assert isinstance(path_dir_or_file, Path)
+        if (
+            path_dir_or_file.is_file()
+            and path_dir_or_file.suffix != self.file_extension
+        ):
             msg = (
-                f"File {path_dir} does not have the correct extension "
+                f"File {path_dir_or_file} does not have the correct extension "
                 f".This reader only reads {self.file_extension} files"
             )
             raise ValueError(msg)
         assert isinstance(column_date_index, (str, type(None)))
 
         # The rest of the init!
-        if path_dir.suffix != self.file_extension and dated_name is None:
+        if path_dir_or_file.is_dir() and dated_name is None:
             warnings.warn(
-                f"No dated_name function provided for reading '{path_dir}', "
+                f"No dated_name function provided for reading '{path_dir_or_file}', "
                 "so the files will not be filtered by date",
                 stacklevel=2,
             )
         super().__init__()
-        self.path_dir = path_dir
+        self.path_dir_or_file = path_dir_or_file
         self.dated_name = dated_name
         self.column_date_index = column_date_index
         self.time_zone = time_zone
@@ -574,20 +577,25 @@ class Reader_pandas(Node_0child, Node_pandas):
     def _hashstr(self) -> str:
         return hashlib.md5(
             (
-                super()._hashstr() + str(self.path_dir) + str(self.column_date_index)
+                super()._hashstr()
+                + str(self.path_dir_or_file)
+                + str(self.column_date_index)
             ).encode()
         ).hexdigest()
 
     def _available(self) -> bool:
-        if self.path_dir.is_file():
+        if self.path_dir_or_file.is_file():
             return (
-                self.path_dir.suffix == self.file_extension and self.path_dir.exists()
+                self.path_dir_or_file.suffix == self.file_extension
+                and self.path_dir_or_file.exists()
             )
         return (
-            self.path_dir.is_dir()
-            and self.path_dir.exists()
+            self.path_dir_or_file.is_dir()
+            and self.path_dir_or_file.exists()
             and any(
-                True for i in self.path_dir.iterdir() if i.suffix == self.file_extension
+                True
+                for i in self.path_dir_or_file.iterdir()
+                if i.suffix == self.file_extension
             )
             > 0
         )
@@ -622,11 +630,13 @@ class Reader_pandas(Node_0child, Node_pandas):
         # assert t is None or isinstance(t, Time_interval)
 
         # Get files
-        if self.path_dir.is_file():
-            files_to_read = [self.path_dir]
+        if self.path_dir_or_file.is_file():
+            files_to_read = [self.path_dir_or_file]
         else:
             files_to_read = (
-                x for x in self.path_dir.iterdir() if x.suffix == self.file_extension
+                x
+                for x in self.path_dir_or_file.iterdir()
+                if x.suffix == self.file_extension
             )
 
         # Sort the files by the name if self.dated_name is not None
@@ -685,11 +695,13 @@ class Reader_pandas(Node_0child, Node_pandas):
         assert t is None or isinstance(t, Time_interval)
 
         # Get files
-        if self.path_dir.is_file():
-            files_to_read = [self.path_dir]
+        if self.path_dir_or_file.is_file():
+            files_to_read = [self.path_dir_or_file]
         else:
             files_to_read = (
-                x for x in self.path_dir.iterdir() if x.suffix == self.file_extension
+                x
+                for x in self.path_dir_or_file.iterdir()
+                if x.suffix == self.file_extension
             )
 
         # Sort the files by the name if self.dated_name is not None
@@ -808,10 +820,11 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
     def __init__(
         self,
         path_dir: str,
+        dated_name: Callable[[Path], datetime.datetime],
         criteria_to_select_file: Callable[[str], bool],
         column_date_index: str | None | Callable = None,
     ) -> None:
-        super().__init__(path_dir)
+        super().__init__(path_dir, dated_name)
         self.criteria_to_select_file = criteria_to_select_file
         self.column_date_index = column_date_index
 
@@ -819,18 +832,18 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
         return hashlib.md5(
             (
                 super()._hashstr()
-                + str(self.path_dir)
+                + str(self.path_dir_or_file)
                 + hash_method(self.criteria_to_select_file)
             ).encode()
         ).hexdigest()
 
     def _available(self) -> bool:
         return (
-            self.path_dir.is_dir()
-            and self.path_dir.exists()
+            self.path_dir_or_file.is_dir()
+            and self.path_dir_or_file.exists()
             and any(
                 True
-                for i in self.path_dir.iterdir()
+                for i in self.path_dir_or_file.iterdir()
                 # if "i is date" # TODO_2: Add this
             )
         )
@@ -854,15 +867,16 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
         assert t is None or isinstance(t, Time_interval)
-        assert self.path_dir.exists()
+        assert self.path_dir_or_file.exists()
 
         to_return: list = []
-        for dirname in self.path_dir.iterdir():
+        for dirname in self.path_dir_or_file.iterdir():
             if not dirname.is_dir():
                 continue
 
             if isinstance(t, Time_interval):
-                a = datetime.datetime.strptime(dirname.name, "%Y-%m-%d")
+                # a = datetime.datetime.strptime(dirname.name, "%Y-%m-%d")
+                a = self.dated_name(dirname.name)
                 if t is not None and t.start.tzinfo is not None:
                     a = a.replace(tzinfo=t.start.tzinfo)
                 if a not in t:
