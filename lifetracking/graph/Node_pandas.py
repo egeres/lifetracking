@@ -9,15 +9,10 @@ import zipfile
 from abc import abstractmethod
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from prefect import task as prefect_task
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
 from rich import print
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
@@ -35,6 +30,11 @@ from lifetracking.utils import (
     operator_resample_stringified,
     plot_empty,
 )
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
+    from prefect.futures import PrefectFuture
+    from prefect.utilities.asyncutils import Sync
 
 
 # Actually, the value of fn should be:
@@ -113,6 +113,8 @@ class Node_pandas(Node[pd.DataFrame]):
         title: str | None = None,
         stackgroup: str | None = None,
     ) -> go.Figure | None:
+        import plotly.graph_objects as go
+
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(smooth, int)
         assert smooth >= 0
@@ -215,6 +217,8 @@ class Node_pandas(Node[pd.DataFrame]):
         resample_mode: str = "avg",
         # TODO_2: Add y range for weight plot in fitness
     ) -> go.Figure | None:
+        import plotly.express as px
+
         # Start
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(columns, (str, int))
@@ -299,6 +303,8 @@ class Node_pandas_add(Node_pandas):
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[pd.DataFrame, Sync]:
+        from prefect.tasks import task as prefect_task
+
         n_out = [
             self._get_value_from_context_or_makegraph(n, t, context) for n in self.value
         ]

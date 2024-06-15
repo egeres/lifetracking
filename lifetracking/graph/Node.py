@@ -7,20 +7,19 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from functools import reduce
 from pathlib import Path
-from typing import Any, Callable, Generic, Iterable, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generic, Iterable, TypeVar
 
 import pandas as pd
-from prefect import flow as prefect_flow
-from prefect import task as prefect_task
-from prefect.futures import PrefectFuture
-from prefect.task_runners import ConcurrentTaskRunner
-from prefect.utilities.asyncutils import Sync
 from rich import print
 
 from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.graph.warnings import DataWarning
+
+if TYPE_CHECKING:
+    from prefect.futures import PrefectFuture
+    from prefect.utilities.asyncutils import Sync
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -189,6 +188,9 @@ class Node(ABC, Generic[T]):
     def _run_prefect_graph(self, t=None, context=None) -> T | None:
         """Run the graph using prefect concurrently"""
 
+        from prefect.flows import flow as prefect_flow
+        from prefect.task_runners import ConcurrentTaskRunner
+
         # A flow is created
         @prefect_flow(task_runner=ConcurrentTaskRunner(), name="run_prefect_graph")
         def flow():
@@ -327,6 +329,8 @@ class Node_0child(Node[T]):
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[T | None, Sync]:
+        from prefect.tasks import task as prefect_task
+
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(t)
 
 
@@ -359,6 +363,8 @@ class Node_1child(Node[T]):
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[T | None, Sync]:
+        from prefect.tasks import task as prefect_task
+
         # Node graph is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_makegraph(self.child, t, context)
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(
@@ -427,6 +433,9 @@ def run_multiple_parallel(
         # Optimized version: Step 2, run the common nodes
         context: dict[Node, Any] = {}
         return [node._run_sequential(t, context) for node in nodes_to_run]
+
+    from prefect.flows import flow as prefect_flow
+    from prefect.task_runners import ConcurrentTaskRunner
 
     # A flow is created
     @prefect_flow(task_runner=ConcurrentTaskRunner(), name="run_prefect_graph")

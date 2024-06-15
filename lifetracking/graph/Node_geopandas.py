@@ -3,13 +3,11 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import geopandas as gpd
 import pandas as pd
 from fiona.errors import DriverError
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
 from rich import print
 from shapely.geometry import Point, Polygon
 
@@ -17,6 +15,10 @@ from lifetracking.graph.Node import Node, Node_0child, Node_1child
 from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import export_pddataframe_to_lc_single, hash_method
+
+if TYPE_CHECKING:
+    from prefect.futures import PrefectFuture
+    from prefect.utilities.asyncutils import Sync
 
 
 class Node_geopandas(Node[gpd.GeoDataFrame]):

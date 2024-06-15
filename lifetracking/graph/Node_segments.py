@@ -6,14 +6,11 @@ import json
 from datetime import timedelta
 from functools import reduce
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from prefect import task as prefect_task
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.datatypes.Segments import Segments
@@ -23,6 +20,10 @@ from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import hash_method
+
+if TYPE_CHECKING:
+    from prefect.futures import PrefectFuture
+    from prefect.utilities.asyncutils import Sync
 
 
 class Node_segments(Node[Segments]):
@@ -244,6 +245,8 @@ class Node_segments_add(Node_segments):
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[Segments, Sync]:
+        from prefect.tasks import task as prefect_task
+
         n_out = [
             self._get_value_from_context_or_makegraph(n, t, context) for n in self.value
         ]
@@ -301,6 +304,8 @@ class Node_segments_sub(Node_segments):
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[Segments, Sync]:
+        from prefect.tasks import task as prefect_task
+
         n0_out = self._get_value_from_context_or_run(self.n0, t, context)
         value_out = [
             self._get_value_from_context_or_run(n, t, context) for n in self.value
@@ -362,6 +367,8 @@ class Node_segments_from_pdDataframe(Node_segments):
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[pd.DataFrame, Sync]:
+        from prefect.tasks import task as prefect_task
+
         # Node graph is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(

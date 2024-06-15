@@ -4,12 +4,10 @@ import datetime
 import hashlib
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
 
 from lifetracking.datatypes.Segments import Seg, Segments
 from lifetracking.graph.Node import Node, Node_1child
@@ -17,6 +15,10 @@ from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Node_segments import Node_segments
 from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
+
+if TYPE_CHECKING:
+    from prefect.futures import PrefectFuture  # TODO_2: Move to a file with aliases
+    from prefect.utilities.asyncutils import Sync
 
 
 class Parse_BLE_info(Node_1child, Node_segments):

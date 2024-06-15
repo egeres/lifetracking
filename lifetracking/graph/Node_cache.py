@@ -8,15 +8,17 @@ from datetime import datetime, timezone
 from enum import Enum
 from functools import reduce
 from pathlib import Path
-from typing import Any, Callable, TypeVar
-
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node import Node
 from lifetracking.graph.Node_int import Node_int
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
+
+if TYPE_CHECKING:
+    from prefect.futures import PrefectFuture
+    from prefect.utilities.asyncutils import Sync
+
 
 # TODO_2: The dont_save_after_or_eq_resolution_interval cannot be set from Node_cache
 # itself, how do I want to handle this?

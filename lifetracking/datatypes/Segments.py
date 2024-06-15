@@ -8,12 +8,10 @@ import json
 
 # from bisect import insort  # TODO_2: Python 3.11 because of key=
 from pathlib import Path
-from typing import Any, Callable, overload
+from typing import TYPE_CHECKING, Any, Callable, overload
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 from typing_extensions import Self
 
 from lifetracking.datatypes.Seg import Seg
@@ -25,6 +23,9 @@ from lifetracking.plots.graphs import (
     graph_udate_layout,
 )
 from lifetracking.utils import _lc_export_prepare_dir
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
 
 
 class Segments:
@@ -412,6 +413,8 @@ class Segments:
         stackgroup
         It can be a string or a dict with the key "label" and optionally "colors"
         """
+        import plotly.express as px
+        import plotly.graph_objects as go
 
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(yaxes, tuple) or yaxes is None
