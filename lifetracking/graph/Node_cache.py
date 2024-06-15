@@ -247,7 +247,7 @@ class CacheData:
         c = json.loads(f.read_text())
 
         to_return = []
-        for k, _ in c["data"].items():
+        for k in c["data"]:
             with (self.dir_cache / f"{k}.pickle").open("rb") as f:
                 to_return.append(pickle.load(f))
 
@@ -267,7 +267,7 @@ class CacheData:
         c = json.loads(f.read_text())
 
         to_return = []
-        for k, _ in c["data"].items():
+        for k in c["data"]:
             d = datetime.fromisoformat(k)
             if self.resolution == Time_resolution.DAY:
                 corresponding_time_interval = Time_interval(

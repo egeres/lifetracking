@@ -68,9 +68,9 @@ select = [
     "UP",
     "YTT",
     "ISC", #  flake8-implicit-str-concat
+    "PERF",
     # "ARG",
     # "N",
-    # "PERF",
     # "FURB", # As of ruff 0.4.8 is still in preview
 
     # To consider:

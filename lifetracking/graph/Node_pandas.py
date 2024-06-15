@@ -1028,12 +1028,12 @@ class Reader_telegramchat(Node_0child, Node_pandas):
     def _get_datajsons(self, path_dir_root: Path) -> list[Path]:
         assert isinstance(path_dir_root, Path)
 
-        to_return = []
-        for i in self._get_chat_exports_dirs(path_dir_root):
-            for j in i.iterdir():
-                if j.suffix == ".json":
-                    to_return.append(j)
-        return to_return
+        return [
+            j
+            for i in self._get_chat_exports_dirs(path_dir_root)
+            for j in i.iterdir()
+            if j.suffix == ".json" and j.is_file()
+        ]
 
     def get_most_recent_personal_chats(self) -> Path | None:
         global_filename = None

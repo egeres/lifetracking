@@ -52,12 +52,12 @@ class Social_telegram(Node_pandas, Node_0child):
     def _get_datajsons(self, path_dir_root: Path) -> list[Path]:
         assert path_dir_root.exists()
 
-        to_return = []
-        for i in self._get_chat_exports_dirs(path_dir_root):
-            for j in i.iterdir():
-                if j.suffix == ".json" and j.is_file():
-                    to_return.append(j)
-        return to_return
+        return [
+            j
+            for i in self._get_chat_exports_dirs(path_dir_root)
+            for j in i.iterdir()
+            if j.suffix == ".json" and j.is_file()
+        ]
 
     def get_most_recent_personal_chats(self) -> dict[str, dict[str, Any]]:
         to_return = {}

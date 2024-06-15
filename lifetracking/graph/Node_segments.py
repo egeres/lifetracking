@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import datetime
 import hashlib
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import reduce
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
@@ -62,7 +61,7 @@ class Node_segments(Node[Segments]):
 
     def merge(
         self,
-        time_to_mergue: datetime.timedelta,
+        time_to_mergue: timedelta,
         custom_rule: None | Callable[[Seg, Seg], bool] = None,
     ):
         """Merges Segs that are close to each other in time. So if we set
@@ -183,10 +182,10 @@ class Node_segments_merge(Node_segments_operation):
     def __init__(
         self,
         n0: Node_segments,
-        time_to_mergue: datetime.timedelta,
+        time_to_mergue: timedelta,
         custom_rule: None | Callable[[Seg, Seg], bool] = None,
     ) -> None:
-        assert isinstance(time_to_mergue, datetime.timedelta)
+        assert isinstance(time_to_mergue, timedelta)
         assert isinstance(n0, Node_segments)
         assert custom_rule is None or callable(
             custom_rule
@@ -591,10 +590,10 @@ class Node_segmentize_pandas_duration(Node_1child, Node_segments):
             # Time delta is calculated
             time_delta = i[self.name_column_duration]
             if isinstance(time_delta, (float, int, np.number)):
-                time_delta = datetime.timedelta(seconds=float(time_delta))
+                time_delta = timedelta(seconds=float(time_delta))
             else:
                 raise NotImplementedError
-            assert isinstance(time_delta, datetime.timedelta)
+            assert isinstance(time_delta, timedelta)
 
             # Seg is created
             to_return.append(
@@ -714,21 +713,16 @@ class Reader_segmentsinjson(Node_0child, Node_segments):
         files = self.path_dir.glob("*")
 
         if t is not None:
-            files = [
-                f for f in files if datetime.datetime.strptime(f.stem, "%Y-%m-%d") in t
-            ]
+            files = [f for f in files if datetime.strptime(f.stem, "%Y-%m-%d") in t]
 
-        to_return = []
-        for f in files:
-            with f.open() as f:
-                data = json.load(f)
-            for i in data:
-                to_return.append(
-                    Seg(
-                        datetime.datetime.strptime(i["start"], "%Y-%m-%d %H:%M:%S"),
-                        datetime.datetime.strptime(i["end"], "%Y-%m-%d %H:%M:%S"),
-                        i.get("value"),
-                    )
-                )
+        to_return = [
+            Seg(
+                datetime.strptime(i["start"], "%Y-%m-%d %H:%M:%S"),
+                datetime.strptime(i["end"], "%Y-%m-%d %H:%M:%S"),
+                i.get("value"),
+            )
+            for f in files
+            for i in json.load(f.open())
+        ]
 
         return Segments(to_return)
