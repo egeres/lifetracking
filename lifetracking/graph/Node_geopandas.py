@@ -21,6 +21,11 @@ if TYPE_CHECKING:
     from prefect.utilities.asyncutils import Sync
 
 
+def count_lines(file_path: Path) -> int:
+    with file_path.open("r") as file:
+        return sum(1 for _ in file)
+
+
 class Node_geopandas(Node[gpd.GeoDataFrame]):
     def __init__(self) -> None:
         super().__init__()
@@ -115,18 +120,31 @@ class Reader_geojson(Node_0child, Node_geopandas):
     ) -> gpd.GeoDataFrame | None:
         assert t is None or isinstance(t, (Time_interval, Quantity))
 
-        diiiict = {
-            datetime.strptime(filename.name.split("_")[-1], "%Y%m%d.geojson"): filename
-            for filename in self.path_dir.glob("*.geojson")
+        # TODO_2: Add support for both .geojson and .csv files
+        # datetime.strptime(filename.name.split("_")[-1], "%Y%m%d.geojson"): filename
+        # for filename in self.path_dir.glob("*.geojson")
+        date_to_file = {
+            datetime.strptime(filename.name.split("_")[-1], "%Y%m%d.csv"): filename
+            for filename in self.path_dir.glob("*.csv")
         }
         total_rows_so_far = 0
         to_return: list = []
-        for date, filename in sorted(diiiict.items(), reverse=True):
+        for date, filename in sorted(date_to_file.items(), reverse=True):
             if isinstance(t, Time_interval):
                 date = date.replace(tzinfo=t.start.tzinfo)
                 if not t.start <= date <= t.end:
                     continue
             try:
+                if isinstance(t, Quantity) and filename.suffix == ".csv":
+                    total_lines = count_lines(filename) - 1
+                    if total_lines > t.value:
+                        df = pd.read_csv(
+                            self.path_dir / filename,
+                            skiprows=range(1, total_lines - t.value + 1),
+                        )
+                        gdf = gpd.GeoDataFrame(df)
+                        to_return.append(gdf)
+                        break
                 contents = gpd.read_file(self.path_dir / filename)
                 total_rows_so_far += len(contents)
                 to_return.append(contents)
