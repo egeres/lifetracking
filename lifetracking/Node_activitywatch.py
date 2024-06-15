@@ -22,10 +22,17 @@ class Parse_activitywatch(Node_pandas, Node_0child):
         assert url_base.startswith("http://")
         assert url_base.split(":")[-1].isnumeric()
 
+        self.bucket_name: str = bucket_name
         self.url_base: str = url_base
-        self.bucket_id = self._get_latest_bucket_that_starts_with_name(bucket_name)
-        if isinstance(self.bucket_id, dict):
-            self.bucket_id = self.bucket_id["id"]
+        self._bucket_id: str | None = None
+
+    @property
+    def bucket_id(self) -> str | None:
+        if self._bucket_id is None:
+            o = self._get_latest_bucket_that_starts_with_name(self.bucket_name)
+            if isinstance(o, dict):
+                self._bucket_id = o["id"]
+        return self._bucket_id
 
     def _hashstr(self) -> str:
         return hashlib.md5(
