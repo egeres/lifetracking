@@ -57,7 +57,7 @@ class Node_pandas(Node[pd.DataFrame]):
     def export_to_longcalendar(
         self,
         t: Time_interval | None,
-        path_filename: str,
+        path_filename: str | Path,
         color: str | Callable[[pd.Series], str] | None = None,
         opacity: float | Callable[[pd.Series], float] = 1.0,
         hour_offset: float = 0,
@@ -550,6 +550,7 @@ class Reader_pandas(Node_0child, Node_pandas):
         if isinstance(path_dir_or_file, str):
             path_dir_or_file = Path(path_dir_or_file)
         assert isinstance(path_dir_or_file, Path)
+        assert path_dir_or_file.exists()
         if (
             path_dir_or_file.is_file()
             and path_dir_or_file.suffix != self.file_extension
@@ -819,7 +820,7 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
 
     def __init__(
         self,
-        path_dir: str,
+        path_dir: str | Path,
         dated_name: Callable[[Path], datetime.datetime],
         criteria_to_select_file: Callable[[str], bool],
         column_date_index: str | None | Callable = None,

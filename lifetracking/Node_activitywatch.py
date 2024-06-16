@@ -11,6 +11,21 @@ from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Time_interval import Time_interval
 
+# For WSL:
+# https://stackoverflow.com/questions/65625762/wsl2-use-localhost-to-access-windows-service
+#
+# New-NetFirewallRule -DisplayName "WSL" -Direction Inbound  -InterfaceAlias "vEthernet
+# (WSL)"  -Action Allow
+#
+# ping $(hostname).local
+# curl http://172.25.176.1:5600
+# curl http://localhost:5600
+# curl curl http:// 192.168.1.33:5600
+#
+# https://superuser.com/questions/1679757/accessing-windows-localhost-from-wsl2
+# ip route
+#
+
 
 class Parse_activitywatch(Node_pandas, Node_0child):
     def __init__(

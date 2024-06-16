@@ -248,7 +248,7 @@ class Time_interval:
         return self.end - self.start
 
     @staticmethod
-    def last_n_days(n: int, now: datetime.datetime | None = None) -> Time_interval:
+    def last_n_days(n: float, now: datetime.datetime | None = None) -> Time_interval:
         if now is None:
             now = datetime.datetime.now()
         return Time_interval(

@@ -78,7 +78,7 @@ class Node_segments(Node[Segments]):
 
     def export_to_longcalendar(
         self,
-        t: Time_interval | None,
+        t: Time_interval | None | float,
         path_filename: str | Path,
         hour_offset: float = 0.0,
         opacity: float = 1.0,
@@ -88,6 +88,8 @@ class Node_segments(Node[Segments]):
     ):
         if isinstance(path_filename, Path):
             path_filename = str(path_filename)
+        if isinstance(t, (float, int)):
+            t = Time_interval.last_n_days(t)
         assert isinstance(t, Time_interval) or t is None
         assert isinstance(path_filename, str)
         assert isinstance(hour_offset, (float, int))

@@ -46,7 +46,7 @@ build-backend = "poetry.core.masonry.api"
 # I actually kind of like this list:
 # https://github.com/astral-sh/ruff/discussions/8161
 select = [
-    "A",   #  flake8-builtins
+    "A",    #  flake8-builtins
     "B",
     "C4",
     "E",
@@ -54,7 +54,7 @@ select = [
     "F",
     "FA",
     "I",
-    "NPY", #  NumPy-specific rules
+    "NPY",  #  NumPy-specific rules
     "PIE",
     "PT",
     "PTH",
@@ -63,24 +63,26 @@ select = [
     "RSE",
     "RUF",
     "SIM",
-    "TID", #  flake8-tidy-imports
+    "TID",  #  flake8-tidy-imports
     "TRY",
     "UP",
     "YTT",
-    "ISC", #  flake8-implicit-str-concat
+    "ISC",  #  flake8-implicit-str-concat
     "PERF",
     # "ARG",
     # "N",
     # "FURB", # As of ruff 0.4.8 is still in preview
-
     # To consider:
     # "PD", #  pandas-vet, add it in the future
     # "SLF", #  flake8-self
     # "ERA", # (when the project is more mature)
-
     # "DTZ", #  flake8-datetimez
     # "PGH", #  pygrep-hooks
     # "PL", #  Pylint
+
+    # "D",
+    # "D4",
+    # "D107", # Make a branch 'docs' and add inits at elast
 ]
 extend-ignore = ["B008"]
 

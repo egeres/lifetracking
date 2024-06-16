@@ -31,12 +31,13 @@ class Parse_browserhistory(Node_pandas, Node_0child):
             Edge(),
             Firefox(),
             Opera(),
-            OperaGX(),
             Vivaldi(),
         ]
         self.browsers = [x for x in self.browsers if Path(x.history_dir).exists()]
-        if os.name != "nt":
+        if os.name == "darwin":
             self.browsers.append(Safari())
+        if os.name != "posix":
+            self.browsers.append(OperaGX())
 
     def _hashstr(self) -> str:
         return super()._hashstr()
