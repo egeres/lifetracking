@@ -3,7 +3,6 @@ from __future__ import annotations
 import copy
 import datetime
 import json
-import os
 import tempfile
 from datetime import timedelta
 from pathlib import Path
@@ -116,7 +115,7 @@ def test_export_to_longcalendar_multidays():
         filename = Path(tmpdirname) / "a" / "b" / "c" / "test.json"
         a.export_to_longcalendar(filename)
 
-        with open(filename) as f:
+        with filename.open() as f:
             data = json.load(f)
 
             # This is the important part of this test, the thing is, exporting

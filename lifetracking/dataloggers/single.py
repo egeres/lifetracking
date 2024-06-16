@@ -10,7 +10,6 @@ import json
 import os
 import platform
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -30,7 +29,6 @@ def write_single_on_csv(
     now: datetime.datetime | None = None,
     **kwargs,
 ):
-
     assert isinstance(path_to_file, Path)
     assert path_to_file.suffix == ".csv"
     assert isinstance(way_this_info_was_added, str)
@@ -41,7 +39,7 @@ def write_single_on_csv(
     mode = "w" if not path_to_file.exists() else "a"
     d = get_system_details(way_this_info_was_added)
 
-    with open(path_to_file, mode, newline="") as file:
+    with path_to_file.open(mode, newline="") as file:
         # TODO_2: Add check if columns change from the header to what it's being saved
 
         writer = csv.writer(file)
@@ -56,7 +54,6 @@ def write_single_on_dated_json(
     now: datetime.datetime | None = None,
     **kwargs,
 ):
-
     assert isinstance(path_to_dir, Path)
     assert path_to_dir.is_dir()
     assert isinstance(way_this_info_was_added, str)
@@ -65,15 +62,15 @@ def write_single_on_dated_json(
         now = datetime.datetime.now(datetime.timezone.utc)
 
     df: list[dict] = []
-    if os.path.exists(path_to_dir / f"{now.strftime('%Y-%m-%d')}.json"):
-        with open(path_to_dir / f"{now.strftime('%Y-%m-%d')}.json", "r+") as f:
+    if (path_to_dir / f"{now.strftime('%Y-%m-%d')}.json").exists():
+        with (path_to_dir / f"{now.strftime('%Y-%m-%d')}.json").open("r+") as f:
             df = json.load(f)
     df.append(
         {"datetime": now.isoformat()}
         | get_system_details(way_this_info_was_added)
         | kwargs
     )
-    with open(path_to_dir / f"{now.strftime('%Y-%m-%d')}.json", "w") as f:
+    with (path_to_dir / f"{now.strftime('%Y-%m-%d')}.json").open("w") as f:
         json.dump(df, f, indent=4)
 
 
@@ -99,7 +96,7 @@ def write_segment_on_csv(
     mode = "w" if not path_to_file.exists() else "a"
     d = get_system_details(way_this_info_was_added)
 
-    with open(path_to_file, mode, newline="") as file:
+    with path_to_file.open(mode, newline="") as file:
         # TODO_2: Add check if columns change from the header to what it's being saved
 
         writer = csv.writer(file)

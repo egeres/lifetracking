@@ -44,12 +44,12 @@ class Seg:
         if self.value is None:
             return (
                 f"<{self.start.strftime('%Y-%m-%d %H:%M')}"
-                + f",{self.end.strftime('%Y-%m-%d %H:%M')}>"
+                f",{self.end.strftime('%Y-%m-%d %H:%M')}>"
             )
 
         return (  # Thank god these line up 😌
             f"<{self.start.strftime('%Y-%m-%d %H:%M')}"
-            + f",{self.end.strftime('%Y-%m-%d %H:%M')}, {self.value}>"
+            f",{self.end.strftime('%Y-%m-%d %H:%M')}, {self.value}>"
         )
 
     def __lt__(self, other: Seg) -> bool:

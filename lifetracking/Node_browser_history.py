@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import pandas as pd
 from browser_history.browsers import (
@@ -30,19 +31,20 @@ class Parse_browserhistory(Node_pandas, Node_0child):
             Edge(),
             Firefox(),
             Opera(),
-            OperaGX(),
             Vivaldi(),
         ]
-        self.browsers = [x for x in self.browsers if os.path.exists(x.history_dir)]
-        if os.name != "nt":
+        self.browsers = [x for x in self.browsers if Path(x.history_dir).exists()]
+        if os.name == "darwin":
             self.browsers.append(Safari())
+        if os.name != "posix":
+            self.browsers.append(OperaGX())
 
     def _hashstr(self) -> str:
         return super()._hashstr()
 
     def _available(self) -> bool:
         return any(
-            any(os.path.exists(y) for y in x.paths(profile_file=x.history_file))
+            any(Path(y).exists() for y in x.paths(profile_file=x.history_file))
             for x in self.browsers
         )
 
@@ -54,9 +56,7 @@ class Parse_browserhistory(Node_pandas, Node_0child):
             if os.name == "nt":
                 if i.windows_path is None:
                     continue
-                if not os.path.exists(
-                    os.path.join(os.environ["USERPROFILE"], i.windows_path)
-                ):
+                if (Path(os.environ["USERPROFILE"]) / i.windows_path).exists():
                     continue
 
             # TODO_3: Maybe extend the library to allow for a time interval

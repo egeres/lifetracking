@@ -5,17 +5,13 @@ import datetime
 import hashlib
 import inspect
 import json
-import os
-import warnings
 
 # from bisect import insort  # TODO_2: Python 3.11 because of key=
 from pathlib import Path
-from typing import Any, Callable, overload
+from typing import TYPE_CHECKING, Any, Callable, overload
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 from typing_extensions import Self
 
 from lifetracking.datatypes.Seg import Seg
@@ -27,6 +23,9 @@ from lifetracking.plots.graphs import (
     graph_udate_layout,
 )
 from lifetracking.utils import _lc_export_prepare_dir
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
 
 
 class Segments:
@@ -205,14 +204,13 @@ class Segments:
         my data."""
 
         # Assertions
-        if isinstance(path_filename, Path):
-            warnings.warn("Bruuuh, implement Path here", stacklevel=2)
-            path_filename = str(path_filename)
-        assert isinstance(path_filename, str)
-        if not path_filename.endswith(".json"):
+        if isinstance(path_filename, str):
+            path_filename = Path(path_filename)
+        assert isinstance(path_filename, Path)
+        if path_filename.suffix != ".json":
             msg = "path_filename must end with .json"
             raise ValueError(msg)
-        assert os.path.split(path_filename)[-1] != "config.json"
+        assert path_filename.name != "config.json"
 
         # Assertion of color, opacity and tooltip
         assert color is None or isinstance(color, str) or callable(color)
@@ -243,14 +241,11 @@ class Segments:
 
         # Changes at config.json
         if isinstance(color, str) or isinstance(opacity, float):
-            # Data parsing
-            path_fil_config = os.path.join(
-                os.path.split(path_filename)[0], "config.json"
-            )
-            with open(path_fil_config) as f:
+            path_fil_config = path_filename.parent / "config.json"
+            with path_fil_config.open() as f:
                 data = json.load(f)
             assert isinstance(data, dict)
-            key_name = os.path.split(path_filename)[1].split(".")[0]
+            key_name = path_filename.name.split(".")[0]
             if key_name not in data["data"]:
                 data["data"][key_name] = {}
 
@@ -260,7 +255,7 @@ class Segments:
             if isinstance(opacity, float) and opacity != 1.0:
                 data["data"][key_name]["opacity"] = opacity
 
-            with open(path_fil_config, "w") as f:
+            with path_fil_config.open("w") as f:
                 json.dump(data, f, indent=4, default=str)
 
         # Export itself
@@ -283,7 +278,7 @@ class Segments:
                     color,
                     opacity,
                 )
-        with open(path_filename, "w") as f:
+        with path_filename.open("w") as f:
             json.dump(to_export, f, indent=4, default=str)
 
     @staticmethod
@@ -418,6 +413,8 @@ class Segments:
         stackgroup
         It can be a string or a dict with the key "label" and optionally "colors"
         """
+        import plotly.express as px
+        import plotly.graph_objects as go
 
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(yaxes, tuple) or yaxes is None

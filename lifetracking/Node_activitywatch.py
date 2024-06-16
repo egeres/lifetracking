@@ -11,6 +11,21 @@ from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_pandas import Node_pandas
 from lifetracking.graph.Time_interval import Time_interval
 
+# For WSL:
+# https://stackoverflow.com/questions/65625762/wsl2-use-localhost-to-access-windows-service
+#
+# New-NetFirewallRule -DisplayName "WSL" -Direction Inbound  -InterfaceAlias "vEthernet
+# (WSL)"  -Action Allow
+#
+# ping $(hostname).local
+# curl http://172.25.176.1:5600
+# curl http://localhost:5600
+# curl curl http:// 192.168.1.33:5600
+#
+# https://superuser.com/questions/1679757/accessing-windows-localhost-from-wsl2
+# ip route
+#
+
 
 class Parse_activitywatch(Node_pandas, Node_0child):
     def __init__(
@@ -22,10 +37,17 @@ class Parse_activitywatch(Node_pandas, Node_0child):
         assert url_base.startswith("http://")
         assert url_base.split(":")[-1].isnumeric()
 
+        self.bucket_name: str = bucket_name
         self.url_base: str = url_base
-        self.bucket_id = self._get_latest_bucket_that_starts_with_name(bucket_name)
-        if isinstance(self.bucket_id, dict):
-            self.bucket_id = self.bucket_id["id"]
+        self._bucket_id: str | None = None
+
+    @property
+    def bucket_id(self) -> str | None:
+        if self._bucket_id is None:
+            o = self._get_latest_bucket_that_starts_with_name(self.bucket_name)
+            if isinstance(o, dict):
+                self._bucket_id = o["id"]
+        return self._bucket_id
 
     def _hashstr(self) -> str:
         return hashlib.md5(

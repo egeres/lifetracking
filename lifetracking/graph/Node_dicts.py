@@ -3,14 +3,13 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
-import os
+from pathlib import Path
 from typing import Any, Callable, Literal
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
 
 # TODO_2: We whould refactor the names of the readers, right now it is
 #
-from lifetracking.graph.Node_pandas import Reader_jsons
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import hash_method
 
@@ -44,13 +43,16 @@ class Reader_dicts(Node_0child, Node_dicts):
 
     def __init__(
         self,
-        path_dir: str,
+        path_dir: str | Path,
         dated_name: Callable[[str], datetime.datetime] | None = None,
         column_date_index: str | Callable | None = None,
         time_zone: None | datetime.tzinfo = None,
     ) -> None:
         super().__init__()
-        assert isinstance(path_dir, str)
+
+        if isinstance(path_dir, str):
+            path_dir = Path(path_dir)
+        assert path_dir.exists()
         assert dated_name is None or callable(dated_name)
         assert (
             column_date_index is None
@@ -72,46 +74,17 @@ class Reader_dicts(Node_0child, Node_dicts):
         ).hexdigest()
 
     def _available(self) -> bool:
-        return True
-
-        # TODO_2: Do this with pathlib,
-
-        # TODO_2: For detecting the dir is not empty, instead of len([]) > 0, do a any()
-        # Also, apply that to more codes
-
-        # if self.path_dir.endswith(self.file_extension):
-        #     return os.path.exists(self.path_dir)
-        # return (
-        #     os.path.isdir(self.path_dir)
-        #     and os.path.exists(self.path_dir)
-        #     and len(
-        #         [
-        #             i
-        #             for i in os.listdir(self.path_dir)
-        #             if i.endswith(self.file_extension)
-        #         ]
-        #     )
-        #     > 0
-        # )
+        return self.path_dir.exists() and any(
+            self.path_dir.glob(f"*{self.file_extension}")
+        )
 
     def _operation(self, t: Time_interval | None = None) -> list[dict]:
         assert t is None or isinstance(t, Time_interval)
 
-        # Get files
-        files_to_read = (
-            [self.path_dir]
-            if self.path_dir.endswith(self.file_extension)
-            else (
-                x for x in os.listdir(self.path_dir) if x.endswith(self.file_extension)
-            )
-        )
-
-        to_return: list[dict] = []
-        for filename in files_to_read:
-            with open(os.path.join(self.path_dir, filename)) as f:
-                to_return.append(json.load(f))
-
-        return to_return
+        return [
+            json.loads(i.read_text())
+            for i in self.path_dir.glob(f"*{self.file_extension}")
+        ]
 
     def apply(
         self,

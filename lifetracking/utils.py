@@ -4,7 +4,6 @@ import dis
 import hashlib
 import inspect
 import json
-import os
 import pickle
 import tempfile
 from datetime import timedelta
@@ -24,47 +23,38 @@ from lifetracking.plots.graphs import (
 )
 
 
-def _lc_export_prepare_dir(path_filename: str) -> None:
+def _lc_export_prepare_dir(path_filename: Path) -> None:
     """Takes a path like ..."""
 
+    assert isinstance(path_filename, Path)
+
     # Intermediate folders are created
-    if not os.path.exists(os.path.split(path_filename)[0]):
-        os.makedirs(os.path.split(path_filename)[0])
+    path_filename.parent.mkdir(exist_ok=True, parents=True)
 
     # If file does not exist, it is created
-    if not os.path.exists(path_filename):
-        with open(path_filename, "w") as f:
-            json.dump({}, f)
+    if not path_filename.exists():
+        path_filename.write_text("{}")
 
     # If file is empty, it is filled with an empty dict
-    with open(path_filename) as f:
-        if f.read().strip() == "":
-            with open(path_filename, "w") as f:
-                json.dump({}, f)
+    if path_filename.read_text().strip() == "":
+        path_filename.write_text("{}")
 
     # If config.json does not exist, it is created
-    path_fil_config = os.path.join(os.path.split(path_filename)[0], "config.json")
-    if not os.path.exists(path_fil_config):
-        with open(path_fil_config, "w") as f:
-            json.dump({}, f)
-
-    # If config.json is empty, it is filled with an empty dict
-    with open(path_fil_config) as f:
-        if f.read().strip() == "":
-            with open(path_fil_config, "w") as f:
-                json.dump({}, f)
+    path_fil_config = path_filename.parent / "config.json"
+    if not path_fil_config.exists() or path_fil_config.read_text().strip() == "":
+        path_fil_config.write_text("{}")
 
     # If the data key does not exist, it is created
-    with open(path_fil_config) as f:
+    with path_fil_config.open() as f:
         data = json.load(f)
         if "data" not in data:
             data["data"] = {}
-    with open(path_fil_config, "w") as f:
+    with path_fil_config.open("w") as f:
         json.dump(data, f, indent=4)
 
 
 def _lc_export_configchanges(
-    path_filename: str,
+    path_filename: Path,
     color: str | Any,
     opacity: float | Any,
 ) -> None:
@@ -72,11 +62,11 @@ def _lc_export_configchanges(
 
     if isinstance(color, str) or isinstance(opacity, float):
         # Data parsing
-        path_fil_config = os.path.join(os.path.split(path_filename)[0], "config.json")
-        with open(path_fil_config) as f:
+        path_fil_config = path_filename.parent / "config.json"
+        with path_fil_config.open() as f:
             data = json.load(f)
             assert isinstance(data, dict)
-            key_name = os.path.split(path_filename)[1].split(".")[0]
+            key_name = path_filename.stem
             if key_name not in data["data"]:
                 data["data"][key_name] = {}
 
@@ -86,7 +76,7 @@ def _lc_export_configchanges(
         if isinstance(opacity, float) and opacity != 1.0:
             data["data"][key_name]["opacity"] = opacity
 
-        with open(path_fil_config, "w") as f:
+        with path_fil_config.open("w") as f:
             json.dump(data, f, indent=4)
 
 
@@ -103,12 +93,13 @@ def export_pddataframe_to_lc_single(
     # Assertions
     assert isinstance(path_filename, (str, Path))
     # TODO_2: Remove this and only use pathlib
-    if isinstance(path_filename, Path):
-        path_filename = str(path_filename)
-    if not path_filename.endswith(".json"):
+    if isinstance(path_filename, str):
+        path_filename = Path(path_filename)
+    if path_filename.suffix != ".json":
         msg = "path_filename must end with .json"
         raise ValueError(msg)
-    assert os.path.split(path_filename)[-1] != "config.json"
+    assert path_filename.name != "config.json"
+
     if time_offset is None:
         time_offset = timedelta()
     assert isinstance(time_offset, timedelta)
@@ -148,7 +139,7 @@ def export_pddataframe_to_lc_single(
         else:
             msg = "Index must be a pd.Timestamp"
             raise TypeError(msg)
-    with open(path_filename, "w") as f:
+    with path_filename.open("w") as f:
         json.dump(to_export, f, indent=4, default=str)
 
 
@@ -174,30 +165,30 @@ def hash_string(string: str) -> str:
     return hashlib.md5(string.encode()).hexdigest()
 
 
-def cache_singleargument(dirname: str) -> Callable:
-    # Create folder if not exists
-    path_dir = os.path.join(tempfile.gettempdir(), dirname)
-    if not os.path.exists(path_dir):
-        os.mkdir(path_dir)
+def cache_singleargument(dirname: str, rootdir: Path | str | None = None) -> Callable:
+
+    if rootdir is None:
+        rootdir = Path(tempfile.gettempdir())
+    if isinstance(rootdir, str):
+        rootdir = Path(rootdir)
+    assert isinstance(rootdir, Path)
+    assert rootdir.is_dir()
+    assert isinstance(dirname, str)
+
+    d = rootdir / dirname
+    d.mkdir(exist_ok=True, parents=True)
 
     def decorator(method: Callable) -> Callable:
         def wrapper(arg: str) -> str:
-            caches_existing = [
-                x.split(".pickle")[0]
-                for x in os.listdir(path_dir)
-                if x.endswith(".pickle")
-            ]
-            hash_arg = hash_string(arg)
-
-            if hash_arg in caches_existing:
-                with open(os.path.join(path_dir, f"{hash_arg}.pickle"), "rb") as f:
+            arg_hash = hash_string(arg)
+            if arg_hash in {x.name[:-7] for x in d.glob("*.pickle")}:
+                with (d / f"{arg_hash}.pickle").open("rb") as f:
                     return pickle.load(f)
-            else:
-                to_return = method(arg)
-                if to_return is not None:  # Huh, should I?
-                    with open(os.path.join(path_dir, f"{hash_arg}.pickle"), "wb") as f:
-                        pickle.dump(to_return, f)
-                return to_return
+            to_return = method(arg)
+            if to_return is not None:  # Huh, should I?
+                with (d / f"{arg_hash}.pickle").open("wb") as f:
+                    pickle.dump(to_return, f)
+            return to_return
 
         return wrapper
 

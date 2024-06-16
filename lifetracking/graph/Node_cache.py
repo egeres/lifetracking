@@ -8,15 +8,17 @@ from datetime import datetime, timezone
 from enum import Enum
 from functools import reduce
 from pathlib import Path
-from typing import Any, Callable, TypeVar
-
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node import Node
 from lifetracking.graph.Node_int import Node_int
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
+
+if TYPE_CHECKING:
+    from prefect.futures import PrefectFuture
+    from prefect.utilities.asyncutils import Sync
+
 
 # TODO_2: The dont_save_after_or_eq_resolution_interval cannot be set from Node_cache
 # itself, how do I want to handle this?
@@ -37,21 +39,23 @@ class CacheData:
 
     def __init__(
         self,
-        dir: Path,
+        dir_cache: Path | str,
         hash_node: str,
-        type: Cache_type,
+        type_cache: Cache_type,
         resolution: Time_resolution,
         datatype: str | Any | None = None,
         covered_slices: None | list[Time_interval] = None,
         dont_save_after_or_eq_resolution_interval: bool = True,
     ):
-        assert isinstance(dir, Path)
-        if type == Cache_type.SLICE:
+        if isinstance(dir_cache, str):
+            dir_cache = Path(dir_cache)
+        assert isinstance(dir_cache, Path)
+        if type_cache == Cache_type.SLICE:
             assert isinstance(covered_slices, list)
             assert len(covered_slices) > 0
 
         if (
-            type is not Cache_type.NONE
+            type_cache is not Cache_type.NONE
             and isinstance(datatype, str)
             and datatype == "Segments"
         ):
@@ -59,9 +63,9 @@ class CacheData:
         elif isinstance(datatype, str):
             raise NotImplementedError
 
-        self.dir = dir
+        self.dir_cache = dir_cache
         self.hash_node = hash_node
-        self.type = type
+        self.type_cache = type_cache
         self.resolution = resolution
         self.datatype = datatype
         self.covered_slices = covered_slices
@@ -70,23 +74,23 @@ class CacheData:
         )
 
         self._data: None | dict = None
-        if type is not Cache_type.NONE:
-            cache = json.loads((dir / "cache.json").read_text())
+        if type_cache is not Cache_type.NONE:
+            cache = json.loads((dir_cache / "cache.json").read_text())
             self._data = cache["data"]
 
     @staticmethod
     def load_from_dir(
-        dir: Path,
+        folder: Path,
         hash_node: str,
         resolution: Time_resolution,
         datatype: str | Any,
     ) -> CacheData:
 
-        assert isinstance(dir, Path)
+        assert isinstance(folder, Path)
         assert isinstance(hash_node, str)
 
-        if not (dir / "cache.json").exists():
-            return CacheData(dir, hash_node, Cache_type.NONE, resolution)
+        if not (folder / "cache.json").exists():
+            return CacheData(folder, hash_node, Cache_type.NONE, resolution)
 
         # TODO_2: Assert the hash_node is valid
 
@@ -94,15 +98,15 @@ class CacheData:
 
         # TODO_2: Assert that it hasnt expired
 
-        c = json.loads((dir / "cache.json").read_text())
+        c = json.loads((folder / "cache.json").read_text())
 
-        if len(list(dir.iterdir())) != len(c["data"]) + 1:
-            return CacheData(dir, hash_node, Cache_type.NONE, resolution, datatype)
+        if len(list(folder.iterdir())) != len(c["data"]) + 1:
+            return CacheData(folder, hash_node, Cache_type.NONE, resolution, datatype)
         if c["type"] == Cache_type.FULL.value:
-            return CacheData(dir, hash_node, Cache_type.FULL, resolution, datatype)
+            return CacheData(folder, hash_node, Cache_type.FULL, resolution, datatype)
         if c["type"] == Cache_type.SLICE.value:
             return CacheData(
-                dir,
+                folder,
                 hash_node,
                 Cache_type.SLICE,
                 resolution,
@@ -137,7 +141,7 @@ class CacheData:
             print("For now I just have DAY! 😭")
             raise NotImplementedError
 
-        self.dir.mkdir(parents=True, exist_ok=True)
+        self.dir_cache.mkdir(parents=True, exist_ok=True)
         now = datetime.now()
         # if len(data.content) > 0:
         #     now = datetime.now(data.content[0].start.tzinfo)
@@ -164,8 +168,8 @@ class CacheData:
             # TODO_2: Depending on the data that comes, avoid doing a .pickle
             # TODO_2: Check the speed of https://github.com/ijl/orjson
             # TODO_2: Actually, maybe my node types should include a .save() and .load()
-            e = self.dir / f"{currentdata['creation_time']}.pickle"
-            with open(e, "wb") as f:
+            e = self.dir_cache / f"{currentdata['creation_time']}.pickle"
+            with e.open("wb") as f:
                 pickle.dump(data_to_save, f)
             c = copy.copy(currentdata)  # REFACTOR: Huh...
             del c["creation_time"]
@@ -230,21 +234,21 @@ class CacheData:
         if type_of_cache == Cache_type.SLICE:
             assert slices is not None
             cache_info["covered_slices"] = [x.to_json() for x in slices]
-        with open(self.dir / "cache.json", "w") as f:
+        with (self.dir_cache / "cache.json").open("w") as f:
             json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
 
     def load_cache_all(self):
 
         # Load cache descriptor
-        f = self.dir / "cache.json"
+        f = self.dir_cache / "cache.json"
         if not f.exists():
             msg = f"Cache file '{f}' does not exist"
             raise ValueError(msg)
         c = json.loads(f.read_text())
 
         to_return = []
-        for k, _ in c["data"].items():
-            with open(self.dir / f"{k}.pickle", "rb") as f:
+        for k in c["data"]:
+            with (self.dir_cache / f"{k}.pickle").open("rb") as f:
                 to_return.append(pickle.load(f))
 
         if c["datatype"] == "Segments":
@@ -256,14 +260,14 @@ class CacheData:
     def load_cache_slice(self, t: Time_interval):
 
         # Load cache descriptor
-        f = self.dir / "cache.json"
+        f = self.dir_cache / "cache.json"
         if not f.exists():
             msg = f"Cache file '{f}' does not exist"
             raise ValueError(msg)
         c = json.loads(f.read_text())
 
         to_return = []
-        for k, _ in c["data"].items():
+        for k in c["data"]:
             d = datetime.fromisoformat(k)
             if self.resolution == Time_resolution.DAY:
                 corresponding_time_interval = Time_interval(
@@ -275,7 +279,7 @@ class CacheData:
 
             # if t in corresponding_time_interval:
             if t.overlaps(corresponding_time_interval):
-                with open(self.dir / f"{k}.pickle", "rb") as f:
+                with (self.dir_cache / f"{k}.pickle").open("rb") as f:
                     to_return.append(pickle.load(f))
 
         if c["datatype"] == "Segments":
@@ -364,17 +368,17 @@ class Node_cache(Node[T]):
 
         if False:
             pass  # I have OCD and I add this so that the next lines are all aligned :(
-        elif c.type == Cache_type.NONE and t is None:
+        elif c.type_cache == Cache_type.NONE and t is None:
             to_compute = "all"
-        elif c.type == Cache_type.NONE and isinstance(t, Time_interval):
+        elif c.type_cache == Cache_type.NONE and isinstance(t, Time_interval):
             to_compute = t
-        elif c.type == Cache_type.FULL and t is None:
+        elif c.type_cache == Cache_type.FULL and t is None:
             to_return = c.load_cache_all()
-        elif c.type == Cache_type.FULL and isinstance(t, Time_interval):
+        elif c.type_cache == Cache_type.FULL and isinstance(t, Time_interval):
             to_return = c.load_cache_slice(t)
-        elif c.type == Cache_type.SLICE and t is None:
+        elif c.type_cache == Cache_type.SLICE and t is None:
             to_compute = "all"  # TODO_2: Optimize this
-        elif c.type == Cache_type.SLICE and isinstance(t, Time_interval):
+        elif c.type_cache == Cache_type.SLICE and isinstance(t, Time_interval):
             assert isinstance(c.covered_slices, list)
             overlap, to_compute = t.get_overlap_innerouter_list(c.covered_slices)
             gathered = [c.load_cache_slice(t_sub) for t_sub in overlap]
@@ -408,7 +412,7 @@ class Node_cache(Node[T]):
             c.update(to_return, Cache_type.FULL)
         elif isinstance(to_compute, Time_interval):
             c.update(to_return, Cache_type.SLICE, [t])
-        elif c.type == Cache_type.SLICE and isinstance(t, Time_interval):
+        elif c.type_cache == Cache_type.SLICE and isinstance(t, Time_interval):
             assert isinstance(c.covered_slices, list)
             new_slices = Time_interval.merge([*c.covered_slices, t])
             c.update(to_return, Cache_type.SLICE, new_slices)
@@ -432,4 +436,10 @@ class Node_cache(Node[T]):
         opacity: float | Callable[[None], float] = 1.0,
         hour_offset: float = 0,
     ):
-        raise NotImplementedError
+        return self.n0.export_to_longcalendar(
+            t=t,
+            path_filename=path_filename,
+            color=color,
+            opacity=opacity,
+            hour_offset=hour_offset,
+        )

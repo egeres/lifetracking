@@ -1,6 +1,8 @@
-from lifetracking.graph.Node_dicts import Node_dicts, Node_dicts_operation, Reader_dicts
-from lifetracking.graph.Time_interval import Time_interval
+import pytest
+
+from lifetracking.graph.Node_dicts import Reader_dicts
 
 
 def test_node_dicts_creation():
-    Reader_dicts("Some path")
+    with pytest.raises(AssertionError):
+        Reader_dicts("Some path which I just made up :)")

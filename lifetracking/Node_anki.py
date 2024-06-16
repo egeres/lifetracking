@@ -3,8 +3,8 @@ from __future__ import annotations
 import datetime
 import hashlib
 import multiprocessing
-import os
 import warnings
+from pathlib import Path
 
 import ankipandas
 import pandas as pd
@@ -16,24 +16,25 @@ from lifetracking.graph.Time_interval import Time_interval
 
 
 class Parse_anki_study(Node_pandas, Node_0child):
-    path_dir_datasource: str = os.path.join(
-        os.path.expanduser("~"), "AppData", "Roaming", "Anki2"
-    )
-    path_file_anki = os.path.join(path_dir_datasource, "User 1", "collection.anki2")
+    dir_anki_default = Path.home() / "AppData" / "Roaming" / "Anki2"
 
-    def __init__(self, path_dir: str | None = None) -> None:
-        if path_dir is None:
-            path_dir = self.path_dir_datasource
+    def __init__(self, dir_anki: Path | str | None = None) -> None:
+        if dir_anki is None:
+            dir_anki = self.dir_anki_default
+        if isinstance(dir_anki, str):
+            dir_anki = Path(dir_anki)
+        assert dir_anki.exists()
+        assert dir_anki.is_dir()
         super().__init__()
-        self.path_dir = path_dir
+        self.dir_anki = dir_anki
 
     def _hashstr(self) -> str:
         return hashlib.md5(
-            (super()._hashstr() + str(self.path_dir)).encode()
+            (super()._hashstr() + str(self.dir_anki)).encode()
         ).hexdigest()
 
     def _available(self) -> bool:
-        return os.path.exists(self.path_dir)
+        return self.dir_anki.exists()
 
     def _get_raw_data(self, path_file, return_dict):
         try:
@@ -52,12 +53,18 @@ class Parse_anki_study(Node_pandas, Node_0child):
         # cards = return_dict[0]
         # revisions = return_dict[1]
 
+        if len(list(self.dir_anki.glob("User*"))) > 1:
+            msg = "There is still not an implementation for multi-user in the anki node"
+            raise NotImplementedError(msg)
+
+        assert (self.dir_anki / "User 1" / "collection.anki2").exists()
+
         # Data gathering (multiprocessing)
         manager = multiprocessing.Manager()
         return_dict = manager.dict()
         p = multiprocessing.Process(
             target=self._get_raw_data,
-            args=(self.path_file_anki, return_dict),
+            args=(self.dir_anki / "User 1" / "collection.anki2", return_dict),
         )
         p.start()
         p.join()
@@ -99,12 +106,18 @@ class Parse_anki_creation(Parse_anki_study):
         # self._get_raw_data(self.path_file_anki, return_dict)
         # cards = return_dict[0]
 
+        if len(list(self.dir_anki.glob("User*"))) > 1:
+            msg = "There is still not an implementation for multi-user in the anki node"
+            raise NotImplementedError(msg)
+
+        assert (self.dir_anki / "User 1" / "collection.anki2").exists()
+
         # Data gathering (multiprocessing)
         manager = multiprocessing.Manager()
         return_dict = manager.dict()
         p = multiprocessing.Process(
             target=self._get_raw_data,
-            args=(self.path_file_anki, return_dict),
+            args=(self.dir_anki / "User 1" / "collection.anki2", return_dict),
         )
         p.start()
         p.join()

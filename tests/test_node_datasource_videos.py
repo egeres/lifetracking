@@ -1,7 +1,9 @@
+import pytest
+
 from lifetracking.Node_files_videos import Reader_videos
 
 
 def test_node_readervideos_0():
-    a = Reader_videos("this_dir_does_not/exist")
-    o = a.run()
-    assert o is None
+
+    with pytest.raises(ValueError, match="this_dir_does_notexist doesn't exist"):
+        Reader_videos("this_dir_does_notexist")

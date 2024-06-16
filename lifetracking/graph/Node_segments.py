@@ -1,26 +1,28 @@
 from __future__ import annotations
 
-import datetime
 import hashlib
 import json
+from datetime import datetime, timedelta
 from functools import reduce
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from prefect import task as prefect_task
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
 from lifetracking.graph.Node_cache import Node_cache
 from lifetracking.graph.Node_pandas import Node_pandas
+from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import hash_method
+
+if TYPE_CHECKING:
+    from prefect.futures import PrefectFuture
+    from prefect.utilities.asyncutils import Sync
 
 
 class Node_segments(Node[Segments]):
@@ -30,10 +32,7 @@ class Node_segments(Node[Segments]):
     def __init__(self) -> None:
         super().__init__()
 
-    def apply(
-        self,
-        fn: Callable[[Segments], Segments],
-    ) -> Node_segments:
+    def apply(self, fn: Callable[[Segments], Segments]) -> Node_segments:
         return Node_segments_operation(self, fn)  # type: ignore
 
     def assign_value_all(self, key: str, value: Any) -> Node_segments:
@@ -62,7 +61,7 @@ class Node_segments(Node[Segments]):
 
     def merge(
         self,
-        time_to_mergue: datetime.timedelta,
+        time_to_mergue: timedelta,
         custom_rule: None | Callable[[Seg, Seg], bool] = None,
     ):
         """Merges Segs that are close to each other in time. So if we set
@@ -79,7 +78,7 @@ class Node_segments(Node[Segments]):
 
     def export_to_longcalendar(
         self,
-        t: Time_interval | None,
+        t: Time_interval | None | float,
         path_filename: str | Path,
         hour_offset: float = 0.0,
         opacity: float = 1.0,
@@ -89,6 +88,8 @@ class Node_segments(Node[Segments]):
     ):
         if isinstance(path_filename, Path):
             path_filename = str(path_filename)
+        if isinstance(t, (float, int)):
+            t = Time_interval.last_n_days(t)
         assert isinstance(t, Time_interval) or t is None
         assert isinstance(path_filename, str)
         assert isinstance(hour_offset, (float, int))
@@ -183,10 +184,10 @@ class Node_segments_merge(Node_segments_operation):
     def __init__(
         self,
         n0: Node_segments,
-        time_to_mergue: datetime.timedelta,
+        time_to_mergue: timedelta,
         custom_rule: None | Callable[[Seg, Seg], bool] = None,
     ) -> None:
-        assert isinstance(time_to_mergue, datetime.timedelta)
+        assert isinstance(time_to_mergue, timedelta)
         assert isinstance(n0, Node_segments)
         assert custom_rule is None or callable(
             custom_rule
@@ -245,6 +246,8 @@ class Node_segments_add(Node_segments):
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[Segments, Sync]:
+        from prefect.tasks import task as prefect_task
+
         n_out = [
             self._get_value_from_context_or_makegraph(n, t, context) for n in self.value
         ]
@@ -302,6 +305,8 @@ class Node_segments_sub(Node_segments):
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[Segments, Sync]:
+        from prefect.tasks import task as prefect_task
+
         n0_out = self._get_value_from_context_or_run(self.n0, t, context)
         value_out = [
             self._get_value_from_context_or_run(n, t, context) for n in self.value
@@ -363,6 +368,8 @@ class Node_segments_from_pdDataframe(Node_segments):
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[pd.DataFrame, Sync]:
+        from prefect.tasks import task as prefect_task
+
         # Node graph is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
         return prefect_task(name=self.__class__.__name__)(self._operation).submit(
@@ -378,7 +385,7 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
     def __init__(
         self,
         n0: Node_pandas,
-        time_to_split_in_mins: float = 5.0,
+        time_to_split: timedelta = timedelta(minutes=5.0),
         min_count: int = 1,
         # TODO: Next line is unused
         segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
@@ -387,15 +394,13 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
         assert isinstance(min_count, int)
         super().__init__()
         self.n0 = n0
-        self.time_to_split_in_mins = time_to_split_in_mins
+        self.time_to_split = time_to_split
         self.min_count = min_count
 
     def _hashstr(self) -> str:
         return hashlib.md5(
             (
-                super()._hashstr()
-                + str(self.time_to_split_in_mins)
-                + str(self.min_count)
+                super()._hashstr() + str(self.time_to_split) + str(self.min_count)
             ).encode()
         ).hexdigest()
 
@@ -406,9 +411,9 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
     def _operation(
         self,
         n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
-        t: Time_interval | None = None,
+        t: Time_interval | Quantity | None = None,
     ) -> Segments:
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, Quantity))
 
         # Variable loading
         df: pd.DataFrame = n0  # type: ignore
@@ -420,7 +425,7 @@ class Node_segmentize_pandas_by_density(Node_1child, Node_segments):
 
         # Pre
         to_return = []
-        time_delta = pd.Timedelta(minutes=self.time_to_split_in_mins)
+        time_delta = pd.Timedelta(self.time_to_split)
         count = 1
         if len(df) == 0:
             return Segments(to_return)
@@ -453,7 +458,7 @@ class Node_segmentize_pandas(Node_1child, Node_segments):
         self,
         n0: Node_pandas,
         config: Any,
-        time_to_split_in_mins: float = 5.0,
+        time_to_split: timedelta = timedelta(minutes=5.0),
         min_count: int = 1,
         segment_metadata: Callable[[pd.Series], dict[str, Any]] | None = None,
     ) -> None:
@@ -462,7 +467,7 @@ class Node_segmentize_pandas(Node_1child, Node_segments):
         super().__init__()
         self.n0 = n0
         self.config = config
-        self.time_to_split_in_mins = time_to_split_in_mins
+        self.time_to_split = time_to_split
         self.min_count = min_count
 
         if segment_metadata is not None:
@@ -473,7 +478,7 @@ class Node_segmentize_pandas(Node_1child, Node_segments):
             (
                 super()._hashstr()
                 + str(self.config)
-                + str(self.time_to_split_in_mins)
+                + str(self.time_to_split)
                 + str(self.min_count)
             ).encode()
         ).hexdigest()
@@ -504,7 +509,7 @@ class Node_segmentize_pandas(Node_1child, Node_segments):
 
         # Pre
         to_return = []
-        time_delta = pd.Timedelta(minutes=self.time_to_split_in_mins)
+        time_delta = pd.Timedelta(self.time_to_split)
         count = 1
         start = df.index[0]
         end = df.index[0]
@@ -587,10 +592,10 @@ class Node_segmentize_pandas_duration(Node_1child, Node_segments):
             # Time delta is calculated
             time_delta = i[self.name_column_duration]
             if isinstance(time_delta, (float, int, np.number)):
-                time_delta = datetime.timedelta(seconds=float(time_delta))
+                time_delta = timedelta(seconds=float(time_delta))
             else:
                 raise NotImplementedError
-            assert isinstance(time_delta, datetime.timedelta)
+            assert isinstance(time_delta, timedelta)
 
             # Seg is created
             to_return.append(
@@ -710,21 +715,16 @@ class Reader_segmentsinjson(Node_0child, Node_segments):
         files = self.path_dir.glob("*")
 
         if t is not None:
-            files = [
-                f for f in files if datetime.datetime.strptime(f.stem, "%Y-%m-%d") in t
-            ]
+            files = [f for f in files if datetime.strptime(f.stem, "%Y-%m-%d") in t]
 
-        to_return = []
-        for f in files:
-            with open(f) as f:
-                data = json.load(f)
-            for i in data:
-                to_return.append(
-                    Seg(
-                        datetime.datetime.strptime(i["start"], "%Y-%m-%d %H:%M:%S"),
-                        datetime.datetime.strptime(i["end"], "%Y-%m-%d %H:%M:%S"),
-                        i.get("value"),
-                    )
-                )
+        to_return = [
+            Seg(
+                datetime.strptime(i["start"], "%Y-%m-%d %H:%M:%S"),
+                datetime.strptime(i["end"], "%Y-%m-%d %H:%M:%S"),
+                i.get("value"),
+            )
+            for f in files
+            for i in json.load(f.open())
+        ]
 
         return Segments(to_return)

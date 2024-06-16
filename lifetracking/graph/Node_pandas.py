@@ -3,25 +3,20 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
-import os
 import tempfile
 import warnings
 import zipfile
 from abc import abstractmethod
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from prefect import task as prefect_task
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
 from rich import print
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
+from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.plots.graphs import (
     graph_annotate_annotations,
@@ -35,6 +30,11 @@ from lifetracking.utils import (
     operator_resample_stringified,
     plot_empty,
 )
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
+    from prefect.futures import PrefectFuture
+    from prefect.utilities.asyncutils import Sync
 
 
 # Actually, the value of fn should be:
@@ -57,7 +57,7 @@ class Node_pandas(Node[pd.DataFrame]):
     def export_to_longcalendar(
         self,
         t: Time_interval | None,
-        path_filename: str,
+        path_filename: str | Path,
         color: str | Callable[[pd.Series], str] | None = None,
         opacity: float | Callable[[pd.Series], float] = 1.0,
         hour_offset: float = 0,
@@ -113,6 +113,8 @@ class Node_pandas(Node[pd.DataFrame]):
         title: str | None = None,
         stackgroup: str | None = None,
     ) -> go.Figure | None:
+        import plotly.graph_objects as go
+
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(smooth, int)
         assert smooth >= 0
@@ -215,6 +217,8 @@ class Node_pandas(Node[pd.DataFrame]):
         resample_mode: str = "avg",
         # TODO_2: Add y range for weight plot in fitness
     ) -> go.Figure | None:
+        import plotly.express as px
+
         # Start
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(columns, (str, int))
@@ -299,6 +303,8 @@ class Node_pandas_add(Node_pandas):
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[pd.DataFrame, Sync]:
+        from prefect.tasks import task as prefect_task
+
         n_out = [
             self._get_value_from_context_or_makegraph(n, t, context) for n in self.value
         ]
@@ -346,10 +352,12 @@ class Node_pandas_generate(Node_0child, Node_pandas):
         return self.df is not None
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, Quantity))
         df = self.df.copy()
-        if t is not None:
+        if isinstance(t, Time_interval):
             return df[t.end : t.start]
+        if isinstance(t, Quantity):
+            return df.iloc[-t.value :]
         return df
 
 
@@ -381,9 +389,9 @@ class Node_pandas_operation(Node_1child, Node_pandas):
     def _operation(
         self,
         n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
-        t: Time_interval | None = None,
+        t: Time_interval | Quantity | None = None,
     ) -> pd.DataFrame:
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, Quantity))
         if len(n0) == 0:
             return n0
         return self.fn_operation(n0)
@@ -528,7 +536,7 @@ class Reader_pandas(Node_0child, Node_pandas):
 
     def __init__(
         self,
-        path_dir: str | Path,  # TODO_2: Convert this into a Path
+        path_dir_or_file: str | Path,
         dated_name: Callable[[str], datetime.datetime] | None = None,
         column_date_index: str | Callable | None = None,
         time_zone: None | datetime.tzinfo = None,
@@ -539,32 +547,30 @@ class Reader_pandas(Node_0child, Node_pandas):
         assert len(self.file_extension) > 1
         self.reading_method = self._gen_reading_method()
         assert callable(self.reading_method)
-
-        if isinstance(path_dir, Path):
-            warnings.warn(
-                "Path should be a string, not a Path object",
-                stacklevel=2,
-            )
-            path_dir = str(path_dir)
-
-        if Path(path_dir).is_file() and not path_dir.endswith(self.file_extension):
+        if isinstance(path_dir_or_file, str):
+            path_dir_or_file = Path(path_dir_or_file)
+        assert isinstance(path_dir_or_file, Path)
+        assert path_dir_or_file.exists()
+        if (
+            path_dir_or_file.is_file()
+            and path_dir_or_file.suffix != self.file_extension
+        ):
             msg = (
-                f"File {path_dir} does not have the correct extension "
+                f"File {path_dir_or_file} does not have the correct extension "
                 f".This reader only reads {self.file_extension} files"
             )
             raise ValueError(msg)
+        assert isinstance(column_date_index, (str, type(None)))
 
         # The rest of the init!
-        assert isinstance(path_dir, str)
-        assert isinstance(column_date_index, (str, type(None)))
-        if not path_dir.endswith(self.file_extension) and dated_name is None:
+        if path_dir_or_file.is_dir() and dated_name is None:
             warnings.warn(
-                "No dated_name function provided,"
-                " so the files will not be filtered by date",
+                f"No dated_name function provided for reading '{path_dir_or_file}', "
+                "so the files will not be filtered by date",
                 stacklevel=2,
             )
         super().__init__()
-        self.path_dir = path_dir
+        self.path_dir_or_file = path_dir_or_file
         self.dated_name = dated_name
         self.column_date_index = column_date_index
         self.time_zone = time_zone
@@ -572,22 +578,25 @@ class Reader_pandas(Node_0child, Node_pandas):
     def _hashstr(self) -> str:
         return hashlib.md5(
             (
-                super()._hashstr() + str(self.path_dir) + str(self.column_date_index)
+                super()._hashstr()
+                + str(self.path_dir_or_file)
+                + str(self.column_date_index)
             ).encode()
         ).hexdigest()
 
     def _available(self) -> bool:
-        if self.path_dir.endswith(self.file_extension):
-            return os.path.exists(self.path_dir)
+        if self.path_dir_or_file.is_file():
+            return (
+                self.path_dir_or_file.suffix == self.file_extension
+                and self.path_dir_or_file.exists()
+            )
         return (
-            os.path.isdir(self.path_dir)
-            and os.path.exists(self.path_dir)
-            and len(
-                [
-                    i
-                    for i in os.listdir(self.path_dir)
-                    if i.endswith(self.file_extension)
-                ]
+            self.path_dir_or_file.is_dir()
+            and self.path_dir_or_file.exists()
+            and any(
+                True
+                for i in self.path_dir_or_file.iterdir()
+                if i.suffix == self.file_extension
             )
             > 0
         )
@@ -595,12 +604,15 @@ class Reader_pandas(Node_0child, Node_pandas):
     def _operation_filter_by_date(
         self,
         t: Time_interval | None,
-        filename: str,
+        filename: Path,
         dated_name: Callable[[str], datetime.datetime],
     ) -> bool:
+        assert t is None or isinstance(t, Time_interval)
+        assert isinstance(filename, Path)
+
         if t is not None:
             try:
-                filename_date = dated_name(os.path.split(filename)[1])
+                filename_date = dated_name(filename.name)
                 if isinstance(self.time_zone, datetime.tzinfo):
                     filename_date = filename_date.astimezone(self.time_zone)
                     t.start = t.start.astimezone(self.time_zone)
@@ -612,32 +624,97 @@ class Reader_pandas(Node_0child, Node_pandas):
 
         return False
 
-    def _operation_load_raw_data(
+    def _operation_load_raw_data_basedonquantity(
         self,
-        t: Time_interval | None,
-    ):
+        t: Quantity,
+    ) -> pd.DataFrame:
+        # assert t is None or isinstance(t, Time_interval)
+
         # Get files
-        files_to_read = (
-            [self.path_dir]
-            if self.path_dir.endswith(self.file_extension)
-            else (
-                x for x in os.listdir(self.path_dir) if x.endswith(self.file_extension)
+        if self.path_dir_or_file.is_file():
+            files_to_read = [self.path_dir_or_file]
+        else:
+            files_to_read = (
+                x
+                for x in self.path_dir_or_file.iterdir()
+                if x.suffix == self.file_extension
             )
-        )
 
         # Sort the files by the name if self.dated_name is not None
         if self.dated_name is not None:
-            # The fn thing is to shush pylance/mypy
-            fn = self.dated_name
+            fn = self.dated_name  # This fn thing is to shush pylance/mypy
             assert callable(fn)
             files_to_read = sorted(
-                files_to_read,
-                key=lambda x: fn(os.path.split(x)[1]),
+                files_to_read, key=lambda x: fn(x.name), reverse=True
             )
 
         # Load them
         to_return = []
         for filename in files_to_read:
+
+            # Filter by date
+            if self.dated_name is not None and self._operation_filter_by_date(
+                None, filename, self.dated_name
+            ):
+                continue
+
+            # Read
+            try:
+                kwargs = {}
+                if self.file_extension == ".tsv":
+                    kwargs["sep"] = "\t"
+                df_ = self.reading_method(filename, **kwargs)
+                to_return.append(df_)
+                if df_.shape[0] >= t.value:
+                    break
+            except pd.errors.ParserError:
+                print(f"[red]Error reading {filename}")
+            except ValueError:
+                print(f"[red]Error reading {filename} (value)")
+
+        # Hehe, will I concat?? ╰(*°▽°*)╯
+        if len(to_return) == 0:
+            return pd.DataFrame()
+        if len(to_return) == 1:
+            return to_return[0]
+
+        df = pd.concat(to_return, axis=0)
+
+        # Has Nans check?
+        # It can happen if you mix df's with different column manes, like "Date", "date"
+        # if df.isnull().values.any():
+        #     print(f"[red]Nans in {self.path_dir}")
+
+        df = df.iloc[-t.value :]
+
+        return df  # noqa: RET504
+
+    def _operation_load_raw_data_basedontime(
+        self,
+        t: Time_interval | None,
+    ) -> pd.DataFrame:
+        assert t is None or isinstance(t, Time_interval)
+
+        # Get files
+        if self.path_dir_or_file.is_file():
+            files_to_read = [self.path_dir_or_file]
+        else:
+            files_to_read = (
+                x
+                for x in self.path_dir_or_file.iterdir()
+                if x.suffix == self.file_extension
+            )
+
+        # Sort the files by the name if self.dated_name is not None
+        if self.dated_name is not None:
+            fn = self.dated_name  # This fn thing is to shush pylance/mypy
+            assert callable(fn)
+            files_to_read = sorted(files_to_read, key=lambda x: fn(x.name))
+
+        # Load them
+        to_return = []
+        for filename in files_to_read:
+
             # Filter by date
             if self.dated_name is not None and self._operation_filter_by_date(
                 t, filename, self.dated_name
@@ -646,9 +723,10 @@ class Reader_pandas(Node_0child, Node_pandas):
 
             # Read
             try:
-                to_return.append(
-                    self.reading_method(os.path.join(self.path_dir, filename))
-                )
+                kwargs = {}
+                if self.file_extension == ".tsv":
+                    kwargs["sep"] = "\t"
+                to_return.append(self.reading_method(filename, **kwargs))
             except pd.errors.ParserError:
                 print(f"[red]Error reading {filename}")
             except ValueError:
@@ -666,10 +744,15 @@ class Reader_pandas(Node_0child, Node_pandas):
 
         return df  # noqa: RET504
 
-    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        assert t is None or isinstance(t, Time_interval)
+    def _operation(self, t: Time_interval | Quantity | None = None) -> pd.DataFrame:
+        assert t is None or isinstance(t, (Time_interval, Quantity))
 
-        df = self._operation_load_raw_data(t)
+        if t is None or isinstance(t, Time_interval):
+            df = self._operation_load_raw_data_basedontime(t)
+        elif isinstance(t, Quantity):
+            df = self._operation_load_raw_data_basedonquantity(t)
+        else:
+            raise NotImplementedError
 
         if df.shape[0] == 0:
             return df
@@ -682,7 +765,7 @@ class Reader_pandas(Node_0child, Node_pandas):
                 format="mixed",
             )
             # df = df.set_index(self.column_date_index) # Hums.....
-            if t is not None:
+            if isinstance(t, Time_interval):
                 # TODO: Remove this after refactors of tzinfo
                 if t.start.tzinfo is None and df[self.column_date_index].iloc[0].tzinfo:
                     t.start = t.start.replace(
@@ -712,6 +795,16 @@ class Reader_csvs(Reader_pandas):
         return pd.read_csv
 
 
+class Reader_tsvs(Reader_pandas):
+    """Can be used to read a .csv or a directory of .csv files"""
+
+    def _gen_file_extension(self) -> str:
+        return ".tsv"
+
+    def _gen_reading_method(self) -> Callable:
+        return pd.read_csv
+
+
 class Reader_jsons(Reader_pandas):
     """Can be used to read a .json or a directory of .json files"""
 
@@ -727,11 +820,12 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
 
     def __init__(
         self,
-        path_dir: str,
+        path_dir: str | Path,
+        dated_name: Callable[[Path], datetime.datetime],
         criteria_to_select_file: Callable[[str], bool],
         column_date_index: str | None | Callable = None,
     ) -> None:
-        super().__init__(path_dir)
+        super().__init__(path_dir, dated_name)
         self.criteria_to_select_file = criteria_to_select_file
         self.column_date_index = column_date_index
 
@@ -739,21 +833,20 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
         return hashlib.md5(
             (
                 super()._hashstr()
-                + str(self.path_dir)
+                + str(self.path_dir_or_file)
                 + hash_method(self.criteria_to_select_file)
             ).encode()
         ).hexdigest()
 
     def _available(self) -> bool:
         return (
-            os.path.isdir(self.path_dir)
-            and os.path.exists(self.path_dir)
+            self.path_dir_or_file.is_dir()
+            and self.path_dir_or_file.exists()
             and any(
                 True
-                for i in os.listdir(self.path_dir)
+                for i in self.path_dir_or_file.iterdir()
                 # if "i is date" # TODO_2: Add this
             )
-            > 0
         )
 
     def _operation_generate_df(self, list_of_df) -> pd.DataFrame:
@@ -774,33 +867,29 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
         return df
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        # Asserts
         assert t is None or isinstance(t, Time_interval)
-        assert os.path.exists(self.path_dir)
+        assert self.path_dir_or_file.exists()
 
         to_return: list = []
-        for dirname in os.listdir(self.path_dir):
-            # Filter the folders we are interested in
-            path_dir = os.path.join(self.path_dir, dirname)
-            if not os.path.isdir(path_dir):
+        for dirname in self.path_dir_or_file.iterdir():
+            if not dirname.is_dir():
                 continue
 
-            a = datetime.datetime.strptime(dirname, "%Y-%m-%d")
-            if t is not None and t.start.tzinfo is not None:
-                a = a.replace(tzinfo=t.start.tzinfo)
-
-            if t is not None and a not in t:
-                continue
+            if isinstance(t, Time_interval):
+                # a = datetime.datetime.strptime(dirname.name, "%Y-%m-%d")
+                a = self.dated_name(dirname.name)
+                if t is not None and t.start.tzinfo is not None:
+                    a = a.replace(tzinfo=t.start.tzinfo)
+                if a not in t:
+                    continue
 
             # Get through the files we care about
-            for sub_file in os.listdir(path_dir):
-                if not os.path.isfile(os.path.join(path_dir, sub_file)):
+            for sub_file in dirname.iterdir():
+                if not sub_file.is_file():
                     continue
-                if self.criteria_to_select_file(sub_file):
+                if self.criteria_to_select_file(sub_file.name):
                     try:
-                        to_return.append(
-                            pd.read_csv(os.path.join(self.path_dir, dirname, sub_file))
-                        )
+                        to_return.append(pd.read_csv(sub_file))
                     except pd.errors.ParserError:
                         print(f"[red]Error reading {sub_file}")
                     break
@@ -852,6 +941,8 @@ class Reader_filecreation(Node_0child, Node_pandas):
 
         if isinstance(path_dir, str):
             path_dir = Path(path_dir)
+        assert isinstance(path_dir, Path)
+
         self.path_dir: Path = path_dir
         self.fn = fn
         self.valid_extensions: list[str] = []
@@ -899,9 +990,10 @@ class Reader_filecreation(Node_0child, Node_pandas):
         df = df.set_index("date")
 
         # t filtering
-        if t is not None:
+        if isinstance(t, Time_interval):
             df = df[df.index >= t.start]
             df = df[df.index <= t.end]
+
         return df
 
 
@@ -911,14 +1003,13 @@ class Reader_telegramchat(Node_0child, Node_pandas):
     def __init__(
         self,
         id_chat: int,
-        path_to_data: str | Path | None = None,
+        path_to_data: Path | None = None,
     ):
         assert isinstance(id_chat, int)
 
         if path_to_data is None:
             path_to_data = Path.home() / "Downloads" / "Telegram Desktop"
-        if isinstance(path_to_data, str):
-            path_to_data = Path(path_to_data)
+        assert isinstance(path_to_data, Path)
         self.path_to_data: Path = path_to_data
 
         self.id_chat = id_chat
@@ -938,37 +1029,32 @@ class Reader_telegramchat(Node_0child, Node_pandas):
 
     # REFACTOR: All this stuff overlaps with: Social_telegram
     # REFACTOR: All of these use Path instead of str
-    def _get_chat_exports_dirs(self, path_dir_root: str) -> list[str]:
-        assert os.path.exists(path_dir_root)
-        to_return = []
-        for x in os.listdir(path_dir_root):
-            if os.path.isdir(os.path.join(path_dir_root, x)) and x.startswith(
-                "ChatExport"
-            ):
-                to_return.append(os.path.join(path_dir_root, x))
-        return to_return
+    def _get_chat_exports_dirs(self, path_dir_root: Path) -> list[Path]:
+        assert isinstance(path_dir_root, Path)
+        assert path_dir_root.is_dir()
+        assert path_dir_root.exists()
 
-    def _get_datajsons(self, path_dir_root: str) -> list[str]:
-        # TODO_2: Try this syntax instead
-        # return [
-        #     os.path.join(i, j)
-        #     for i in self._get_chat_exports_dirs(path_dir_root)
-        #     for j in os.listdir(i)
-        #     if j.endswith(".json") and os.path.isfile(os.path.join(i, j))
-        # ]
+        return [
+            x
+            for x in path_dir_root.iterdir()
+            if x.is_dir() and x.name.startswith("ChatExport")
+        ]
 
-        to_return = []
-        for i in self._get_chat_exports_dirs(path_dir_root):
-            for j in os.listdir(i):
-                if j.endswith(".json") and os.path.isfile(os.path.join(i, j)):
-                    to_return.append(os.path.join(i, j))
-        return to_return
+    def _get_datajsons(self, path_dir_root: Path) -> list[Path]:
+        assert isinstance(path_dir_root, Path)
 
-    def get_most_recent_personal_chats(self) -> str | None:
+        return [
+            j
+            for i in self._get_chat_exports_dirs(path_dir_root)
+            for j in i.iterdir()
+            if j.suffix == ".json" and j.is_file()
+        ]
+
+    def get_most_recent_personal_chats(self) -> Path | None:
         global_filename = None
         global_last_update = datetime.datetime.min
-        for filename in self._get_datajsons(str(self.path_to_data)):
-            with open(filename, encoding="utf-8") as f:
+        for filename in self._get_datajsons(self.path_to_data):
+            with filename.open(encoding="utf-8") as f:
                 try:
                     data = json.load(f)
                 except json.decoder.JSONDecodeError:
@@ -988,7 +1074,7 @@ class Reader_telegramchat(Node_0child, Node_pandas):
         chat = self.get_most_recent_personal_chats()
         if chat is None:
             return None
-        with open(chat, encoding="utf-8") as f:
+        with chat.open(encoding="utf-8") as f:
             data = json.load(f)
 
         # df time
@@ -1007,10 +1093,7 @@ class Reader_openAI_history(Node_0child, Node_pandas):
     - **author**: The author of the message.
     """
 
-    def __init__(
-        self,
-        path_to_data: str | Path | None = None,
-    ):
+    def __init__(self, path_to_data: str | Path | None = None):
         if isinstance(path_to_data, str):
             path_to_data = Path(path_to_data)
         assert isinstance(path_to_data, Path)
@@ -1059,9 +1142,11 @@ class Reader_openAI_history(Node_0child, Node_pandas):
         return messages
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame | None:
-        assert (self.path_dir_tmp / "conversations.json").exists()
 
-        with open(self.path_dir_tmp / "conversations.json", encoding="utf-8") as f:
+        convs = self.path_dir_tmp / "conversations.json"
+        assert convs.exists()
+
+        with convs.open(encoding="utf-8") as f:
             data = json.load(f, strict=False)
 
             to_return = []
@@ -1074,3 +1159,64 @@ class Reader_openAI_history(Node_0child, Node_pandas):
 
             df = pd.DataFrame(to_return)
             return df.set_index("date")
+
+
+class Reader_loguru(Node_0child, Node_pandas):
+    """Takes a path to a .log file and returns a pandas dataframe"""
+
+    def __init__(self, path_to_data: str | Path | None = None):
+        if isinstance(path_to_data, str):
+            path_to_data = Path(path_to_data)
+        assert isinstance(path_to_data, Path)
+        assert path_to_data.name.endswith(".log")
+        assert path_to_data.exists(), f"{path_to_data} does not exist"
+        assert path_to_data.is_file(), f"{path_to_data} is not a file"
+        self.path_to_data: Path = path_to_data
+
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (
+                # TODO_2: Add hash of fn
+                super()._hashstr()
+                + str(self.path_to_data)
+            ).encode()
+        ).hexdigest()
+
+    def _operation(
+        self, t: Time_interval | Quantity | None = None
+    ) -> pd.DataFrame | None:
+
+        # Log data looks like:
+        # 2022-12-01 11:31:04.001 | INFO     | __main__:<module>:43 - Started!
+        # 2022-12-02 19:19:16.715 | INFO     | __main__:<module>:43 - Started!
+
+        # We load the entries
+        log_entries = []
+        for line in self.path_to_data.read_text().split("\n"):
+            if line.strip() == "":
+                continue
+            parts = line.split(" | ")
+            timestamp = parts[0].strip()
+            log_level = parts[1].strip()
+            module_info, message = parts[2].strip().split(" - ")
+            module_name_a, module_name_b, line_number = module_info.split(":", 2)
+            log_entries.append(
+                {
+                    "timestamp": timestamp,
+                    "log_level": log_level,
+                    "module_name": f"{module_name_a}:{module_name_b}",
+                    "line_number": int(line_number),
+                    "message": message.strip(),
+                }
+            )
+
+        # df time
+        df = pd.DataFrame(log_entries)
+        if isinstance(t, Quantity):
+            df = df.iloc[-t.value :]
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df.set_index("timestamp", inplace=True)
+        if isinstance(t, Time_interval):
+            df = df[df.index >= t.start]
+            df = df[df.index <= t.end]
+        return df

@@ -1,22 +1,29 @@
 from __future__ import annotations
 
-import datetime
 import hashlib
-import os
-import warnings
-from typing import Any, Callable
+from datetime import datetime
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable
 
 import geopandas as gpd
 import pandas as pd
 from fiona.errors import DriverError
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
 from rich import print
 from shapely.geometry import Point, Polygon
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
+from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import export_pddataframe_to_lc_single, hash_method
+
+if TYPE_CHECKING:
+    from prefect.futures import PrefectFuture
+    from prefect.utilities.asyncutils import Sync
+
+
+def count_lines(file_path: Path) -> int:
+    with file_path.open("r") as file:
+        return sum(1 for _ in file)
 
 
 class Node_geopandas(Node[gpd.GeoDataFrame]):
@@ -77,23 +84,25 @@ class Node_geopandas_operation(Node_1child, Node_geopandas):
     def _operation(
         self,
         n0: gpd.GeoDataFrame | PrefectFuture[gpd.GeoDataFrame, Sync],
-        t: Time_interval | None = None,
+        t: Time_interval | Quantity | None = None,
     ) -> gpd.GeoDataFrame:
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, Quantity))
         return self.fn_operation(n0)
 
 
 class Reader_geojson(Node_0child, Node_geopandas):
     def __init__(
         self,
-        path_dir: str,
+        path_dir: Path | str,
         column_date_index: str | None = None,
     ) -> None:
-        assert isinstance(path_dir, str)
+
+        if isinstance(path_dir, str):
+            path_dir = Path(path_dir)
+        assert isinstance(path_dir, Path)
         assert column_date_index is None or isinstance(column_date_index, str)
-        if not os.path.isdir(path_dir):
-            # raise ValueError(f"{path_dir} is not a directory")
-            warnings.warn(f"{path_dir} is not a directory", stacklevel=2)
+        assert path_dir.exists()
+        assert path_dir.is_dir()
         super().__init__()
         self.path_dir = path_dir
         self.column_date_index = column_date_index
@@ -104,42 +113,50 @@ class Reader_geojson(Node_0child, Node_geopandas):
         ).hexdigest()
 
     def _available(self) -> bool:
-        return (
-            os.path.isdir(self.path_dir)
-            # TODO_2: Optimize the "len(...)" to see if there is at least one file with
-            # the extension we want by just adding an iterator that fucking stops when
-            # it encounters the corresponding file?
-            and len([i for i in os.listdir(self.path_dir) if i.endswith(".geojson")])
-            > 0
-        )
+        return self.path_dir.is_dir() and any(self.path_dir.glob("*.geojson"))
 
-    def _operation(self, t: Time_interval | None = None) -> gpd.GeoDataFrame | None:
-        assert t is None or isinstance(t, Time_interval)
+    def _operation(
+        self, t: Time_interval | Quantity | None = None
+    ) -> gpd.GeoDataFrame | None:
+        assert t is None or isinstance(t, (Time_interval, Quantity))
+
+        # TODO_2: Add support for both .geojson and .csv files
+        # datetime.strptime(filename.name.split("_")[-1], "%Y%m%d.geojson"): filename
+        # for filename in self.path_dir.glob("*.geojson")
+        date_to_file = {
+            datetime.strptime(filename.name.split("_")[-1], "%Y%m%d.csv"): filename
+            for filename in self.path_dir.glob("*.csv")
+        }
+        total_rows_so_far = 0
         to_return: list = []
-        for filename in os.listdir(self.path_dir):
-            if filename.endswith(".geojson"):
-                filename_date = datetime.datetime.strptime(
-                    filename.split("_")[-1],
-                    "%Y%m%d.geojson",
-                )
-                if isinstance(t, Time_interval) and t.start.tzinfo is not None:
-                    filename_date = filename_date.replace(tzinfo=t.start.tzinfo)
-                if t is not None and not (t.start <= filename_date <= t.end):
+        for date, filename in sorted(date_to_file.items(), reverse=True):
+            if isinstance(t, Time_interval):
+                date = date.replace(tzinfo=t.start.tzinfo)
+                if not t.start <= date <= t.end:
                     continue
-                try:
-                    to_return.append(
-                        gpd.read_file(
-                            os.path.join(
-                                self.path_dir,
-                                filename,
-                            )
+            try:
+                if isinstance(t, Quantity) and filename.suffix == ".csv":
+                    total_lines = count_lines(filename) - 1
+                    if total_lines > t.value:
+                        df = pd.read_csv(
+                            self.path_dir / filename,
+                            skiprows=range(1, total_lines - t.value + 1),
                         )
-                    )
-                except DriverError:
-                    print(f"[red]Error reading {filename}")
+                        gdf = gpd.GeoDataFrame(df)
+                        to_return.append(gdf)
+                        break
+                contents = gpd.read_file(self.path_dir / filename)
+                total_rows_so_far += len(contents)
+                to_return.append(contents)
+                if isinstance(t, Quantity) and total_rows_so_far >= t.value:
+                    break
+            except DriverError:
+                print(f"[red]Error reading {filename}")
+
         if len(to_return) == 0:
             return None
-        df = pd.concat(to_return, axis=0)
+        df = to_return[0] if len(to_return) == 1 else pd.concat(to_return, axis=0)
+
         if self.column_date_index is not None:
             # Parse to datetime
             df[self.column_date_index] = pd.to_datetime(
@@ -148,6 +165,10 @@ class Reader_geojson(Node_0child, Node_geopandas):
             )
             # Set as index
             df = df.set_index(self.column_date_index)
+
+        if isinstance(t, Quantity):
+            df = df.tail(t.value)
+
         return df
 
 
@@ -200,8 +221,10 @@ class Label_geopandas(Node_1child, Node_geopandas):
             ).encode()
         ).hexdigest()
 
-    def _operation(self, n0, t: Time_interval | None = None) -> gpd.GeoDataFrame:
-        assert t is None or isinstance(t, Time_interval)
+    def _operation(
+        self, n0, t: Time_interval | Quantity | None = None
+    ) -> gpd.GeoDataFrame:
+        assert t is None or isinstance(t, (Time_interval, Quantity))
 
         # Ensure the input GeoDataFrame is using the correct CRS
         n0 = n0.to_crs("EPSG:4326")
