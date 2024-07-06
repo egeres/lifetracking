@@ -71,7 +71,8 @@ select = [
     "PERF",
     # "ARG",
     # "N",
-    # "FURB", # As of ruff 0.4.8 is still in preview
+    "FURB",
+
     # To consider:
     # "PD", #  pandas-vet, add it in the future
     # "SLF", #  flake8-self

@@ -56,7 +56,7 @@ class Parse_browserhistory(Node_pandas, Node_0child):
             if os.name == "nt":
                 if i.windows_path is None:
                     continue
-                if (Path(os.environ["USERPROFILE"]) / i.windows_path).exists():
+                if not (Path(os.environ["USERPROFILE"]) / i.windows_path).exists():
                     continue
 
             # TODO_3: Maybe extend the library to allow for a time interval
