@@ -1,24 +1,22 @@
 from __future__ import annotations
 
-import copy
 import datetime
 import hashlib
 import json
-import os
+import tempfile
 import warnings
+import zipfile
 from abc import abstractmethod
-from typing import Any, Callable
+from datetime import timedelta
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from prefect import task as prefect_task
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
 from rich import print
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
+from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.plots.graphs import (
     graph_annotate_annotations,
@@ -26,7 +24,17 @@ from lifetracking.plots.graphs import (
     graph_annotate_today,
     graph_udate_layout,
 )
-from lifetracking.utils import export_pddataframe_to_lc_single, hash_method
+from lifetracking.utils import (
+    export_pddataframe_to_lc_single,
+    hash_method,
+    operator_resample_stringified,
+    plot_empty,
+)
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
+    from prefect.futures import PrefectFuture
+    from prefect.utilities.asyncutils import Sync
 
 
 # Actually, the value of fn should be:
@@ -37,8 +45,7 @@ class Node_pandas(Node[pd.DataFrame]):
     def __init__(self) -> None:
         super().__init__()
 
-    # TODO_2: Confusing name with _operation, rename
-    def operation(
+    def apply(
         self,
         fn: Callable[[pd.DataFrame], pd.DataFrame],
     ) -> Node_pandas:
@@ -50,21 +57,23 @@ class Node_pandas(Node[pd.DataFrame]):
     def export_to_longcalendar(
         self,
         t: Time_interval | None,
-        path_filename: str,
+        path_filename: str | Path,
         color: str | Callable[[pd.Series], str] | None = None,
         opacity: float | Callable[[pd.Series], float] = 1.0,
+        hour_offset: float = 0,
     ):
         o = self.run(t)
         assert o is not None
         export_pddataframe_to_lc_single(
             o,
             path_filename=path_filename,
+            time_offset=timedelta(hours=hour_offset),
             color=color,
             opacity=opacity,
         )
 
     def remove_nans(self) -> Node_pandas:
-        return self.operation(lambda df: df.dropna())
+        return self.apply(lambda df: df.dropna())
 
     def _plot_countbyday_generatedata(
         self,
@@ -101,15 +110,18 @@ class Node_pandas(Node[pd.DataFrame]):
         t: Time_interval | None = None,
         smooth: int = 1,
         annotations: list | None = None,
-        title: str | None = None,  # TODO_1: Make title work!
+        title: str | None = None,
         stackgroup: str | None = None,
     ) -> go.Figure | None:
+        import plotly.graph_objects as go
+
         assert t is None or isinstance(t, Time_interval)
-        assert isinstance(smooth, int) and smooth >= 0
+        assert isinstance(smooth, int)
+        assert smooth >= 0
         assert isinstance(annotations, list) or annotations is None
 
         df = self.run(t)
-        if df is None:
+        if df is None or len(df) == 0:
             return None
         assert isinstance(df.index, pd.DatetimeIndex)
 
@@ -184,7 +196,10 @@ class Node_pandas(Node[pd.DataFrame]):
         graph_udate_layout(fig, t)
         fig.update_yaxes(title_text="")
         fig.update_xaxes(title_text="")
-        graph_annotate_title(fig, getattr(self, "name", None))
+        if title is not None:
+            graph_annotate_title(fig, title)
+        else:
+            graph_annotate_title(fig, getattr(self, "name", None))
         if t is not None:
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
@@ -195,13 +210,18 @@ class Node_pandas(Node[pd.DataFrame]):
         t: Time_interval | None,
         columns: str | list[str],
         resample: str | None = None,
-        smooth: int = 1,  # TODO_2: Make smooth work!
+        smooth: int = 1,
         annotations: list | None = None,
-        # title: str | None = None,  # TODO_1: Make title work!
+        title: str | None = None,
+        right_magin_on_plot: bool = False,
+        resample_mode: str = "avg",
+        # TODO_2: Add y range for weight plot in fitness
     ) -> go.Figure | None:
+        import plotly.express as px
+
         # Start
         assert t is None or isinstance(t, Time_interval)
-        assert isinstance(columns, str) or isinstance(columns, list)
+        assert isinstance(columns, (str, int))
         if isinstance(columns, str):
             columns = [columns]
 
@@ -211,23 +231,24 @@ class Node_pandas(Node[pd.DataFrame]):
             return None
         assert isinstance(df, pd.DataFrame)
         assert df.empty or isinstance(df.index, pd.DatetimeIndex)
+        assert isinstance(smooth, int)
+        assert smooth >= 0
+        assert isinstance(resample, str) or resample is None
+        assert isinstance(resample_mode, str)
 
-        # Return empty figure
+        title = (self.name or "???") + " : " + "+".join(columns)
+        if title is None:
+            title = title
+
+        # Return an empty figure
         if df.empty:
-            fig = go.Figure()
-            graph_udate_layout(fig, t)
-            graph_annotate_title(fig, (self.name or "???") + " : " + "+".join(columns))
-            fig_min, fig_max = 0, 1
-            if t is not None:
-                graph_annotate_today(fig, t, (fig_min, fig_max))
-                graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
-            return fig
+            return plot_empty(t, title=title, annotations=annotations)
 
         # Resample
         if resample is not None:
-            df = df.resample(resample).mean()
-            # Remove NaNs?
-            df = df.dropna()
+            df = df[columns]
+            df = operator_resample_stringified(df.resample(resample), resample_mode)
+            df = df.dropna()  # TODO_2: Why Remove NaNs? Remove this and run tests
 
         # fig_min, fig_max = min(0, float(df[columns].min())), float(df[columns].max())
         fig_min, fig_max = df[columns[0]].min(), df[columns[0]].max()
@@ -240,14 +261,12 @@ class Node_pandas(Node[pd.DataFrame]):
         # Plot
         fig = px.line(df[columns])
         graph_udate_layout(fig, t)
-        graph_annotate_title(fig, (self.name or "???") + " : " + "+".join(columns))
-
+        graph_annotate_title(fig, title)
         if t is not None:
-            # if isinstance(getattr(self, "name", None), str):
-            #     graph_annotate_title(fig, self.name)
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
-
+        if right_magin_on_plot:
+            fig.update_layout(margin={"r": 250})
         return fig
 
     def __add__(self, other: Node_pandas) -> Node_pandas:
@@ -274,12 +293,18 @@ class Node_pandas_add(Node_pandas):
     ) -> pd.DataFrame:
         # TODO: t is not used
 
+        value = [x for x in value if x is not None]
+        if len(value) == 0:
+            return pd.DataFrame()
+
         # Return a concatenation of all the dataframes
         return pd.concat(value)
 
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[pd.DataFrame, Sync]:
+        from prefect.tasks import task as prefect_task
+
         n_out = [
             self._get_value_from_context_or_makegraph(n, t, context) for n in self.value
         ]
@@ -327,10 +352,12 @@ class Node_pandas_generate(Node_0child, Node_pandas):
         return self.df is not None
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, Quantity))
         df = self.df.copy()
-        if t is not None:
-            return df[t.start : t.end]
+        if isinstance(t, Time_interval):
+            return df[t.end : t.start]
+        if isinstance(t, Quantity):
+            return df.iloc[-t.value :]
         return df
 
 
@@ -362,9 +389,9 @@ class Node_pandas_operation(Node_1child, Node_pandas):
     def _operation(
         self,
         n0: pd.DataFrame | PrefectFuture[pd.DataFrame, Sync],
-        t: Time_interval | None = None,
+        t: Time_interval | Quantity | None = None,
     ) -> pd.DataFrame:
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, Quantity))
         if len(n0) == 0:
             return n0
         return self.fn_operation(n0)
@@ -382,56 +409,19 @@ class Node_pandas_filter(Node_pandas_operation):
 class Node_pandas_remove_close(Node_pandas_operation):
     """Remove rows that are too close together in time"""
 
-    @staticmethod
-    def _remove_dupe_rows_df(
-        df: pd.DataFrame,
-        max_time: int | float | datetime.timedelta,
-        column_name: str | None = None,
-    ):
-        if df.shape[0] == 0:
-            return df
-
-        # Maybe this should be temporary?
-        assert isinstance(df.index, pd.DatetimeIndex)
-        assert isinstance(df, pd.DataFrame)
-        assert isinstance(df.index, pd.DatetimeIndex)
-        assert isinstance(column_name, str) or column_name is None
-
-        if isinstance(max_time, (int, float)):
-            max_time = datetime.timedelta(minutes=max_time)
-
-        if column_name is None and isinstance(df.index, pd.DatetimeIndex):
-            # Deduplicate based on index
-            df = df.sort_index()
-            df["time_diff"] = df.index.to_series().diff()
-        elif column_name is not None:
-            if df[column_name].dtype != "datetime64[ns]":
-                df[column_name] = pd.to_datetime(df[column_name])
-            df = df.sort_values(by=[column_name])
-            df["time_diff"] = df[column_name].diff()
-        else:
-            raise ValueError(
-                "Either column_name must be given or the index must be a DatetimeIndex"
-            )
-
-        mask = df["time_diff"].isnull() | (
-            # df["time_diff"].dt.total_seconds() >= max_time
-            df["time_diff"]
-            >= max_time
-        )
-        return df[mask].drop(columns=["time_diff"])
-
     def __init__(
         self,
         n0: Node_pandas,
-        max_time: int | float | datetime.timedelta,
+        max_time: datetime.timedelta,
         column_name: str | None = None,
+        keep: str = "first",
     ):
         """Max time is assumed to be in minutes if an int or float is given"""
 
         assert isinstance(n0, Node_pandas)
-        assert isinstance(max_time, (int, float, datetime.timedelta))
+        assert isinstance(max_time, datetime.timedelta)
         assert column_name is None or isinstance(column_name, str)
+        assert keep in ["first", "last"], "keep must be 'first' or 'last'"
 
         super().__init__(
             n0,
@@ -439,8 +429,96 @@ class Node_pandas_remove_close(Node_pandas_operation):
                 df,  # type: ignore
                 max_time,
                 column_name,
+                keep,
             ),
         )
+
+    @staticmethod
+    def _remove_dupe_rows_df(
+        df: pd.DataFrame,
+        max_time: datetime.timedelta,
+        column_name: str | None = None,
+        keep: str = "first",
+    ):
+        if df.shape[0] == 0:
+            return df
+
+        # Maybe this should be temporary?
+        assert isinstance(df.index, pd.DatetimeIndex) or column_name is not None
+        assert isinstance(df, pd.DataFrame)
+        # assert isinstance(df.index, pd.DatetimeIndex)
+        assert isinstance(column_name, str) or column_name is None
+        assert isinstance(max_time, datetime.timedelta)
+
+        if column_name is None and isinstance(df.index, pd.DatetimeIndex):
+            # Deduplicate based on index
+            df = df.sort_index()
+            # df["time_diff"] = df.index.to_series().diff()
+
+            # df = df.drop_duplicates()
+            # Instead, we drop the duplicates, but taking into account the index
+            index_names = df.index.names
+            df_reset = df.reset_index()
+            df_reset = df_reset.drop_duplicates()
+            df = df_reset.set_index(index_names)
+            del df_reset
+
+            time_diff = df.index.to_series().diff()
+        elif column_name is not None:
+            if df[column_name].dtype != "datetime64[ns]":
+                df[column_name] = pd.to_datetime(df[column_name])
+            df = df.sort_values(by=[column_name])
+            # df["time_diff"] = df[column_name].diff()
+            df = df.drop_duplicates()
+            time_diff = df[column_name].diff()
+        else:
+            msg = (
+                "Either column_name must be given or the index must be a DatetimeIndex"
+            )
+            raise ValueError(msg)
+
+        # Calculate mask to determine rows to keep
+        mask = time_diff.isnull() | (time_diff >= max_time)
+
+        rows_to_keep = []
+        current_row: int | None = None
+        if keep == "first":
+            for i, _ in df.iterrows():
+                if current_row is None:
+                    current_row = i
+
+                # if mask[i]:
+                #     rows_to_keep.append(i)
+                #     current_row = None
+
+                # if (isinstance(mask[i], (bool, np.bool_)) and mask[i]) or all(
+                #     mask.loc[i]
+                # ):
+                #     rows_to_keep.append(i)
+                #     current_row = None
+
+                if isinstance(mask[i], (bool, np.bool_)):
+                    if mask[i]:
+                        rows_to_keep.append(i)
+                        current_row = None
+                else:
+                    if all(mask.loc[i]):
+                        rows_to_keep.append(i)
+                        current_row = None
+            df = df.loc[rows_to_keep]
+
+        elif keep == "last":
+            reversed_indexes = df.index[::-1]
+            for i in reversed_indexes:
+                if current_row is None:
+                    current_row = i
+                if mask.loc[i]:
+                    rows_to_keep.append(current_row)
+                    current_row = None
+            rows_to_keep.reverse()
+            df = df.loc[rows_to_keep]
+
+        return df
 
 
 class Reader_pandas(Node_0child, Node_pandas):
@@ -458,7 +536,7 @@ class Reader_pandas(Node_0child, Node_pandas):
 
     def __init__(
         self,
-        path_dir: str,
+        path_dir_or_file: str | Path,
         dated_name: Callable[[str], datetime.datetime] | None = None,
         column_date_index: str | Callable | None = None,
         time_zone: None | datetime.tzinfo = None,
@@ -469,19 +547,30 @@ class Reader_pandas(Node_0child, Node_pandas):
         assert len(self.file_extension) > 1
         self.reading_method = self._gen_reading_method()
         assert callable(self.reading_method)
+        if isinstance(path_dir_or_file, str):
+            path_dir_or_file = Path(path_dir_or_file)
+        assert isinstance(path_dir_or_file, Path)
+        assert path_dir_or_file.exists()
+        if (
+            path_dir_or_file.is_file()
+            and path_dir_or_file.suffix != self.file_extension
+        ):
+            msg = (
+                f"File {path_dir_or_file} does not have the correct extension "
+                f".This reader only reads {self.file_extension} files"
+            )
+            raise ValueError(msg)
+        assert isinstance(column_date_index, (str, type(None)))
 
         # The rest of the init!
-        assert isinstance(path_dir, str)
-        assert isinstance(column_date_index, (str, type(None)))
-        if not path_dir.endswith(self.file_extension):
-            if dated_name is None:
-                warnings.warn(
-                    "No dated_name function provided,"
-                    " so the files will not be filtered by date",
-                    stacklevel=2,
-                )
+        if path_dir_or_file.is_dir() and dated_name is None:
+            warnings.warn(
+                f"No dated_name function provided for reading '{path_dir_or_file}', "
+                "so the files will not be filtered by date",
+                stacklevel=2,
+            )
         super().__init__()
-        self.path_dir = path_dir
+        self.path_dir_or_file = path_dir_or_file
         self.dated_name = dated_name
         self.column_date_index = column_date_index
         self.time_zone = time_zone
@@ -489,36 +578,41 @@ class Reader_pandas(Node_0child, Node_pandas):
     def _hashstr(self) -> str:
         return hashlib.md5(
             (
-                super()._hashstr() + str(self.path_dir) + str(self.column_date_index)
+                super()._hashstr()
+                + str(self.path_dir_or_file)
+                + str(self.column_date_index)
             ).encode()
         ).hexdigest()
 
     def _available(self) -> bool:
-        if self.path_dir.endswith(self.file_extension):
-            return os.path.exists(self.path_dir)
-        else:
+        if self.path_dir_or_file.is_file():
             return (
-                os.path.isdir(self.path_dir)
-                and os.path.exists(self.path_dir)
-                and len(
-                    [
-                        i
-                        for i in os.listdir(self.path_dir)
-                        if i.endswith(self.file_extension)
-                    ]
-                )
-                > 0
+                self.path_dir_or_file.suffix == self.file_extension
+                and self.path_dir_or_file.exists()
             )
+        return (
+            self.path_dir_or_file.is_dir()
+            and self.path_dir_or_file.exists()
+            and any(
+                True
+                for i in self.path_dir_or_file.iterdir()
+                if i.suffix == self.file_extension
+            )
+            > 0
+        )
 
     def _operation_filter_by_date(
         self,
         t: Time_interval | None,
-        filename: str,
+        filename: Path,
         dated_name: Callable[[str], datetime.datetime],
     ) -> bool:
+        assert t is None or isinstance(t, Time_interval)
+        assert isinstance(filename, Path)
+
         if t is not None:
             try:
-                filename_date = dated_name(os.path.split(filename)[1])
+                filename_date = dated_name(filename.name)
                 if isinstance(self.time_zone, datetime.tzinfo):
                     filename_date = filename_date.astimezone(self.time_zone)
                     t.start = t.start.astimezone(self.time_zone)
@@ -530,32 +624,97 @@ class Reader_pandas(Node_0child, Node_pandas):
 
         return False
 
-    def _operation_load_raw_data(
+    def _operation_load_raw_data_basedonquantity(
         self,
-        t: Time_interval | None,
-    ):
+        t: Quantity,
+    ) -> pd.DataFrame:
+        # assert t is None or isinstance(t, Time_interval)
+
         # Get files
-        files_to_read = (
-            [self.path_dir]
-            if self.path_dir.endswith(self.file_extension)
-            else (
-                x for x in os.listdir(self.path_dir) if x.endswith(self.file_extension)
+        if self.path_dir_or_file.is_file():
+            files_to_read = [self.path_dir_or_file]
+        else:
+            files_to_read = (
+                x
+                for x in self.path_dir_or_file.iterdir()
+                if x.suffix == self.file_extension
             )
-        )
 
         # Sort the files by the name if self.dated_name is not None
         if self.dated_name is not None:
-            # The fn thing is to shush pylance/mypy
-            fn = self.dated_name
+            fn = self.dated_name  # This fn thing is to shush pylance/mypy
             assert callable(fn)
             files_to_read = sorted(
-                files_to_read,
-                key=lambda x: fn(os.path.split(x)[1]),
+                files_to_read, key=lambda x: fn(x.name), reverse=True
             )
 
         # Load them
-        to_return: list = []
+        to_return = []
         for filename in files_to_read:
+
+            # Filter by date
+            if self.dated_name is not None and self._operation_filter_by_date(
+                None, filename, self.dated_name
+            ):
+                continue
+
+            # Read
+            try:
+                kwargs = {}
+                if self.file_extension == ".tsv":
+                    kwargs["sep"] = "\t"
+                df_ = self.reading_method(filename, **kwargs)
+                to_return.append(df_)
+                if df_.shape[0] >= t.value:
+                    break
+            except pd.errors.ParserError:
+                print(f"[red]Error reading {filename}")
+            except ValueError:
+                print(f"[red]Error reading {filename} (value)")
+
+        # Hehe, will I concat?? ╰(*°▽°*)╯
+        if len(to_return) == 0:
+            return pd.DataFrame()
+        if len(to_return) == 1:
+            return to_return[0]
+
+        df = pd.concat(to_return, axis=0)
+
+        # Has Nans check?
+        # It can happen if you mix df's with different column manes, like "Date", "date"
+        # if df.isnull().values.any():
+        #     print(f"[red]Nans in {self.path_dir}")
+
+        df = df.iloc[-t.value :]
+
+        return df  # noqa: RET504
+
+    def _operation_load_raw_data_basedontime(
+        self,
+        t: Time_interval | None,
+    ) -> pd.DataFrame:
+        assert t is None or isinstance(t, Time_interval)
+
+        # Get files
+        if self.path_dir_or_file.is_file():
+            files_to_read = [self.path_dir_or_file]
+        else:
+            files_to_read = (
+                x
+                for x in self.path_dir_or_file.iterdir()
+                if x.suffix == self.file_extension
+            )
+
+        # Sort the files by the name if self.dated_name is not None
+        if self.dated_name is not None:
+            fn = self.dated_name  # This fn thing is to shush pylance/mypy
+            assert callable(fn)
+            files_to_read = sorted(files_to_read, key=lambda x: fn(x.name))
+
+        # Load them
+        to_return = []
+        for filename in files_to_read:
+
             # Filter by date
             if self.dated_name is not None and self._operation_filter_by_date(
                 t, filename, self.dated_name
@@ -564,9 +723,10 @@ class Reader_pandas(Node_0child, Node_pandas):
 
             # Read
             try:
-                to_return.append(
-                    self.reading_method(os.path.join(self.path_dir, filename))
-                )
+                kwargs = {}
+                if self.file_extension == ".tsv":
+                    kwargs["sep"] = "\t"
+                to_return.append(self.reading_method(filename, **kwargs))
             except pd.errors.ParserError:
                 print(f"[red]Error reading {filename}")
             except ValueError:
@@ -577,12 +737,22 @@ class Reader_pandas(Node_0child, Node_pandas):
             return pd.DataFrame()
         df = pd.concat(to_return, axis=0)
 
-        return df
+        # Has Nans check?
+        # It can happen if you mix df's with different column manes, like "Date", "date"
+        # if df.isnull().values.any():
+        #     print(f"[red]Nans in {self.path_dir}")
 
-    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        assert t is None or isinstance(t, Time_interval)
+        return df  # noqa: RET504
 
-        df = self._operation_load_raw_data(t)
+    def _operation(self, t: Time_interval | Quantity | None = None) -> pd.DataFrame:
+        assert t is None or isinstance(t, (Time_interval, Quantity))
+
+        if t is None or isinstance(t, Time_interval):
+            df = self._operation_load_raw_data_basedontime(t)
+        elif isinstance(t, Quantity):
+            df = self._operation_load_raw_data_basedonquantity(t)
+        else:
+            raise NotImplementedError
 
         if df.shape[0] == 0:
             return df
@@ -595,7 +765,7 @@ class Reader_pandas(Node_0child, Node_pandas):
                 format="mixed",
             )
             # df = df.set_index(self.column_date_index) # Hums.....
-            if t is not None:
+            if isinstance(t, Time_interval):
                 # TODO: Remove this after refactors of tzinfo
                 if t.start.tzinfo is None and df[self.column_date_index].iloc[0].tzinfo:
                     t.start = t.start.replace(
@@ -625,6 +795,16 @@ class Reader_csvs(Reader_pandas):
         return pd.read_csv
 
 
+class Reader_tsvs(Reader_pandas):
+    """Can be used to read a .csv or a directory of .csv files"""
+
+    def _gen_file_extension(self) -> str:
+        return ".tsv"
+
+    def _gen_reading_method(self) -> Callable:
+        return pd.read_csv
+
+
 class Reader_jsons(Reader_pandas):
     """Can be used to read a .json or a directory of .json files"""
 
@@ -640,11 +820,12 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
 
     def __init__(
         self,
-        path_dir: str,
+        path_dir: str | Path,
+        dated_name: Callable[[Path], datetime.datetime],
         criteria_to_select_file: Callable[[str], bool],
         column_date_index: str | None | Callable = None,
     ) -> None:
-        super().__init__(path_dir)
+        super().__init__(path_dir, dated_name)
         self.criteria_to_select_file = criteria_to_select_file
         self.column_date_index = column_date_index
 
@@ -652,10 +833,21 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
         return hashlib.md5(
             (
                 super()._hashstr()
-                + str(self.path_dir)
+                + str(self.path_dir_or_file)
                 + hash_method(self.criteria_to_select_file)
             ).encode()
         ).hexdigest()
+
+    def _available(self) -> bool:
+        return (
+            self.path_dir_or_file.is_dir()
+            and self.path_dir_or_file.exists()
+            and any(
+                True
+                for i in self.path_dir_or_file.iterdir()
+                # if "i is date" # TODO_2: Add this
+            )
+        )
 
     def _operation_generate_df(self, list_of_df) -> pd.DataFrame:
         # If to_return is empty, return an empty dataframe
@@ -675,33 +867,29 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
         return df
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame:
-        # Asserts
         assert t is None or isinstance(t, Time_interval)
-        assert os.path.exists(self.path_dir)
+        assert self.path_dir_or_file.exists()
 
         to_return: list = []
-        for dirname in os.listdir(self.path_dir):
-            # Filter the folders we are interested in
-            path_dir = os.path.join(self.path_dir, dirname)
-            if not os.path.isdir(path_dir):
+        for dirname in self.path_dir_or_file.iterdir():
+            if not dirname.is_dir():
                 continue
 
-            a = datetime.datetime.strptime(dirname, "%Y-%m-%d")
-            if t is not None and t.start.tzinfo is not None:
-                a = a.replace(tzinfo=t.start.tzinfo)
-
-            if t is not None and a not in t:
-                continue
+            if isinstance(t, Time_interval):
+                # a = datetime.datetime.strptime(dirname.name, "%Y-%m-%d")
+                a = self.dated_name(dirname.name)
+                if t is not None and t.start.tzinfo is not None:
+                    a = a.replace(tzinfo=t.start.tzinfo)
+                if a not in t:
+                    continue
 
             # Get through the files we care about
-            for sub_file in os.listdir(path_dir):
-                if not os.path.isfile(os.path.join(path_dir, sub_file)):
+            for sub_file in dirname.iterdir():
+                if not sub_file.is_file():
                     continue
-                if self.criteria_to_select_file(sub_file):
+                if self.criteria_to_select_file(sub_file.name):
                     try:
-                        to_return.append(
-                            pd.read_csv(os.path.join(self.path_dir, dirname, sub_file))
-                        )
+                        to_return.append(pd.read_csv(sub_file))
                     except pd.errors.ParserError:
                         print(f"[red]Error reading {sub_file}")
                     break
@@ -710,26 +898,67 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
 
 
 class Reader_filecreation(Node_0child, Node_pandas):
-    # DOCS: This one should be easy :)
+    """Reader_filecreation class is responsible for generating a DataFrame that contains
+    information about the filenames and their date of creation present in a specified
+    directory.
+
+    When executed, the node retrieves a pd.DataFrame with the following columns:
+    - **filename**: The name of the file.
+    - **date**: The date of creation of the file.
+
+    ## Parameters
+    - **path_dir (str | Path)**: Path to the directory that contains the files.
+    - **fn (Callable)**: A function that takes a filename as its argument and returns a
+      datetime-like object (either a `pd.Timestamp` or any datetime object).
+    - **valid_extensions (list[str] | str | None, optional)**: List of valid file
+      extensions to consider. If `None`, all files are considered valid.
+
+    ## Example
+    ```python
+    pipeline_photos_phone = Reader_filecreation(
+        "C:/Backup/Camera",
+        lambda x: pd.to_datetime(
+            x.split(".")[0], format="%Y%m%d_%H%M%S", errors="coerce"
+        ),
+        valid_extensions=[".jpg", ".jpeg", ".png", ".JPEG", ".JPG", ".PNG"],
+    )
+    ```
+
+    ## Raises
+    - **AssertionError**:
+        - If `fn` is not callable.
+        - If any item in `valid_extensions` is not a string starting with a dot.
+        - If `valid_extensions` is not a list after processing.
+    """
 
     def __init__(
         self,
-        path_dir: str,
-        fn: Callable[[pd.Series], pd.Series],
+        path_dir: str | Path,
+        fn: Callable[[Path], pd.Timestamp | Any],
         valid_extensions: list[str] | str | None = None,
     ):
         assert callable(fn)
 
-        self.path_dir = path_dir
+        if isinstance(path_dir, str):
+            path_dir = Path(path_dir)
+        assert isinstance(path_dir, Path)
+
+        self.path_dir: Path = path_dir
         self.fn = fn
         self.valid_extensions: list[str] = []
         if isinstance(valid_extensions, str):
             self.valid_extensions = [valid_extensions]
+        assert all(
+            isinstance(x, str) and x.startswith(".") for x in self.valid_extensions
+        )
         assert isinstance(self.valid_extensions, list)
 
     def _available(self) -> bool:
-        # TODO_2: Dir is not empty
-        return os.path.exists(self.path_dir)
+        return (
+            self.path_dir.exists()
+            and self.path_dir.is_dir()
+            and len(list(self.path_dir.glob("*"))) > 0
+        )
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -745,7 +974,8 @@ class Reader_filecreation(Node_0child, Node_pandas):
         assert t is None or isinstance(t, Time_interval)
 
         # df
-        files = os.listdir(self.path_dir)
+        # files = os.listdir(self.path_dir)
+        files = self.path_dir.glob("*")
         df = pd.DataFrame({"filename": files})
 
         # Remove the ones that do not end with the valid extensions
@@ -760,9 +990,10 @@ class Reader_filecreation(Node_0child, Node_pandas):
         df = df.set_index("date")
 
         # t filtering
-        if t is not None:
+        if isinstance(t, Time_interval):
             df = df[df.index >= t.start]
             df = df[df.index <= t.end]
+
         return df
 
 
@@ -772,20 +1003,20 @@ class Reader_telegramchat(Node_0child, Node_pandas):
     def __init__(
         self,
         id_chat: int,
-        path_to_data: str | None = None,
+        path_to_data: Path | None = None,
     ):
         assert isinstance(id_chat, int)
 
-        self.path_to_data = path_to_data
-        if self.path_to_data is None:
-            self.path_to_data = rf"C:\Users\{os.getlogin()}\Downloads\Telegram Desktop"
-        # TODO_2: Support linux/mac path
+        if path_to_data is None:
+            path_to_data = Path.home() / "Downloads" / "Telegram Desktop"
+        assert isinstance(path_to_data, Path)
+        self.path_to_data: Path = path_to_data
 
         self.id_chat = id_chat
 
     def _available(self) -> bool:
         # TODO_2: Available looks if there is at least one file the with id
-        return os.path.exists(self.path_to_data)
+        return self.path_to_data.exists() and self.path_to_data.is_dir()
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -797,28 +1028,33 @@ class Reader_telegramchat(Node_0child, Node_pandas):
         ).hexdigest()
 
     # REFACTOR: All this stuff overlaps with: Social_telegram
-    def _get_chat_exports_dirs(self, path_dir_root: str) -> list[str]:
-        assert os.path.exists(path_dir_root)
-        to_return = []
-        for x in os.listdir(path_dir_root):
-            if os.path.isdir(os.path.join(path_dir_root, x)):
-                if x.startswith("ChatExport"):
-                    to_return.append(os.path.join(path_dir_root, x))
-        return to_return
+    # REFACTOR: All of these use Path instead of str
+    def _get_chat_exports_dirs(self, path_dir_root: Path) -> list[Path]:
+        assert isinstance(path_dir_root, Path)
+        assert path_dir_root.is_dir()
+        assert path_dir_root.exists()
 
-    def _get_datajsons(self, path_dir_root: str) -> list[str]:
-        to_return = []
-        for i in self._get_chat_exports_dirs(path_dir_root):
-            for j in os.listdir(i):
-                if j.endswith(".json") and os.path.isfile(os.path.join(i, j)):
-                    to_return.append(os.path.join(i, j))
-        return to_return
+        return [
+            x
+            for x in path_dir_root.iterdir()
+            if x.is_dir() and x.name.startswith("ChatExport")
+        ]
 
-    def get_most_recent_personal_chats(self) -> str | None:
+    def _get_datajsons(self, path_dir_root: Path) -> list[Path]:
+        assert isinstance(path_dir_root, Path)
+
+        return [
+            j
+            for i in self._get_chat_exports_dirs(path_dir_root)
+            for j in i.iterdir()
+            if j.suffix == ".json" and j.is_file()
+        ]
+
+    def get_most_recent_personal_chats(self) -> Path | None:
         global_filename = None
         global_last_update = datetime.datetime.min
         for filename in self._get_datajsons(self.path_to_data):
-            with open(filename, encoding="utf-8") as f:
+            with filename.open(encoding="utf-8") as f:
                 try:
                     data = json.load(f)
                 except json.decoder.JSONDecodeError:
@@ -838,11 +1074,149 @@ class Reader_telegramchat(Node_0child, Node_pandas):
         chat = self.get_most_recent_personal_chats()
         if chat is None:
             return None
-        with open(chat, encoding="utf-8") as f:
+        with chat.open(encoding="utf-8") as f:
             data = json.load(f)
 
         # df time
         df = pd.DataFrame(data["messages"])
         df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%dT%H:%M:%S")
-        df = df.set_index("date")
+        return df.set_index("date")
+
+
+class Reader_openAI_history(Node_0child, Node_pandas):
+    """Receives an export of the openAI data and returns a dataframe with the author of
+    the messages. Output columns are:
+
+    - **id**: The id of the message.
+    - **status**: The status of the message.
+    - **content**: The content of the message.
+    - **author**: The author of the message.
+    """
+
+    def __init__(self, path_to_data: str | Path | None = None):
+        if isinstance(path_to_data, str):
+            path_to_data = Path(path_to_data)
+        assert isinstance(path_to_data, Path)
+        assert path_to_data.name.endswith(".zip")
+        assert path_to_data.exists(), f"{path_to_data} does not exist"
+        self.path_to_data: Path = path_to_data
+
+        # self.path_dir_tmp = Path.home() / "tmp"
+        self.path_dir_tmp = Path(tempfile.gettempdir())
+        self.path_dir_tmp.mkdir(exist_ok=True)
+        self.path_dir_tmp = self.path_dir_tmp / (path_to_data.name[:-4])
+        if not self.path_dir_tmp.exists():
+            # print(f"Extracting {path_to_data} to {self.path_dir_tmp}...")
+            with zipfile.ZipFile(path_to_data, "r") as zip_ref:
+                zip_ref.extractall(self.path_dir_tmp)
+
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (
+                # TODO_2: Add hash of fn
+                super()._hashstr()
+                + str(self.path_to_data)
+            ).encode()
+        ).hexdigest()
+
+    def _parse_openai_conversation(
+        self, dict_conversation: dict
+    ) -> list[dict[str, Any]]:
+        messages = []
+        for v in dict_conversation["mapping"].values():
+            if v["message"] is None:
+                continue
+            if v["message"]["create_time"] is None:
+                continue
+            messages.append(
+                {
+                    "id": v["message"]["id"],
+                    "status": v["message"]["status"],
+                    "content": v["message"]["content"],
+                    "author": v["message"]["author"]["role"],
+                    "date": datetime.datetime.utcfromtimestamp(
+                        v["message"]["create_time"]
+                    ),
+                }
+            )
+        return messages
+
+    def _operation(self, t: Time_interval | None = None) -> pd.DataFrame | None:
+
+        convs = self.path_dir_tmp / "conversations.json"
+        assert convs.exists()
+
+        with convs.open(encoding="utf-8") as f:
+            data = json.load(f, strict=False)
+
+            to_return = []
+            for i in data:
+                # TODO_3: Fix UTC stuff
+                time_creation = datetime.datetime.utcfromtimestamp(i["create_time"])
+                if t is not None and time_creation not in t:
+                    continue
+                to_return.extend(self._parse_openai_conversation(i))
+
+            df = pd.DataFrame(to_return)
+            return df.set_index("date")
+
+
+class Reader_loguru(Node_0child, Node_pandas):
+    """Takes a path to a .log file and returns a pandas dataframe"""
+
+    def __init__(self, path_to_data: str | Path | None = None):
+        if isinstance(path_to_data, str):
+            path_to_data = Path(path_to_data)
+        assert isinstance(path_to_data, Path)
+        assert path_to_data.name.endswith(".log")
+        assert path_to_data.exists(), f"{path_to_data} does not exist"
+        assert path_to_data.is_file(), f"{path_to_data} is not a file"
+        self.path_to_data: Path = path_to_data
+
+    def _hashstr(self) -> str:
+        return hashlib.md5(
+            (
+                # TODO_2: Add hash of fn
+                super()._hashstr()
+                + str(self.path_to_data)
+            ).encode()
+        ).hexdigest()
+
+    def _operation(
+        self, t: Time_interval | Quantity | None = None
+    ) -> pd.DataFrame | None:
+
+        # Log data looks like:
+        # 2022-12-01 11:31:04.001 | INFO     | __main__:<module>:43 - Started!
+        # 2022-12-02 19:19:16.715 | INFO     | __main__:<module>:43 - Started!
+
+        # We load the entries
+        log_entries = []
+        for line in self.path_to_data.read_text().split("\n"):
+            if line.strip() == "":
+                continue
+            parts = line.split(" | ")
+            timestamp = parts[0].strip()
+            log_level = parts[1].strip()
+            module_info, message = parts[2].strip().split(" - ")
+            module_name_a, module_name_b, line_number = module_info.split(":", 2)
+            log_entries.append(
+                {
+                    "timestamp": timestamp,
+                    "log_level": log_level,
+                    "module_name": f"{module_name_a}:{module_name_b}",
+                    "line_number": int(line_number),
+                    "message": message.strip(),
+                }
+            )
+
+        # df time
+        df = pd.DataFrame(log_entries)
+        if isinstance(t, Quantity):
+            df = df.iloc[-t.value :]
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df.set_index("timestamp", inplace=True)
+        if isinstance(t, Time_interval):
+            df = df[df.index >= t.start]
+            df = df[df.index <= t.end]
         return df

@@ -1,7 +1,8 @@
 import datetime
 import json
-import os
 import tempfile
+from datetime import timedelta
+from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -19,7 +20,7 @@ from lifetracking.graph.Node_pandas import (
 from lifetracking.graph.Time_interval import Time_interval
 
 
-def test_node_pddataframe_0():
+def test_node_pddataframe_creation():
     df = pd.DataFrame([{"a": 0}, {"a": 1}, {"a": 2}])
     a = Node_pandas_generate(df)
 
@@ -44,24 +45,89 @@ def test_node_pddataframe_filter():
     )
 
 
-def test_node_pddataframe_removeifclose():
+def test_node_pddataframe_removeifclose_0():
     t = datetime.datetime.now()
     df = pd.DataFrame(
         [
-            {"datetime": t + datetime.timedelta(minutes=0)},
-            {"datetime": t + datetime.timedelta(minutes=1)},
-            {"datetime": t + datetime.timedelta(minutes=2)},
-            {"datetime": t + datetime.timedelta(minutes=3)},
-            {"datetime": t + datetime.timedelta(minutes=4)},
-            {"datetime": t + datetime.timedelta(minutes=999)},
+            {"a": "a", "t": t + timedelta(minutes=0)},
+            {"a": "a", "t": t + timedelta(minutes=0)},  # Oh, it's dupe!
+            {"a": "a", "t": t + timedelta(minutes=999999)},
         ]
     )
-    a = Node_pandas_generate(df, datetime_column="datetime")
-    b = Node_pandas_remove_close(a, datetime.timedelta(minutes=2))
+    df.set_index("t", inplace=True)
+    assert isinstance(df.index, pd.DatetimeIndex)
 
+    a = Node_pandas_generate(df)
+    b = Node_pandas_remove_close(a, timedelta(minutes=2), keep="first")
     o = b.run()
     assert o is not None
     assert len(o) == 2
+
+
+def test_node_pddataframe_removeifclose_1():
+    """Like befote, but the index is not specified beforehand"""
+
+    t = datetime.datetime.now()
+    df = pd.DataFrame(
+        [
+            {"a": "a", "t": t + timedelta(minutes=0)},
+            {"a": "a", "t": t + timedelta(minutes=0)},  # Oh, it's dupe!
+            {"a": "a", "t": t + timedelta(minutes=999999)},
+        ]
+    )
+
+    a = Node_pandas_generate(df)
+    b = Node_pandas_remove_close(a, timedelta(minutes=2), column_name="t", keep="first")
+    o = b.run()
+    assert o is not None
+    assert len(o) == 2
+
+
+def test_node_pddataframe_removeifclose_first():
+    t = datetime.datetime.now()
+    df = pd.DataFrame(
+        [
+            {"a": "a", "datetime": t + timedelta(minutes=0)},
+            {"a": "a", "datetime": t + timedelta(minutes=0)},  # Oh, it's dupe!
+            {"a": "b", "datetime": t + timedelta(minutes=1)},
+            {"a": "c", "datetime": t + timedelta(minutes=2)},
+            {"a": "d", "datetime": t + timedelta(minutes=3)},
+            {"a": "e", "datetime": t + timedelta(minutes=4)},
+            {"a": "f", "datetime": t + timedelta(minutes=50)},
+            {"a": "g", "datetime": t + timedelta(minutes=51)},
+            {"a": "h", "datetime": t + timedelta(minutes=999)},
+        ]
+    )
+    a = Node_pandas_generate(df, datetime_column="datetime")
+    b = Node_pandas_remove_close(a, timedelta(minutes=2), keep="first")
+    o = b.run()
+    assert o is not None
+    assert len(o) == 3
+    assert list(o["a"]) == ["a", "f", "h"]
+
+
+def test_node_pddataframe_removeifclose_last():
+    t = datetime.datetime.now()
+    df = pd.DataFrame(
+        [
+            {"a": "a", "datetime": t + timedelta(minutes=0)},
+            {"a": "b", "datetime": t + timedelta(minutes=1)},
+            {"a": "c", "datetime": t + timedelta(minutes=2)},
+            {"a": "d", "datetime": t + timedelta(minutes=3)},
+            {"a": "e", "datetime": t + timedelta(minutes=4)},
+            {"a": "e", "datetime": t + timedelta(minutes=4)},  # Dupe line :)
+            {"a": "f", "datetime": t + timedelta(minutes=50)},
+            {"a": "g", "datetime": t + timedelta(minutes=51)},
+            {"a": "h", "datetime": t + timedelta(minutes=999)},
+        ]
+    )
+    a = Node_pandas_generate(df, datetime_column="datetime")
+    b = Node_pandas_remove_close(a, timedelta(minutes=2), keep="last")
+
+    o = b.run()
+    assert o is not None
+    assert len(o) == 3
+    assert list(o["a"]) == ["e", "g", "h"]
 
 
 file_extensions_to_test = ["csv", "json"]
@@ -90,7 +156,7 @@ def test_node_pddataframe_readdata_0(file_format: str):
                 lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         else:
-            raise NotImplementedError()
+            raise NotImplementedError
 
         # Case 0: Simple run
         assert reader.available
@@ -112,27 +178,24 @@ def test_node_pddataframe_readdata_1(file_format: str):
     df_a = pd.DataFrame([{"a": 1}, {"a": 2}, {"a": 3}, {"a": 4}])
     df_b = pd.DataFrame([{"a": 5}, {"a": 6}, {"a": 7}, {"a": 8}])
     with tempfile.TemporaryDirectory() as tmpdirname:
+        tmpdir = Path(tmpdirname)
         # File creation n stuff
         if file_format == "csv":
-            df_a.to_csv(
-                os.path.join(tmpdirname, f"test_1000_01_01.{file_format}"), index=False
-            )
-            df_b.to_csv(
-                os.path.join(tmpdirname, f"test_2023_01_01.{file_format}"), index=False
-            )
+            df_a.to_csv(tmpdir / f"test_1000_01_01.{file_format}", index=False)
+            df_b.to_csv(tmpdir / f"test_2023_01_01.{file_format}", index=False)
             reader = Reader_csvs(
-                tmpdirname,
+                tmpdir,
                 lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         elif file_format == "json":
-            df_a.to_json(os.path.join(tmpdirname, f"test_1000_01_01.{file_format}"))
-            df_b.to_json(os.path.join(tmpdirname, f"test_2023_01_01.{file_format}"))
+            df_a.to_json(tmpdir / f"test_1000_01_01.{file_format}")
+            df_b.to_json(tmpdir / f"test_2023_01_01.{file_format}")
             reader = Reader_jsons(
-                tmpdirname,
+                tmpdir,
                 lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         else:
-            raise NotImplementedError()
+            raise NotImplementedError
 
         # Case 0: Simple run
         assert reader.available
@@ -146,7 +209,7 @@ def test_node_pddataframe_readdata_1(file_format: str):
         assert len(o) == 4
 
 
-# TODO: Test the above with `column_date_index`
+# TEST: Test the above with `column_date_index`
 
 
 def test_node_pddataframe_add_0():
@@ -165,17 +228,18 @@ def test_node_pddataframe_readjson_0():
     with tempfile.TemporaryDirectory() as tmpdirname:
         t = datetime.datetime.now()
         b = [
-            {"datetime": t + datetime.timedelta(minutes=0)},
-            {"datetime": t + datetime.timedelta(minutes=1)},
-            {"datetime": t + datetime.timedelta(minutes=2)},
-            {"datetime": t + datetime.timedelta(minutes=3)},
-            {"datetime": t + datetime.timedelta(minutes=4)},
-            {"datetime": t + datetime.timedelta(minutes=999)},
+            {"datetime": t + timedelta(minutes=0)},
+            {"datetime": t + timedelta(minutes=1)},
+            {"datetime": t + timedelta(minutes=2)},
+            {"datetime": t + timedelta(minutes=3)},
+            {"datetime": t + timedelta(minutes=4)},
+            {"datetime": t + timedelta(minutes=999)},
         ]
-        filename = os.path.join(tmpdirname, "test.json")
-        with open(filename, "w") as f:
+        tmpdir = Path(tmpdirname)
+        filename = tmpdir / "test.json"
+        with filename.open("w") as f:
             json.dump(b, f, indent=4, default=str)
-        a = Reader_jsons(filename, column_date_index="datetime")
+        a = Reader_jsons(str(filename), column_date_index="datetime")
         o = a.run()
 
         assert isinstance(o, pd.DataFrame)
@@ -196,19 +260,13 @@ def test_node_pddataframe_readjson_1():
 
 def test_node_pddataframe_filecreation_0():
     with tempfile.TemporaryDirectory() as tmpdirname:
-        filename = os.path.join(tmpdirname, "2020-05-30.txt")
-        with open(filename, "w") as _:
-            pass
-        filename = os.path.join(tmpdirname, "2019-05-30.txt")
-        with open(filename, "w") as _:
-            pass
+        tmpdir = Path(tmpdirname)
+        (tmpdir / "2020-05-30.txt").touch()
+        (tmpdir / "2019-05-30.txt").touch()
 
         a = Reader_filecreation(
-            tmpdirname,
-            lambda x: pd.to_datetime(
-                x.split(".")[0],
-                format="%Y-%m-%d",
-            ),
+            str(tmpdir),
+            lambda x: pd.to_datetime(x.name.split(".")[0], format="%Y-%m-%d"),
         )
         o = a.run()
 
@@ -219,10 +277,7 @@ def test_node_pddataframe_filecreation_0():
 def test_node_pddataframe_filecreation_1():
     a = Reader_filecreation(
         "/this_dir_does_not_exist",
-        lambda x: pd.to_datetime(
-            x.split(".")[0],
-            format="%Y-%m-%d",
-        ),
+        lambda x: pd.to_datetime(x.name.split(".")[0], format="%Y-%m-%d"),
     )
     o = a.run()
 

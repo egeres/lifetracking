@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import datetime
 import hashlib
-import os
+from pathlib import Path
 
 from pydub.utils import mediainfo
 from rich import print
 
-from lifetracking.datatypes.Segment import Seg, Segments
+from lifetracking.datatypes.Segments import Seg, Segments
 from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_segments import Node_segments
 from lifetracking.graph.Time_interval import Time_interval
@@ -15,14 +15,17 @@ from lifetracking.utils import cache_singleargument
 
 
 class Reader_audios(Node_segments, Node_0child):
-    def __init__(self, path_dir: str) -> None:
+    def __init__(self, path_dir: Path | str) -> None:
         super().__init__()
+        if isinstance(path_dir, str):
+            path_dir = Path(path_dir)
+        assert path_dir.exists()
+        assert path_dir.is_dir()
         self.path_dir = path_dir
 
     def _available(self) -> bool:
         return (
-            os.path.exists(self.path_dir)
-            and len(self._get_plausible_files(self.path_dir)) > 0
+            self.path_dir.exists() and len(self._get_plausible_files(self.path_dir)) > 0
         )
 
     def _hashstr(self) -> str:
@@ -30,42 +33,39 @@ class Reader_audios(Node_segments, Node_0child):
 
     @staticmethod
     @cache_singleargument("cache_audios_length")
-    def _get_audio_length_in_s(filename: str) -> float | None:
+    def _get_audio_length_in_s(filename: Path) -> float | None:
         try:
-            return float(mediainfo(filename)["duration"])
+            return float(mediainfo(str(filename))["duration"])
         except Exception as e:
             print(f"[red]Error while reading {filename}: {e}")
             return None
 
-    def _get_plausible_files(self, path_dir: str) -> list[str]:
+    def _get_plausible_files(self, path_dir: Path) -> list[Path]:
         to_return = []
-        for i in os.listdir(path_dir):
-            # File processing
-            filename = os.path.join(path_dir, i)
-            if not os.path.isfile(filename):
+        for i in path_dir.iterdir():
+            if not i.is_file():
                 continue
-            if not (
-                filename.endswith(".mp3")
-                or filename.endswith(".wav")
-                or filename.endswith(".flac")
-                or filename.endswith(".ogg")
-                or filename.endswith(".m4a")
-                or filename.endswith(".opus")
-                or filename.endswith(".wma")
-                or filename.endswith(".amr")
+            if i.suffix not in (
+                ".mp3",
+                ".wav",
+                ".flac",
+                ".ogg",
+                ".m4a",
+                ".opus",
+                ".wma",
+                ".amr",
             ):
                 continue
-            to_return.append(filename)
+            to_return.append(i)
         return to_return
 
-    def _operation(self, t: Time_interval | None = None) -> Segments:
+    def _operation(self, t: Time_interval | None = None) -> Segments | None:
         to_return = []
         for filename in self._get_plausible_files(self.path_dir):
             # Date filtering
-            date_creation = datetime.datetime.fromtimestamp(os.stat(filename).st_ctime)
-            if t is not None:
-                if date_creation not in t:
-                    continue
+            date_creation = datetime.datetime.fromtimestamp(filename.stat().st_ctime)
+            if t is not None and date_creation not in t:
+                continue
 
             # Info extraction
             duration_in_s = self._get_audio_length_in_s(filename)

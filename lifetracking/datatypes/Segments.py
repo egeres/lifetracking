@@ -5,15 +5,13 @@ import datetime
 import hashlib
 import inspect
 import json
-import os
 
-# from bisect import insort  # TODO: Python 3.11 because of key=
-from typing import Any, Callable, overload
+# from bisect import insort  # TODO_2: Python 3.11 because of key=
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, overload
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 from typing_extensions import Self
 
 from lifetracking.datatypes.Seg import Seg
@@ -25,6 +23,9 @@ from lifetracking.plots.graphs import (
     graph_udate_layout,
 )
 from lifetracking.utils import _lc_export_prepare_dir
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
 
 
 class Segments:
@@ -60,23 +61,25 @@ class Segments:
                         content.pop(content_index)
                         content_index -= 1
                         break
+
                     # t covers the right side
                     if t.end >= s.end:
                         s.end = t.start
                         break
+
                     # t covers the left side
-                    elif t.start <= s.start:
+                    if t.start <= s.start:
                         s.start = t.end
                         break
-                    else:
-                        content.append(Seg(t.end, s.end, s.value))
-                        content = sorted(content, key=lambda x: x.start)
-                        # TODO: Benchmark the difference in speed, but needs
-                        # python >= 3.10
-                        # insort(content, Seg(t.end, s.end, s.value), key=lambda
-                        # x: x.start)
-                        s.end = t.start
-                        break
+
+                    content.append(Seg(t.end, s.end, s.value))
+                    content = sorted(content, key=lambda x: x.start)
+                    # TODO: Benchmark the difference in speed, but needs
+                    # python >= 3.10
+                    # insort(content, Seg(t.end, s.end, s.value), key=lambda
+                    # x: x.start)
+                    s.end = t.start
+                    break
             content_index += 1
         return Segments(sorted(content))
 
@@ -84,17 +87,15 @@ class Segments:
         return hashlib.md5(self.__class__.__name__.encode()).hexdigest()
 
     @overload
-    def __getitem__(self, index: int) -> Seg:
-        ...  # pragma: no cover
+    def __getitem__(self, index: int) -> Seg: ...  # pragma: no cover
 
     @overload
-    def __getitem__(self, index: Time_interval) -> Segments:
-        ...  # pragma: no cover
+    def __getitem__(self, index: Time_interval) -> Segments: ...  # pragma: no cover
 
     def __getitem__(self, index: Time_interval | int) -> Segments | Seg:
         if isinstance(index, int):
             return self.content[index]
-        elif isinstance(index, Time_interval):
+        if isinstance(index, Time_interval):
             return Segments(
                 [
                     seg
@@ -102,11 +103,13 @@ class Segments:
                     if index.start <= seg.start and seg.end <= index.end
                 ]
             )
-        else:
-            raise TypeError("index must be Time_interval or int")
+        msg = "index must be Time_interval or int"
+        raise TypeError(msg)
 
     def __setitem__(self, property_name: str, value: Any) -> Self:
         """Sets a property of all the segments"""
+        # TODO_3: Refactor to a pandas dataframe and make this a columns assignment
+
         for seg in self.content:
             seg[property_name] = value
         return self
@@ -128,7 +131,32 @@ class Segments:
         return max(seg.end for seg in self.content)
 
     def __add__(self, other: Segments) -> Segments:
-        # TODO: After coverage has been extended, test if this could be removed
+        # FIX: (TZ) Pls, the thing with the timezone discrepancies!! 🥺
+        if len(self.content) > 0 and len(other.content) > 0:
+            if (
+                other.content[0].start.tzinfo is None
+                and self.content[0].start.tzinfo is not None
+            ):
+                tz = self.content[0].start.tzinfo
+                for i in other.content:
+                    i.start = i.start.replace(tzinfo=tz)
+                    i.end = i.end.replace(tzinfo=tz)
+
+            if (
+                self.content[0].start.tzinfo is None
+                and other.content[0].start.tzinfo is not None
+            ):
+                tz = other.content[0].start.tzinfo
+                for i in self.content:
+                    i.start = i.start.replace(tzinfo=tz)
+                    i.end = i.end.replace(tzinfo=tz)
+
+        # TODO: After coverage has been extended, test if the 'sorted' could be removed
+
+        # TODO: Maybe the sorted thing can be skipped if we add a property "sorted
+        # segments" which is a boolean and we set it to True after sorting, if we add
+        # together 2 Segments objects, and both are sorted, and, they don't overlap we
+        # can do a simple concatenation
         return Segments(sorted(other.content + self.content))
 
     def _export_to_longcalendar_edit_dict(
@@ -165,7 +193,7 @@ class Segments:
 
     def export_to_longcalendar(
         self,
-        path_filename: str,
+        path_filename: str | Path,
         hour_offset: float = 0.0,
         color: str | Callable[[Seg], str] | None = None,
         opacity: float | Callable[[Seg], float] = 1.0,
@@ -176,10 +204,13 @@ class Segments:
         my data."""
 
         # Assertions
-        assert isinstance(path_filename, str)
-        if not path_filename.endswith(".json"):
-            raise ValueError("path_filename must end with .json")
-        assert os.path.split(path_filename)[-1] != "config.json"
+        if isinstance(path_filename, str):
+            path_filename = Path(path_filename)
+        assert isinstance(path_filename, Path)
+        if path_filename.suffix != ".json":
+            msg = "path_filename must end with .json"
+            raise ValueError(msg)
+        assert path_filename.name != "config.json"
 
         # Assertion of color, opacity and tooltip
         assert color is None or isinstance(color, str) or callable(color)
@@ -210,16 +241,13 @@ class Segments:
 
         # Changes at config.json
         if isinstance(color, str) or isinstance(opacity, float):
-            # Data parsing
-            path_fil_config = os.path.join(
-                os.path.split(path_filename)[0], "config.json"
-            )
-            with open(path_fil_config) as f:
+            path_fil_config = path_filename.parent / "config.json"
+            with path_fil_config.open() as f:
                 data = json.load(f)
-                assert isinstance(data, dict)
-                key_name = os.path.split(path_filename)[1].split(".")[0]
-                if key_name not in data["data"]:
-                    data["data"][key_name] = {}
+            assert isinstance(data, dict)
+            key_name = path_filename.name.split(".")[0]
+            if key_name not in data["data"]:
+                data["data"][key_name] = {}
 
             # We write color and opacity
             if isinstance(color, str):
@@ -227,7 +255,7 @@ class Segments:
             if isinstance(opacity, float) and opacity != 1.0:
                 data["data"][key_name]["opacity"] = opacity
 
-            with open(path_fil_config, "w") as f:
+            with path_fil_config.open("w") as f:
                 json.dump(data, f, indent=4, default=str)
 
         # Export itself
@@ -250,20 +278,21 @@ class Segments:
                     color,
                     opacity,
                 )
-        with open(path_filename, "w") as f:
+        with path_filename.open("w") as f:
             json.dump(to_export, f, indent=4, default=str)
 
-    # TODO: time_to_mergue_s also accepts a datetime.timedelta
-    # TODO: Or... is just a timedeleta :[
     @staticmethod
     def merge(
         segs: Segments,
-        time_to_mergue_s: float,
+        time_to_mergue: datetime.timedelta,
         custom_rule: None | Callable[[Seg, Seg], bool] = None,
     ) -> Segments:
         """Merges segments that are close to each other in time. So if we set
         `time_to_mergue_s` to be 1 minute, and we have two segments that are 30
         seconds apart, they will be merged."""
+
+        assert isinstance(segs, Segments)
+        assert isinstance(time_to_mergue, datetime.timedelta)
 
         if len(segs) < 2:
             return segs
@@ -273,9 +302,7 @@ class Segments:
         if custom_rule is None:
             to_return.append(segs.content[0])
             for seg in segs.content[1:]:
-                if seg.start - to_return[-1].end < datetime.timedelta(
-                    seconds=time_to_mergue_s
-                ):
+                if seg.start - to_return[-1].end < time_to_mergue:
                     to_return[-1].end = seg.end
                     # TODO: Maybe adds a counter with "operation_merge_count"?
                 else:
@@ -283,9 +310,9 @@ class Segments:
         else:
             to_return.append(segs.content[0])
             for seg in segs.content[1:]:
-                if seg.start - to_return[-1].end < datetime.timedelta(
-                    seconds=time_to_mergue_s
-                ) and custom_rule(to_return[-1], seg):
+                if seg.start - to_return[-1].end < time_to_mergue and custom_rule(
+                    to_return[-1], seg
+                ):
                     to_return[-1].end = max(seg.end, to_return[-1].end)
                     # TODO: Maybe adds a counter with "operation_merge_count"?
                 else:
@@ -319,15 +346,14 @@ class Segments:
         else:
             a, b = t.start, t.end
 
-        # TODO_4: Do something about tz infos pls 🥺
+        # TODO_3: (TZ) Do something about tz infos pls 🥺
         # if len(self.content) > 0:
         #     if a.tzinfo is None:
         #         a = a.replace(tzinfo=self.content[0].start.tzinfo)
         #         b = b.replace(tzinfo=self.content[0].start.tzinfo)
-        if len(data) > 0:
-            if a.tzinfo is None:
-                a = a.replace(tzinfo=data[0].start.tzinfo)
-                b = b.replace(tzinfo=data[0].start.tzinfo)
+        if len(data) > 0 and a.tzinfo is None:
+            a = a.replace(tzinfo=data[0].start.tzinfo)
+            b = b.replace(tzinfo=data[0].start.tzinfo)
 
         # Data itself
         c: list[float] = [0] * ((b - a).days + 1)
@@ -349,6 +375,14 @@ class Segments:
         smooth: int,
         stackgroup: str,
     ) -> dict[str, list[float]]:
+        """Retrieves something like:
+        {
+            "study": [0.1, 0.1, 1.4, 0.9...],
+            "personal": [0.1, 0.1, 1.4, 0.9...],
+            ...
+        }
+        """
+
         # Uniques
         unique_categories = set()
         for s in self.content:
@@ -371,11 +405,24 @@ class Segments:
         smooth: int = 1,
         annotations: list | None = None,
         title: str | None = None,
-        stackgroup: str | None = None,
+        stackgroup: str | dict | None = None,
     ) -> go.Figure:
+        """Plots the hours of the segments in the interval t
+
+        Parameters:
+        stackgroup
+        It can be a string or a dict with the key "label" and optionally "colors"
+        """
+        import plotly.express as px
+        import plotly.graph_objects as go
+
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(yaxes, tuple) or yaxes is None
-        assert isinstance(smooth, int) and smooth > 0
+        assert isinstance(smooth, int)
+        assert smooth > 0
+        if isinstance(stackgroup, dict):
+            assert "label" in stackgroup
+        assert title is None or isinstance(title, str)
 
         # Pre
         fig_min, fig_max = (0, 24) if yaxes is None else yaxes
@@ -389,8 +436,12 @@ class Segments:
                 else pd.date_range(self.min(), self.max(), freq="D")
             )
             fig = px.line(x=fig_index, y=c)
+
         else:
-            c = self._plot_hours_generatedata_with_stackgroup(t, smooth, stackgroup)
+            stackgroupname: str = (
+                stackgroup if isinstance(stackgroup, str) else stackgroup["label"]
+            )
+            c = self._plot_hours_generatedata_with_stackgroup(t, smooth, stackgroupname)
             fig_index = (
                 t.to_datetimeindex()
                 if t is not None
@@ -399,6 +450,12 @@ class Segments:
             df = pd.DataFrame(c, index=fig_index)
             fig = go.Figure()
             for col in df.columns:
+                # The user should be able to specify colors/etc for these plots...
+                extra_args = {}
+                if isinstance(stackgroup, dict) and col in stackgroup.get("colors", {}):
+                    extra_args["marker_color"] = stackgroup["colors"][col]
+
+                # Fig
                 fig.add_trace(
                     go.Scatter(
                         x=df.index,
@@ -406,6 +463,7 @@ class Segments:
                         stackgroup="one",
                         fill="tonexty",
                         name=col,
+                        **extra_args,
                     )
                 )
             fig.update_layout(hovermode="x unified")
@@ -419,3 +477,15 @@ class Segments:
             graph_annotate_today(fig, t, (fig_min, fig_max))
             graph_annotate_annotations(fig, t, annotations, (fig_min, fig_max))
         return fig
+
+    def increment_hours(
+        self,
+        hours: float,
+    ) -> Self:
+        assert isinstance(hours, (float, int))
+
+        for seg in self.content:
+            seg.start += datetime.timedelta(hours=hours)
+            seg.end += datetime.timedelta(hours=hours)
+
+        return self

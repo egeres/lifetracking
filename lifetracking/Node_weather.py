@@ -31,6 +31,4 @@ class Node_weather(Node_pandas, Node_0child):
             t.start,
             t.end,
         )
-        data = data.fetch()
-
-        return data
+        return data.fetch()

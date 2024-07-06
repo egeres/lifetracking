@@ -43,6 +43,6 @@ def test_node_anki_create():
 
 
 def test_node_anki_dir_does_not_exist():
-    a = Parse_anki_creation("/this_anki_folder_does_not_exist")
-    o = a.run(Time_interval.today())
-    assert o is None
+
+    with pytest.raises(AssertionError):
+        Parse_anki_creation("/this_anki_folder_does_not_exist")

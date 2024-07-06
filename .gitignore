@@ -1,4 +1,3 @@
-
 lifetracking/graph/__pycache__/
 
 lifetracking/__pycache__/
@@ -18,3 +17,15 @@ desktop.ini
 cov.xml
 
 lifetracking/plots/__pycache__/
+
+.mypy_cache/
+
+.pytest_cache/
+
+.tox/
+
+lifetracking/dataloggers/__pycache__/
+
+cov_html/
+
+htmlcov/

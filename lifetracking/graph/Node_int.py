@@ -7,14 +7,14 @@ from __future__ import annotations
 
 import hashlib
 import time
-from typing import Any
-
-from prefect import task as prefect_task
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
+from typing import TYPE_CHECKING, Any, Callable
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
 from lifetracking.graph.Time_interval import Time_interval
+
+if TYPE_CHECKING:
+    from prefect.futures import PrefectFuture
+    from prefect.utilities.asyncutils import Sync
 
 
 class Node_int(Node[int]):
@@ -24,10 +24,21 @@ class Node_int(Node[int]):
     def __add__(self, other: Node_int) -> Node_int_addition:
         return Node_int_addition(self, other)
 
+    def export_to_longcalendar(
+        self,
+        t: Time_interval | None,
+        path_filename: str,
+        color: str | Callable[[int], str] | None = None,
+        opacity: float | Callable[[int], float] = 1.0,
+        hour_offset: float = 0,
+    ):
+        raise NotImplementedError
+
 
 class Node_int_generate(Node_0child, Node_int):
     def __init__(self, value: int, artificial_delay: float = 0) -> None:
         super().__init__()
+        assert isinstance(value, int)
         self.value = value
         self.artificial_delay = artificial_delay
 
@@ -109,6 +120,8 @@ class Node_int_addition(Node_int):
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> PrefectFuture[int, Sync]:
+        from prefect.tasks import task as prefect_task
+
         # Node graph is calculated if it's not in the context, then _operation is called
         n0_out = self._get_value_from_context_or_makegraph(self.n0, t, context)
         n1_out = self._get_value_from_context_or_makegraph(self.n1, t, context)

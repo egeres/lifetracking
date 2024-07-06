@@ -21,6 +21,24 @@ from lifetracking.datatypes.Seg import Seg
 from lifetracking.graph.Time_interval import Time_interval
 
 
+def test_basic_creation():
+    # Case 0
+    a = Seg(
+        datetime.datetime(2021, 1, 1, 0, 0, 0, 0),
+        datetime.datetime(2021, 1, 1, 23, 59, 59, 999999),
+    )
+    a["value"] = "Oh, I can save stuff here?"
+    _ = a["value"]
+
+    # Case 1
+    a = Seg(
+        datetime.datetime(2021, 1, 1, 0, 0, 0, 0),
+        datetime.datetime(2021, 1, 1, 23, 59, 59, 999999),
+    )
+    with pytest.raises(AssertionError):
+        _ = a["value"]
+
+
 def test_seg_repr():
     a = Seg(
         datetime.datetime(2021, 1, 1, 0, 0, 0, 0),
@@ -156,15 +174,17 @@ def test_seg_split():
     b = a.split_into_segments_per_day()
 
     assert len(b) == 3
+    # fmt: off
     assert b[0].start == datetime.datetime(2021, 1, 1, 12)
-    assert b[0].end == datetime.datetime(2021, 1, 1, 23, 59, 59)
+    assert b[0].end   == datetime.datetime(2021, 1, 1, 23, 59, 59, 999999)
     assert b[0].value == {"1+1": "2"}
-    assert b[1].start == datetime.datetime(2021, 1, 2, 0)
-    assert b[1].end == datetime.datetime(2021, 1, 2, 23, 59, 59)
+    assert b[1].start == datetime.datetime(2021, 1, 2)
+    assert b[1].end   == datetime.datetime(2021, 1, 2, 23, 59, 59, 999999)
     assert b[1].value == {"1+1": "2"}
-    assert b[2].start == datetime.datetime(2021, 1, 3, 0)
-    assert b[2].end == datetime.datetime(2021, 1, 3, 12)
+    assert b[2].start == datetime.datetime(2021, 1, 3)
+    assert b[2].end   == datetime.datetime(2021, 1, 3, 12)
     assert b[2].value == {"1+1": "2"}
+    # fmt: on
 
 
 def test_seg_length_h():

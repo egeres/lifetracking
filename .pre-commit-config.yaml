@@ -1,49 +1,51 @@
-
 # pre-commit install
 # pre-commit install --hook-type commit-msg
+# pre-commit autoupdate
 # pre-commit run --all-files
+# pre-commit run --files "sys_setup/windows/main.py"
+
+# More info about conventional commits here:
+# https://gist.github.com/joshbuchea/6f47e86d2510bce28f8e7f42ae84c716
 
 repos:
+  # Basic ones
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.6.0
     hooks:
       - id: trailing-whitespace
-      - id: mixed-line-ending
-      - id: check-ast # Checks that the python files are valid
-      - id: check-case-conflict # Checks for case conflicts in filenames
-      - id: check-docstring-first # Checks that the docstring is the first thing in the file
-      # - id: check-json // Not working for Json with comments! Disabled for now
+      - id: check-ast
+      - id: check-docstring-first
       - id: check-toml
       - id: check-xml
       - id: check-yaml
       - id: check-builtin-literals
       - id: check-byte-order-marker
       - id: check-executables-have-shebangs
-      - id: end-of-file-fixer
         types: [markdown, python]
         files: "\\.(md|py)$"
 
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-
-  - repo: https://github.com/psf/black
-    rev: 23.7.0
-    hooks:
-      - id: black
-
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.9.0
-    hooks:
-      - id: pyupgrade
-
+  # Conventional commits
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v2.3.0
+    rev: v3.2.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
+        args: [] # Opt: list of Conv Commits types to allow like: ci,fix..
 
+  # Blaaack
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+
+  # Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.1
+    hooks:
+      - id: ruff
+        types_or: [python, pyi, jupyter]
+
+  # Notebooks
   - repo: local
     hooks:
       - id: jupyter-nb-clear-output
@@ -52,45 +54,3 @@ repos:
         stages: [commit]
         language: system
         entry: jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
-    hooks:
-      - id: flake8
-        additional_dependencies: [flake8-bugbear]
-        args:
-          - --count
-          - --max-complexity=10
-          - --max-line-length=88
-          - --statistics
-          - --ignore=F401,W503,E203
-
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.3.0
-    hooks:
-      - id: pydocstyle
-        args:
-          # http://www.pydocstyle.org/en/stable/error_codes.html
-          - --select=D3,D414,D419,D408,D409,D200,D201,D206,D207,D208,D210,D211,D212,D214,D215
-
-  - repo: local
-    hooks:
-      - id: check-jsonc
-        name: Check JSONC
-        language: python
-        entry: python tools/jsonc_check.py
-        types: [file]
-        files: "\\.(json|jsonc)$"
-        additional_dependencies: [json5]
-
-  # - repo: local
-  #   hooks:
-  #     - id: update-version
-  #       name: Update pyproject.toml version
-  #       language: python
-  #       entry: python tools/update_version.py
-  #       files: pyproject.toml
-  #       always_run: true
-  #       pass_filenames: false
-  #       stages: [commit]
-  #       additional_dependencies: [tomlkit]
