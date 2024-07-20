@@ -5,44 +5,48 @@ Meant to be used for single data points, like weight, height, etc.
 from __future__ import annotations
 
 import csv
-import datetime
 import json
 import os
 import platform
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 
 def get_system_details(way_this_info_was_added: str) -> dict[str, str]:
+    """Gets the details of the system"""
+
+    assert isinstance(way_this_info_was_added, str)
+
     return {
         "os.login()": os.getlogin(),
         "platform.system()": platform.system(),
         "machine_name": str(os.getenv("COMPUTERNAME", os.getenv("HOSTNAME"))),
         "way_this_info_was_added": way_this_info_was_added,
         "name_of_the_script": sys.argv[0],
+        "datetime_of_annotation": datetime.now(timezone.utc).isoformat(),
     }
 
 
 def write_single_on_csv(
     path_to_file: Path,
     way_this_info_was_added: str = "manual",
-    now: datetime.datetime | None = None,
+    now: datetime | None = None,
     **kwargs,
 ):
     assert isinstance(path_to_file, Path)
     assert path_to_file.suffix == ".csv"
     assert isinstance(way_this_info_was_added, str)
+    assert isinstance(now, datetime) or now is None
 
-    if now is None:
-        now = datetime.datetime.now(datetime.timezone.utc)
-
-    mode = "w" if not path_to_file.exists() else "a"
+    now = datetime.now(timezone.utc) if now is None else now
     d = get_system_details(way_this_info_was_added)
 
-    with path_to_file.open(mode, newline="") as file:
+    mode = "w" if not path_to_file.exists() else "a"
+    with path_to_file.open(mode, encoding="utf-8", newline="") as f:
         # TODO_2: Add check if columns change from the header to what it's being saved
 
-        writer = csv.writer(file)
+        writer = csv.writer(f)
         if mode == "w":
             writer.writerow(["datetime", *d.keys(), *kwargs.keys()])
         writer.writerow([now, *d.values(), *[str(x) for x in kwargs.values()]])
@@ -51,55 +55,23 @@ def write_single_on_csv(
 def write_single_on_dated_json(
     path_to_dir: Path,
     way_this_info_was_added: str = "manual",
-    now: datetime.datetime | None = None,
+    now: datetime | None = None,
     **kwargs,
 ):
     assert isinstance(path_to_dir, Path)
     assert path_to_dir.is_dir()
     assert isinstance(way_this_info_was_added, str)
+    assert isinstance(now, datetime) or now is None
 
     if now is None:
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.now(timezone.utc)
 
-    df: list[dict] = []
-    if (path_to_dir / f"{now.strftime('%Y-%m-%d')}.json").exists():
-        with (path_to_dir / f"{now.strftime('%Y-%m-%d')}.json").open("r+") as f:
-            df = json.load(f)
+    fil = path_to_dir / f"{now.strftime('%Y-%m-%d')}.json"
+    df: list[dict] = [] if fil.exists() else json.load(fil.open("r", encoding="utf-8"))
     df.append(
         {"datetime": now.isoformat()}
         | get_system_details(way_this_info_was_added)
         | kwargs
     )
-    with (path_to_dir / f"{now.strftime('%Y-%m-%d')}.json").open("w") as f:
+    with fil.open("w", encoding="utf-8") as f:
         json.dump(df, f, indent=4)
-
-
-# TODO_2: Add write_segment_on_csv
-# TODO_2: Add write_segment_on_dated_json
-
-
-def write_segment_on_csv(
-    path_to_file: Path,
-    start: datetime.datetime,
-    end: datetime.datetime,
-    way_this_info_was_added: str = "manual",
-    **kwargs,
-):
-    assert isinstance(path_to_file, Path)
-    assert path_to_file.suffix == ".csv"
-    assert isinstance(way_this_info_was_added, str)
-    assert start < end
-    assert isinstance(start, datetime.datetime)
-    assert isinstance(end, datetime.datetime)
-    assert isinstance(way_this_info_was_added, str)
-
-    mode = "w" if not path_to_file.exists() else "a"
-    d = get_system_details(way_this_info_was_added)
-
-    with path_to_file.open(mode, newline="") as file:
-        # TODO_2: Add check if columns change from the header to what it's being saved
-
-        writer = csv.writer(file)
-        if mode == "w":
-            writer.writerow(["start", "end", *d, *kwargs.keys()])
-        writer.writerow([start, end, *d.values(), *[str(x) for x in kwargs.values()]])
