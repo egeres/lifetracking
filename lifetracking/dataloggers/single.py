@@ -6,26 +6,10 @@ from __future__ import annotations
 
 import csv
 import json
-import os
-import platform
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-
-def get_system_details(way_this_info_was_added: str) -> dict[str, str]:
-    """Gets the details of the system"""
-
-    assert isinstance(way_this_info_was_added, str)
-
-    return {
-        "os.login()": os.getlogin(),
-        "platform.system()": platform.system(),
-        "machine_name": str(os.getenv("COMPUTERNAME", os.getenv("HOSTNAME"))),
-        "way_this_info_was_added": way_this_info_was_added,
-        "name_of_the_script": sys.argv[0],
-        "datetime_of_annotation": datetime.now(timezone.utc).isoformat(),
-    }
+from lifetracking.dataloggers.systemdetails import get_system_details
 
 
 def write_single_on_csv(
@@ -66,7 +50,8 @@ def write_single_on_dated_json(
     now = datetime.now(timezone.utc) if now is None else now
 
     fil = path_to_dir / f"{now.strftime('%Y-%m-%d')}.json"
-    df: list[dict] = json.load(fil.open("r", encoding="utf-8")) if fil.exists() else []
+    txt = (fil.read_text(encoding="utf-8").strip() or "[]") if fil.exists() else "[]"
+    df: list[dict] = json.loads(txt)
     df.append(
         {"datetime": now.isoformat()}
         | get_system_details(way_this_info_was_added)
