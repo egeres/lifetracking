@@ -9,7 +9,7 @@ import json
 # from bisect import insort  # TODO_2: Python 3.11 because of key=
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, overload
-
+import warnings
 import numpy as np
 import pandas as pd
 from typing_extensions import Self
@@ -326,6 +326,12 @@ class Segments:
 
     def remove_if_shorter_than(self, seconds: float) -> Segments:
         """Removes segments that are shorter than a given time."""
+
+        if isinstance(seconds, float):
+            warnings.warn(
+                "You should use datetime.timedelta instead of float for seconds",
+                DeprecationWarning,
+            )
         return self.remove(lambda seg: seg.length_s() < seconds)
 
     def set_property(self, property_name: str, value: Any) -> Segments:

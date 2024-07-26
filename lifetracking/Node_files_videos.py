@@ -72,9 +72,9 @@ class Reader_videos(Node_segments, Node_0child):
             if file.suffix in {".mp4", ".mkv", ".avi", ".mov", ".webm"}
         ):
 
-            # os.stat(filename).st_ctime doesn't seem to be the right one but I have
-            # questions
-            date_creation = datetime.fromtimestamp(filename.stat().st_mtime)
+            # I'm confused about which is the "right one", ctime makes more sense?
+            # date_creation = datetime.fromtimestamp(filename.stat().st_mtime)
+            date_creation = datetime.fromtimestamp(filename.stat().st_ctime)
             if t is not None and date_creation not in t:
                 continue
 
@@ -85,6 +85,7 @@ class Reader_videos(Node_segments, Node_0child):
                 print(f"Error with {filename}: {e}")
                 continue
             if duration is None:
+                print(f"Error with {filename}: duration is None")
                 continue  # TODO This should be registered as faulty data
             to_return.append(
                 Seg(

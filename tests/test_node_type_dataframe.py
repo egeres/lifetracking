@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -250,12 +251,15 @@ def test_node_pddataframe_readjson_0():
 
 
 def test_node_pddataframe_readjson_1():
-    a = Reader_jsons("/This_file_does_not_exist.json", column_date_index="datetime")
-    o = a.run()
-    assert o is None
 
-    o = a.plot_countbyday()
-    assert o is None
+    with pytest.raises(FileNotFoundError):
+        Reader_jsons("/This_file_does_not_exist.json", column_date_index="datetime")
+
+    # a = Reader_jsons("/This_file_does_not_exist.json", column_date_index="datetime")
+    # o = a.run()
+    # assert o is None
+    # o = a.plot_countbyday()
+    # assert o is None
 
 
 def test_node_pddataframe_filecreation_0():

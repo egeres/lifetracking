@@ -24,7 +24,7 @@ class Node_dicts(Node[list[dict]]):
 
     def export_to_longcalendar(
         self,
-        t: Time_interval | None,
+        t: Time_interval | int | None,
         path_filename: str,
         hour_offset: float = 0.0,
         opacity: float = 1.0,
