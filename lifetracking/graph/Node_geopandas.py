@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING, Any, Callable
 
 import geopandas as gpd
 import pandas as pd
-from fiona.errors import DriverError
-from rich import print
 from shapely.geometry import Point, Polygon
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
@@ -95,7 +93,7 @@ class Reader_geodata(Node_0child, Node_geopandas):
         self,
         path_dir: Path | str,
         column_date_index: str | None = None,
-        format: str = ".csv",
+        file_format: str = ".csv",
     ) -> None:
         """For now this assumes that the files ends with a date like '_20240130'"""
 
@@ -105,11 +103,11 @@ class Reader_geodata(Node_0child, Node_geopandas):
         assert column_date_index is None or isinstance(column_date_index, str)
         assert path_dir.exists()
         assert path_dir.is_dir()
-        assert format in [".csv", ".geojson", ".gpx", ".kml"]
+        assert file_format in [".csv", ".geojson", ".gpx", ".kml"]
         super().__init__()
         self.path_dir = path_dir
         self.column_date_index = column_date_index
-        self.format = format
+        self.format = file_format
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -149,7 +147,7 @@ class Reader_geodata(Node_0child, Node_geopandas):
                     self.path_dir / f,
                     skiprows=range(1, total_lines_file - to_get_from_this_file + 1),
                 )
-                if not "lat" in df.columns or not "lon" in df.columns:
+                if "lat" not in df.columns or "lon" not in df.columns:
                     msg = (
                         "The GeoDataFrame does not have 'lat' and 'lon' "
                         "columns to create a 'geometry' column"
@@ -164,9 +162,8 @@ class Reader_geodata(Node_0child, Node_geopandas):
             to_return.append(df)
             rows_so_far += len(df)
 
-            if isinstance(t, Quantity):
-                if rows_so_far >= t.value:
-                    break
+            if isinstance(t, Quantity) and rows_so_far >= t.value:
+                break
 
         if len(to_return) == 0:
             return None
@@ -178,6 +175,7 @@ class Reader_geodata(Node_0child, Node_geopandas):
             )
             df = df.set_index(self.column_date_index)
 
+        assert isinstance(df, gpd.GeoDataFrame) or df is None
         return df
 
 
@@ -239,10 +237,7 @@ class Label_geopandas(Node_1child, Node_geopandas):
         # Ensure the input GeoDataFrame is using the correct CRS
         # n0 = n0.to_crs("EPSG:4326")
 
-        if n0.crs is None:
-            n0 = n0.set_crs("EPSG:4326")
-        else:
-            n0 = n0.to_crs("EPSG:4326")
+        n0 = n0.set_crs("EPSG:4326") if n0.crs is None else n0.to_crs("EPSG:4326")  # type: ignore
 
         def get_label(point):
             # First, check if the point is within any of the provided points

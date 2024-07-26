@@ -172,9 +172,9 @@ class Node_segments_operation(Node_1child, Node_segments):
     def _operation(
         self,
         n0: Segments | PrefectFuture[Segments, Sync],
-        t: Time_interval | None = None,
+        t: Time_interval | Quantity | None = None,
     ) -> Segments:
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, Quantity))
         o = self.fn(n0)
         assert isinstance(o, Segments), "The fn must return a Segments object!"
         return o

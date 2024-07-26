@@ -289,16 +289,18 @@ class Node_pandas_add(Node_pandas):
     def _operation(
         self,
         value: list[pd.DataFrame | PrefectFuture[pd.DataFrame, Sync]],
-        t: Time_interval | None = None,
     ) -> pd.DataFrame:
-        # TODO: t is not used
 
-        value = [x for x in value if x is not None]
+        value = [x for x in value if x is not None and len(x) > 0]
         if len(value) == 0:
             return pd.DataFrame()
 
-        # Return a concatenation of all the dataframes
-        return pd.concat(value)
+        # if all the index.names arent the same, we should reset the index
+        if len({x.index.names for x in value}) > 1:
+            for i in value:
+                i.index.name = "index"
+
+        return pd.concat(value).sort_index()
 
     def _make_prefect_graph(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
@@ -308,19 +310,13 @@ class Node_pandas_add(Node_pandas):
         n_out = [
             self._get_value_from_context_or_makegraph(n, t, context) for n in self.value
         ]
-        return prefect_task(name=self.__class__.__name__)(self._operation).submit(
-            n_out,
-            t=t,
-        )
+        return prefect_task(name=self.__class__.__name__)(self._operation).submit(n_out)
 
     def _run_sequential(
         self, t: Time_interval | None = None, context: dict[Node, Any] | None = None
     ) -> pd.DataFrame | None:
         n_out = [self._get_value_from_context_or_run(n, t, context) for n in self.value]
-        return self._operation(
-            n_out,
-            t=t,
-        )
+        return self._operation(n_out)
 
     def __add__(self, other: Node_pandas) -> Node_pandas:
         """This node keeps eating other nodes if you add them"""
@@ -460,7 +456,8 @@ class Node_pandas_remove_close(Node_pandas_operation):
             index_names = df.index.names
             df_reset = df.reset_index()
             df_reset = df_reset.drop_duplicates()
-            df = df_reset.set_index(index_names)
+            df_reset = df_reset.set_index(index_names)
+            df = df_reset
             del df_reset
 
             time_diff = df.index.to_series().diff()
@@ -550,7 +547,9 @@ class Reader_pandas(Node_0child, Node_pandas):
         if isinstance(path_dir_or_file, str):
             path_dir_or_file = Path(path_dir_or_file)
         assert isinstance(path_dir_or_file, Path)
-        assert path_dir_or_file.exists()
+        if not path_dir_or_file.exists():
+            msg = f"Path {path_dir_or_file} does not exist"
+            raise FileNotFoundError(msg)
         if (
             path_dir_or_file.is_file()
             and path_dir_or_file.suffix != self.file_extension

@@ -74,7 +74,7 @@ class Parse_activitywatch(Node_pandas, Node_0child):
         buckets = self._get_buckets(self.url_base)
         if buckets is None:
             return False
-        if self.bucket_id not in buckets:
+        if self.bucket_id not in buckets:  # noqa: SIM103
             return False
 
         # I guess so :[

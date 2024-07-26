@@ -61,7 +61,7 @@ class Parse_BLE_info(Node_1child, Node_segments):
             return True
         if column_name == "timestamp":
             return True
-        if pd.isna(df[column_name]).all():
+        if pd.isna(df[column_name]).all():  # noqa: SIM103
             return True
         return False
 
