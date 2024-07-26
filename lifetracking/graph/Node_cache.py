@@ -398,7 +398,7 @@ class Node_cache(Node[T]):
         elif all(isinstance(x, Time_interval) for x in to_compute):
             for t_sub in to_compute:
                 o = n0._run_sequential(t_sub, context)
-                if type(o) == type(to_return):
+                if isinstance(o, type(to_return)):
                     to_return += o  # type: ignore
         elif to_compute == "all":
             to_return = n0._run_sequential(t, context)
