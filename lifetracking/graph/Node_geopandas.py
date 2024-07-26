@@ -231,12 +231,18 @@ class Label_geopandas(Node_1child, Node_geopandas):
         ).hexdigest()
 
     def _operation(
-        self, n0, t: Time_interval | Quantity | None = None
+        self, n0: gpd.GeoDataFrame, t: Time_interval | Quantity | None = None
     ) -> gpd.GeoDataFrame:
         assert t is None or isinstance(t, (Time_interval, Quantity))
+        assert isinstance(n0, gpd.GeoDataFrame)
 
         # Ensure the input GeoDataFrame is using the correct CRS
-        n0 = n0.to_crs("EPSG:4326")
+        # n0 = n0.to_crs("EPSG:4326")
+
+        if n0.crs is None:
+            n0 = n0.set_crs("EPSG:4326")
+        else:
+            n0 = n0.to_crs("EPSG:4326")
 
         def get_label(point):
             # First, check if the point is within any of the provided points
@@ -255,4 +261,51 @@ class Label_geopandas(Node_1child, Node_geopandas):
 
         n0["label"] = n0.apply(get_label, axis=1)
 
+        return n0
+
+
+class Label_geopandas_singlepoint(Node_1child, Node_geopandas):
+    """Adds a column titled 'label' with either "in" or "out" depending on the distance
+    to a single point"""
+
+    def __init__(
+        self,
+        n0: Node_geopandas,
+        coords: tuple[float, float],
+        distance_meters: float = 50,
+    ) -> None:
+        assert isinstance(n0, Node_geopandas)
+        assert isinstance(coords, tuple)
+        assert len(coords) == 2
+        assert isinstance(distance_meters, (int, float))
+
+        super().__init__()
+        self.n0 = n0
+        self.coords = coords
+        self.distance_meters = float(distance_meters)
+
+    @property
+    def child(self) -> Node:
+        return self.n0
+
+    def _hashstr(self) -> str:
+        return hashlib.md5((super()._hashstr() + str(self.coords)).encode()).hexdigest()
+
+    def _operation(
+        self,
+        n0: gpd.GeoDataFrame,
+        t: Time_interval | Quantity | None = None,
+    ) -> gpd.GeoDataFrame:
+        assert t is None or isinstance(t, (Time_interval, Quantity))
+        assert isinstance(n0, gpd.GeoDataFrame)
+
+        n0["label"] = "out"
+        n0 = n0.to_crs(epsg=32631)
+        p = (
+            gpd.GeoSeries([Point(*self.coords)], crs="EPSG:4326")
+            .to_crs(epsg=32631)
+            .iloc[0]
+        )
+        n0["distance"] = n0.geometry.apply(lambda point: point.distance(p))
+        n0.loc[n0["distance"] <= self.distance_meters, "label"] = "in"
         return n0
