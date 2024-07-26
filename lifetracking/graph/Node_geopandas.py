@@ -90,12 +90,14 @@ class Node_geopandas_operation(Node_1child, Node_geopandas):
         return self.fn_operation(n0)
 
 
-class Reader_geojson(Node_0child, Node_geopandas):
+class Reader_geodata(Node_0child, Node_geopandas):
     def __init__(
         self,
         path_dir: Path | str,
         column_date_index: str | None = None,
+        format: str = ".csv",
     ) -> None:
+        """For now this assumes that the files ends with a date like '_20240130'"""
 
         if isinstance(path_dir, str):
             path_dir = Path(path_dir)
@@ -103,9 +105,11 @@ class Reader_geojson(Node_0child, Node_geopandas):
         assert column_date_index is None or isinstance(column_date_index, str)
         assert path_dir.exists()
         assert path_dir.is_dir()
+        assert format in [".csv", ".geojson", ".gpx", ".kml"]
         super().__init__()
         self.path_dir = path_dir
         self.column_date_index = column_date_index
+        self.format = format
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -113,61 +117,66 @@ class Reader_geojson(Node_0child, Node_geopandas):
         ).hexdigest()
 
     def _available(self) -> bool:
-        return self.path_dir.is_dir() and any(self.path_dir.glob("*.geojson"))
+        return self.path_dir.is_dir() and any(self.path_dir.glob(f"*{self.format}"))
 
     def _operation(
         self, t: Time_interval | Quantity | None = None
     ) -> gpd.GeoDataFrame | None:
         assert t is None or isinstance(t, (Time_interval, Quantity))
 
-        # TODO_2: Add support for both .geojson and .csv files
-        # datetime.strptime(filename.name.split("_")[-1], "%Y%m%d.geojson"): filename
-        # for filename in self.path_dir.glob("*.geojson")
         date_to_file = {
-            datetime.strptime(filename.name.split("_")[-1], "%Y%m%d.csv"): filename
-            for filename in self.path_dir.glob("*.csv")
+            datetime.strptime(i.name.split("_")[-1], f"%Y%m%d{self.format}"): i
+            for i in self.path_dir.glob(f"*{self.format}")
         }
-        total_rows_so_far = 0
-        to_return: list = []
-        for date, filename in sorted(date_to_file.items(), reverse=True):
-            if isinstance(t, Time_interval):
-                date = date.replace(tzinfo=t.start.tzinfo)
-                if not t.start <= date <= t.end:
-                    continue
-            try:
-                if isinstance(t, Quantity) and filename.suffix == ".csv":
-                    total_lines = count_lines(filename) - 1
-                    if total_lines > t.value:
-                        df = pd.read_csv(
-                            self.path_dir / filename,
-                            skiprows=range(1, total_lines - t.value + 1),
-                        )
-                        gdf = gpd.GeoDataFrame(df)
-                        to_return.append(gdf)
-                        break
-                contents = gpd.read_file(self.path_dir / filename)
-                total_rows_so_far += len(contents)
-                to_return.append(contents)
-                if isinstance(t, Quantity) and total_rows_so_far >= t.value:
+
+        if isinstance(t, Time_interval):
+            date_to_file = {
+                date: file
+                for date, file in date_to_file.items()
+                if t.start <= date <= t.end
+            }
+
+        to_return = []
+        rows_so_far = 0
+        for _, f in sorted(date_to_file.items(), reverse=True):
+
+            if f.suffix == ".csv":
+                total_lines_file = count_lines(f) - 1
+                to_get_from_this_file = total_lines_file
+                if isinstance(t, Quantity):
+                    to_get_from_this_file = min(t.value - rows_so_far, total_lines_file)
+                df = pd.read_csv(
+                    self.path_dir / f,
+                    skiprows=range(1, total_lines_file - to_get_from_this_file + 1),
+                )
+                if not "lat" in df.columns or not "lon" in df.columns:
+                    msg = (
+                        "The GeoDataFrame does not have 'lat' and 'lon' "
+                        "columns to create a 'geometry' column"
+                    )
+                    raise ValueError(msg)
+                df["geom"] = df.apply(lambda r: Point(r["lon"], r["lat"]), axis=1)
+                df = gpd.GeoDataFrame(df, geometry="geom")
+                df.set_crs(epsg=4326, inplace=True)
+            else:
+                df = gpd.read_file(self.path_dir / f)
+
+            to_return.append(df)
+            rows_so_far += len(df)
+
+            if isinstance(t, Quantity):
+                if rows_so_far >= t.value:
                     break
-            except DriverError:
-                print(f"[red]Error reading {filename}")
 
         if len(to_return) == 0:
             return None
         df = to_return[0] if len(to_return) == 1 else pd.concat(to_return, axis=0)
 
         if self.column_date_index is not None:
-            # Parse to datetime
             df[self.column_date_index] = pd.to_datetime(
-                df[self.column_date_index],
-                format="mixed",
+                df[self.column_date_index], format="mixed"
             )
-            # Set as index
             df = df.set_index(self.column_date_index)
-
-        if isinstance(t, Quantity):
-            df = df.tail(t.value)
 
         return df
 
