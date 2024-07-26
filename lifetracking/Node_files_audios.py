@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydub.utils import mediainfo
 from rich import print
@@ -10,8 +11,10 @@ from rich import print
 from lifetracking.datatypes.Segments import Seg, Segments
 from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_segments import Node_segments
-from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import cache_singleargument
+
+if TYPE_CHECKING:
+    from lifetracking.graph.Time_interval import Time_interval
 
 
 class Reader_audios(Node_segments, Node_0child):

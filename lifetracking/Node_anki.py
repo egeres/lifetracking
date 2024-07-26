@@ -5,6 +5,7 @@ import hashlib
 import multiprocessing
 import warnings
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import ankipandas
 import pandas as pd
@@ -12,7 +13,9 @@ from pandas.errors import DatabaseError
 
 from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_pandas import Node_pandas
-from lifetracking.graph.Time_interval import Time_interval
+
+if TYPE_CHECKING:
+    from lifetracking.graph.Time_interval import Time_interval
 
 
 class Parse_anki_study(Node_pandas, Node_0child):

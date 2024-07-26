@@ -98,19 +98,17 @@ class Parse_BLE_info(Node_1child, Node_segments):
                     if not in_segment:
                         in_segment = True
                         start_time = n
-                else:
-                    if in_segment:
-                        assert start_time is not None
-                        end_time = n
-                        if (
-                            segments
-                            and (start_time - segments[-1].end)
-                            <= time_to_wait_before_next
-                        ):
-                            segments[-1].end = end_time
-                        else:
-                            segments.append(Seg(start_time, end_time, {"name": name}))
-                        in_segment = False
+                elif in_segment:
+                    assert start_time is not None
+                    end_time = n
+                    if (
+                        segments
+                        and (start_time - segments[-1].end) <= time_to_wait_before_next
+                    ):
+                        segments[-1].end = end_time
+                    else:
+                        segments.append(Seg(start_time, end_time, {"name": name}))
+                    in_segment = False
 
             to_return.extend(segments)
 

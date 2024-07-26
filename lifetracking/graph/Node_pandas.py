@@ -498,10 +498,9 @@ class Node_pandas_remove_close(Node_pandas_operation):
                     if mask[i]:
                         rows_to_keep.append(i)
                         current_row = None
-                else:
-                    if all(mask.loc[i]):
-                        rows_to_keep.append(i)
-                        current_row = None
+                elif all(mask.loc[i]):
+                    rows_to_keep.append(i)
+                    current_row = None
             df = df.loc[rows_to_keep]
 
         elif keep == "last":

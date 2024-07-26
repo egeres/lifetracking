@@ -8,19 +8,21 @@ import pickle
 import tempfile
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import pandas as pd
 import plotly.graph_objects as go
 from pandas.core.resample import DatetimeIndexResampler
 
-from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.plots.graphs import (
     graph_annotate_annotations,
     graph_annotate_title,
     graph_annotate_today,
     graph_udate_layout,
 )
+
+if TYPE_CHECKING:
+    from lifetracking.graph.Time_interval import Time_interval
 
 
 def _lc_export_prepare_dir(path_filename: Path) -> None:

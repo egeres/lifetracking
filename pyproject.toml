@@ -81,6 +81,12 @@ select = [
     # "PGH", #  pygrep-hooks
     # "PL", #  Pylint
 
+    "FLY",
+    "TCH", # Type checking block
+    "INT", # https://pypi.org/project/flake8-gettext/
+    "PLC", # https://docs.astral.sh/ruff/rules/#convention-c
+    # "PLW",
+
     # "D",
     # "D4",
     # "D107", # Make a branch 'docs' and add inits at elast

@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from rich import print
 
 from lifetracking.graph.Node import Node_0child
 from lifetracking.graph.Node_pandas import Node_pandas
-from lifetracking.graph.Time_interval import Time_interval
+
+if TYPE_CHECKING:
+    from lifetracking.graph.Time_interval import Time_interval
 
 
 # TEST

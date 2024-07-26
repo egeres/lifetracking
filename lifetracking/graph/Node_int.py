@@ -10,11 +10,12 @@ import time
 from typing import TYPE_CHECKING, Any, Callable
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
-from lifetracking.graph.Time_interval import Time_interval
 
 if TYPE_CHECKING:
     from prefect.futures import PrefectFuture
     from prefect.utilities.asyncutils import Sync
+
+    from lifetracking.graph.Time_interval import Time_interval
 
 
 class Node_int(Node[int]):

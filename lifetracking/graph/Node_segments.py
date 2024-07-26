@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.datatypes.Segments import Segments
@@ -21,6 +20,7 @@ from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import hash_method
 
 if TYPE_CHECKING:
+    import plotly.graph_objects as go
     from prefect.futures import PrefectFuture
     from prefect.utilities.asyncutils import Sync
 

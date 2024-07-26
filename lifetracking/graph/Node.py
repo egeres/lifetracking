@@ -6,7 +6,6 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from functools import reduce
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Generic, Iterable, TypeVar
 
 import pandas as pd
@@ -18,6 +17,8 @@ from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.graph.warnings import DataWarning
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from prefect.futures import PrefectFuture
     from prefect.utilities.asyncutils import Sync
 
