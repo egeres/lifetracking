@@ -5,7 +5,6 @@ import datetime
 import hashlib
 import inspect
 import json
-import warnings
 from datetime import timedelta
 
 # from bisect import insort  # TODO_2: Python 3.11 because of key=
@@ -326,16 +325,11 @@ class Segments:
         """Removes segments that satisfy a condition."""
         return Segments([seg for seg in self.content if not condition(seg)])
 
-    def remove_if_shorter_than(self, seconds: float) -> Segments:
+    def remove_if_shorter_than(self, interval: timedelta) -> Segments:
         """Removes segments that are shorter than a given time."""
 
-        if isinstance(seconds, float):
-            warnings.warn(
-                "You should use timedelta instead of float for seconds",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        return self.remove(lambda seg: seg.length_s() < seconds)
+        assert isinstance(interval, timedelta)
+        return self.remove(lambda seg: seg.length() < interval)
 
     def set_property(self, property_name: str, value: Any) -> Segments:
         """Sets a property of all the children Seg"""

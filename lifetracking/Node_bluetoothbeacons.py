@@ -18,7 +18,7 @@ from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 
 if TYPE_CHECKING:
-    from prefect.futures import PrefectFuture  # TODO_2: Move to a file with aliases
+    from prefect.futures import PrefectFuture  # TODO_2: Move to a file with aliases?
     from prefect.utilities.asyncutils import Sync
 
 

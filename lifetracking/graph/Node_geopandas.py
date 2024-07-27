@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 import geopandas as gpd
 import pandas as pd
+from rich import print
 from shapely.geometry import Point, Polygon
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
@@ -143,10 +144,14 @@ class Reader_geodata(Node_0child, Node_geopandas):
                 to_get_from_this_file = total_lines_file
                 if isinstance(t, Quantity):
                     to_get_from_this_file = min(t.value - rows_so_far, total_lines_file)
-                df = pd.read_csv(
-                    self.path_dir / f,
-                    skiprows=range(1, total_lines_file - to_get_from_this_file + 1),
-                )
+                try:
+                    df = pd.read_csv(
+                        self.path_dir / f,
+                        skiprows=range(1, total_lines_file - to_get_from_this_file + 1),
+                    )
+                except pd.errors.ParserError:
+                    print(f"[red]Error reading {f}")
+                    continue
                 if "lat" not in df.columns or "lon" not in df.columns:
                     msg = (
                         "The GeoDataFrame does not have 'lat' and 'lon' "
