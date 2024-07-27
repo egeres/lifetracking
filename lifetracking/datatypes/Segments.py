@@ -6,6 +6,7 @@ import hashlib
 import inspect
 import json
 import warnings
+from datetime import timedelta
 
 # from bisect import insort  # TODO_2: Python 3.11 because of key=
 from pathlib import Path
@@ -262,7 +263,7 @@ class Segments:
         # Export itself
         to_export = []
         for seg in self.content:
-            seg += datetime.timedelta(hours=hour_offset)
+            seg += timedelta(hours=hour_offset)
             splitted_segs = seg.split_into_segments_per_day()
             for s in splitted_segs:
                 to_export.append(
@@ -285,7 +286,7 @@ class Segments:
     @staticmethod
     def merge(
         segs: Segments,
-        time_to_mergue: datetime.timedelta,
+        time_to_mergue: timedelta,
         custom_rule: None | Callable[[Seg, Seg], bool] = None,
     ) -> Segments:
         """Merges segments that are close to each other in time. So if we set
@@ -293,7 +294,7 @@ class Segments:
         seconds apart, they will be merged."""
 
         assert isinstance(segs, Segments)
-        assert isinstance(time_to_mergue, datetime.timedelta)
+        assert isinstance(time_to_mergue, timedelta)
 
         if len(segs) < 2:
             return segs
@@ -330,7 +331,7 @@ class Segments:
 
         if isinstance(seconds, float):
             warnings.warn(
-                "You should use datetime.timedelta instead of float for seconds",
+                "You should use timedelta instead of float for seconds",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -493,7 +494,7 @@ class Segments:
         assert isinstance(hours, (float, int))
 
         for seg in self.content:
-            seg.start += datetime.timedelta(hours=hours)
-            seg.end += datetime.timedelta(hours=hours)
+            seg.start += timedelta(hours=hours)
+            seg.end += timedelta(hours=hours)
 
         return self

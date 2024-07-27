@@ -1,5 +1,6 @@
 import copy
 import datetime
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -71,7 +72,7 @@ def test_seg_add():
     )
 
     # Add 1 day
-    b = a + datetime.timedelta(days=1)
+    b = a + timedelta(days=1)
     assert b.start == datetime.datetime(2021, 1, 2)
     assert b.end == datetime.datetime(2021, 1, 3)
 
@@ -95,7 +96,7 @@ def test_seg_sub():
     assert a != {"A": "🐷"}
 
     # Remove 1 day
-    b = a - datetime.timedelta(days=1)
+    b = a - timedelta(days=1)
     assert b.start == datetime.datetime(2020, 12, 31)
     assert b.end == datetime.datetime(2021, 1, 1)
 

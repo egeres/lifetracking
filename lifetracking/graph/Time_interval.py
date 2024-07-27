@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import warnings
+from datetime import timedelta
 from enum import Enum, auto
 from typing import Iterable
 
@@ -35,12 +36,12 @@ class Time_interval:
         assert isinstance(other, Time_interval)
         return self.start == other.start and self.end == other.end
 
-    def __add__(self, other: datetime.timedelta) -> Time_interval:
-        assert isinstance(other, datetime.timedelta)
+    def __add__(self, other: timedelta) -> Time_interval:
+        assert isinstance(other, timedelta)
         return Time_interval(self.start + other, self.end + other)
 
-    def __sub__(self, other: datetime.timedelta) -> Time_interval:
-        assert isinstance(other, datetime.timedelta)
+    def __sub__(self, other: timedelta) -> Time_interval:
+        assert isinstance(other, timedelta)
         return Time_interval(self.start - other, self.end - other)
 
     def __contains__(self, another: datetime.datetime | Time_interval | Seg) -> bool:
@@ -214,7 +215,7 @@ class Time_interval:
                     current.replace(hour=0, minute=0, second=0, microsecond=0),
                     current.replace(hour=23, minute=59, second=59, microsecond=999999),
                 )
-                current += datetime.timedelta(days=1)
+                current += timedelta(days=1)
 
         elif resolution == Time_resolution.HOUR:
             while current <= self.end:
@@ -223,7 +224,7 @@ class Time_interval:
                     current.replace(minute=0, second=0, microsecond=0),
                     current.replace(minute=59, second=59, microsecond=999999),
                 )
-                current += datetime.timedelta(hours=1)
+                current += timedelta(hours=1)
 
         else:
             msg = f"Unsupported time resolution: {resolution}"  # pragma: no cover
@@ -244,7 +245,7 @@ class Time_interval:
         return (self.end - self.start).total_seconds() / 86400
 
     @property
-    def duration(self) -> datetime.timedelta:
+    def duration(self) -> timedelta:
         return self.end - self.start
 
     @staticmethod
@@ -252,7 +253,7 @@ class Time_interval:
         if now is None:
             now = datetime.datetime.now()
         return Time_interval(
-            start=(datetime.datetime.now() - datetime.timedelta(days=n)).replace(
+            start=(datetime.datetime.now() - timedelta(days=n)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             ),
             end=datetime.datetime.now().replace(
@@ -269,10 +270,10 @@ class Time_interval:
     @staticmethod
     def tomorrow():
         return Time_interval(
-            start=(datetime.datetime.now() + datetime.timedelta(days=1)).replace(
+            start=(datetime.datetime.now() + timedelta(days=1)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             ),
-            end=(datetime.datetime.now() + datetime.timedelta(days=1)).replace(
+            end=(datetime.datetime.now() + timedelta(days=1)).replace(
                 hour=23, minute=59, second=59, microsecond=999999
             ),
         )
@@ -280,10 +281,10 @@ class Time_interval:
     @staticmethod
     def yesterday():
         return Time_interval(
-            start=(datetime.datetime.now() - datetime.timedelta(days=1)).replace(
+            start=(datetime.datetime.now() - timedelta(days=1)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             ),
-            end=(datetime.datetime.now() - datetime.timedelta(days=1)).replace(
+            end=(datetime.datetime.now() - timedelta(days=1)).replace(
                 hour=23, minute=59, second=59, microsecond=999999
             ),
         )
@@ -324,7 +325,7 @@ class Time_interval:
             start=datetime.datetime.now().replace(
                 hour=0, minute=0, second=0, microsecond=0
             ),
-            end=(datetime.datetime.now() + datetime.timedelta(days=n)).replace(
+            end=(datetime.datetime.now() + timedelta(days=n)).replace(
                 hour=23, minute=59, second=59, microsecond=999999
             ),
         )

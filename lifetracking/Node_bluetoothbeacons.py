@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -83,7 +84,7 @@ class Parse_BLE_info(Node_1child, Node_segments):
 
             # Pre-data
             name, min_distance = self.config.config[column_name]
-            time_to_wait_before_next = datetime.timedelta(minutes=3.0)
+            time_to_wait_before_next = timedelta(minutes=3.0)
 
             # Processing itself
             segments: list[Seg] = []

@@ -408,14 +408,14 @@ class Node_pandas_remove_close(Node_pandas_operation):
     def __init__(
         self,
         n0: Node_pandas,
-        max_time: datetime.timedelta,
+        max_time: timedelta,
         column_name: str | None = None,
         keep: str = "first",
     ):
         """Max time is assumed to be in minutes if an int or float is given"""
 
         assert isinstance(n0, Node_pandas)
-        assert isinstance(max_time, datetime.timedelta)
+        assert isinstance(max_time, timedelta)
         assert column_name is None or isinstance(column_name, str)
         assert keep in ["first", "last"], "keep must be 'first' or 'last'"
 
@@ -432,7 +432,7 @@ class Node_pandas_remove_close(Node_pandas_operation):
     @staticmethod
     def _remove_dupe_rows_df(
         df: pd.DataFrame,
-        max_time: datetime.timedelta,
+        max_time: timedelta,
         column_name: str | None = None,
         keep: str = "first",
     ):
@@ -444,7 +444,7 @@ class Node_pandas_remove_close(Node_pandas_operation):
         assert isinstance(df, pd.DataFrame)
         # assert isinstance(df.index, pd.DatetimeIndex)
         assert isinstance(column_name, str) or column_name is None
-        assert isinstance(max_time, datetime.timedelta)
+        assert isinstance(max_time, timedelta)
 
         if column_name is None and isinstance(df.index, pd.DatetimeIndex):
             # Deduplicate based on index

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -77,7 +78,7 @@ class Reader_audios(Node_segments, Node_0child):
             to_return.append(
                 Seg(
                     start=date_creation,
-                    end=date_creation + datetime.timedelta(seconds=duration_in_s),
+                    end=date_creation + timedelta(seconds=duration_in_s),
                     value={"duration_in_s": duration_in_s, "filename": filename},
                 )
             )

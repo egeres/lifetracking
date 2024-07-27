@@ -1,6 +1,7 @@
 import datetime
 import tempfile
 import time
+from datetime import timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -90,9 +91,9 @@ def test_export_pddataframe_to_lc_single():
     df = pd.DataFrame(
         [
             # A
-            {"time": d + datetime.timedelta(minutes=1), "label": "A"},
-            {"time": d + datetime.timedelta(minutes=2), "label": "A"},
-            {"time": d + datetime.timedelta(minutes=3), "label": "A"},
+            {"time": d + timedelta(minutes=1), "label": "A"},
+            {"time": d + timedelta(minutes=2), "label": "A"},
+            {"time": d + timedelta(minutes=3), "label": "A"},
         ]
     )
     df = df.set_index("time")
@@ -101,7 +102,7 @@ def test_export_pddataframe_to_lc_single():
         export_pddataframe_to_lc_single(
             df,
             Path(path_dir) / "out.json",
-            time_offset=datetime.timedelta(minutes=30),
+            time_offset=timedelta(minutes=30),
             color="#F00",
             opacity=0.5,
         )

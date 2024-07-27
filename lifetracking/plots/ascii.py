@@ -111,7 +111,7 @@ def draw_time_segment(
     for y in range(int(y_s * h), int(y_e * h)):
         for x_ in range(-(column_width // 2), (column_width // 2) + 1):
             t = "█"
-            if color is None or color == "":
+            if color is not None and color != "":
                 t = f"[{color}]{t}[/]"
             texts[y][x + x_] = t
 

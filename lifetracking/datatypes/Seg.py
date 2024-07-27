@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import datetime
 import hashlib
+from datetime import timedelta
 from typing import Any
 
 
@@ -55,16 +56,16 @@ class Seg:
     def __lt__(self, other: Seg) -> bool:
         return self.start < other.start
 
-    def __add__(self, other: datetime.timedelta) -> Seg:
-        if not isinstance(other, datetime.timedelta):
+    def __add__(self, other: timedelta) -> Seg:
+        if not isinstance(other, timedelta):
             msg = (
                 f"unsupported operand type(s) for +: '{type(self)}' and '{type(other)}'"
             )
             raise TypeError(msg)
         return Seg(self.start + other, self.end + other, self.value)
 
-    def __sub__(self, other: datetime.timedelta) -> Seg:
-        if not isinstance(other, datetime.timedelta):
+    def __sub__(self, other: timedelta) -> Seg:
+        if not isinstance(other, timedelta):
             msg = (
                 f"unsupported operand type(s) for -: '{type(self)}' and '{type(other)}'"
             )
@@ -110,7 +111,7 @@ class Seg:
                 temp_start.month,
                 temp_start.day,
                 tzinfo=self.end.tzinfo,
-            ) + datetime.timedelta(days=1)
+            ) + timedelta(days=1)
 
             splits.append(
                 Seg(
@@ -118,7 +119,7 @@ class Seg:
                     (
                         self.end
                         if next_day > self.end
-                        else next_day - datetime.timedelta(microseconds=1)
+                        else next_day - timedelta(microseconds=1)
                     ),
                     self.value,
                 )
@@ -139,3 +140,6 @@ class Seg:
 
     def length_s(self) -> float:
         return (self.end - self.start).total_seconds()
+
+    def length(self) -> timedelta:
+        return self.end - self.start
