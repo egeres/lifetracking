@@ -1,7 +1,6 @@
-import datetime
 import json
 import tempfile
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -47,7 +46,7 @@ def test_node_pddataframe_filter():
 
 
 def test_node_pddataframe_removeifclose_0():
-    t = datetime.datetime.now()
+    t = datetime.now()
     df = pd.DataFrame(
         [
             {"a": "a", "t": t + timedelta(minutes=0)},
@@ -68,7 +67,7 @@ def test_node_pddataframe_removeifclose_0():
 def test_node_pddataframe_removeifclose_1():
     """Like befote, but the index is not specified beforehand"""
 
-    t = datetime.datetime.now()
+    t = datetime.now()
     df = pd.DataFrame(
         [
             {"a": "a", "t": t + timedelta(minutes=0)},
@@ -85,7 +84,7 @@ def test_node_pddataframe_removeifclose_1():
 
 
 def test_node_pddataframe_removeifclose_first():
-    t = datetime.datetime.now()
+    t = datetime.now()
     df = pd.DataFrame(
         [
             {"a": "a", "datetime": t + timedelta(minutes=0)},
@@ -108,7 +107,7 @@ def test_node_pddataframe_removeifclose_first():
 
 
 def test_node_pddataframe_removeifclose_last():
-    t = datetime.datetime.now()
+    t = datetime.now()
     df = pd.DataFrame(
         [
             {"a": "a", "datetime": t + timedelta(minutes=0)},
@@ -148,13 +147,13 @@ def test_node_pddataframe_readdata_0(file_format: str):
             df.to_csv(file_path, index=False)
             reader = Reader_csvs(
                 file_path,
-                lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
+                lambda x: datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         elif file_format == "json":
             df.to_json(file_path)
             reader = Reader_jsons(
                 file_path,
-                lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
+                lambda x: datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         else:
             raise NotImplementedError
@@ -186,14 +185,14 @@ def test_node_pddataframe_readdata_1(file_format: str):
             df_b.to_csv(tmpdir / f"test_2023_01_01.{file_format}", index=False)
             reader = Reader_csvs(
                 tmpdir,
-                lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
+                lambda x: datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         elif file_format == "json":
             df_a.to_json(tmpdir / f"test_1000_01_01.{file_format}")
             df_b.to_json(tmpdir / f"test_2023_01_01.{file_format}")
             reader = Reader_jsons(
                 tmpdir,
-                lambda x: datetime.datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
+                lambda x: datetime.strptime(x, f"test_%Y_%m_%d.{file_format}"),
             )
         else:
             raise NotImplementedError
@@ -227,7 +226,7 @@ def test_node_pddataframe_add_0():
 
 def test_node_pddataframe_readjson_0():
     with tempfile.TemporaryDirectory() as tmpdirname:
-        t = datetime.datetime.now()
+        t = datetime.now()
         b = [
             {"datetime": t + timedelta(minutes=0)},
             {"datetime": t + timedelta(minutes=1)},

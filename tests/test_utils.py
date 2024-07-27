@@ -1,7 +1,6 @@
-import datetime
 import tempfile
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -87,7 +86,7 @@ def test_cache_singleargument():
 
 def test_export_pddataframe_to_lc_single():
     # Data setup
-    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    d = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     df = pd.DataFrame(
         [
             # A

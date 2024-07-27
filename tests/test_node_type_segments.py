@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import datetime
 import json
 import tempfile
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -127,7 +126,7 @@ def test_node_segments_add_multiple():
 
 def test_node_segments_segmentize():
     # Data setup
-    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    d = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     df = pd.DataFrame(
         [
             # A
@@ -183,7 +182,7 @@ def test_node_segments_segmentize():
 
 def test_node_segments_segmentize_timetosplitinmins():
     # Data setup
-    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    d = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     df = pd.DataFrame(
         [
             # A
@@ -213,7 +212,7 @@ def test_node_segments_segmentize_timetosplitinmins():
 
 def test_node_segments_segmentize_mincount():
     # Data setup
-    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    d = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     df = pd.DataFrame(
         [
             # A
@@ -246,7 +245,7 @@ def test_node_segments_segmentize_mincount():
 
 def test_node_segments_segmentize_byduration_0():
     # Data
-    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    d = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     df = pd.DataFrame(
         [
             {"time": d + timedelta(minutes=10), "duration": 5},
@@ -263,7 +262,7 @@ def test_node_segments_segmentize_byduration_0():
 
 def test_node_segments_segmentize_byduration_1():
     """Like the previous one, but tests segment_metadata"""
-    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    d = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     df = pd.DataFrame(
         [
             {"time": d + timedelta(minutes=10), "duration": 5, "a": "A"},
@@ -316,7 +315,7 @@ def test_node_segments_segmentize_byduration_1():
 
 def test_node_segments_segmentize_by_density_0():
     # Data setup
-    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    d = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     df = pd.DataFrame(
         [
             # A

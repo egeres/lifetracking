@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import datetime
 import hashlib
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -67,7 +66,7 @@ class Reader_audios(Node_segments, Node_0child):
         to_return = []
         for filename in self._get_plausible_files(self.path_dir):
             # Date filtering
-            date_creation = datetime.datetime.fromtimestamp(filename.stat().st_ctime)
+            date_creation = datetime.fromtimestamp(filename.stat().st_ctime)
             if t is not None and date_creation not in t:
                 continue
 

@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import datetime
 import hashlib
 import json
 import tempfile
 import warnings
 import zipfile
 from abc import abstractmethod
-from datetime import timedelta
+from datetime import datetime, timedelta, tzinfo
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -533,9 +532,9 @@ class Reader_pandas(Node_0child, Node_pandas):
     def __init__(
         self,
         path_dir_or_file: str | Path,
-        dated_name: Callable[[str], datetime.datetime] | None = None,
+        dated_name: Callable[[str], datetime] | None = None,
         column_date_index: str | Callable | None = None,
-        time_zone: None | datetime.tzinfo = None,
+        time_zone: None | tzinfo = None,
     ) -> None:
         # We parse info that should be specified by the subclasses
         self.file_extension = self._gen_file_extension()
@@ -603,7 +602,7 @@ class Reader_pandas(Node_0child, Node_pandas):
         self,
         t: Time_interval | None,
         filename: Path,
-        dated_name: Callable[[str], datetime.datetime],
+        dated_name: Callable[[str], datetime],
     ) -> bool:
         assert t is None or isinstance(t, Time_interval)
         assert isinstance(filename, Path)
@@ -611,7 +610,7 @@ class Reader_pandas(Node_0child, Node_pandas):
         if t is not None:
             try:
                 filename_date = dated_name(filename.name)
-                if isinstance(self.time_zone, datetime.tzinfo):
+                if isinstance(self.time_zone, tzinfo):
                     filename_date = filename_date.astimezone(self.time_zone)
                     t.start = t.start.astimezone(self.time_zone)
                     t.end = t.end.astimezone(self.time_zone)
@@ -819,7 +818,7 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
     def __init__(
         self,
         path_dir: str | Path,
-        dated_name: Callable[[Path], datetime.datetime],
+        dated_name: Callable[[Path], datetime],
         criteria_to_select_file: Callable[[str], bool],
         column_date_index: str | None | Callable = None,
     ) -> None:
@@ -874,7 +873,7 @@ class Reader_csvs_datedsubfolders(Reader_csvs):
                 continue
 
             if isinstance(t, Time_interval):
-                # a = datetime.datetime.strptime(dirname.name, "%Y-%m-%d")
+                # a = datetime.strptime(dirname.name, "%Y-%m-%d")
                 a = self.dated_name(dirname.name)
                 if t is not None and t.start.tzinfo is not None:
                     a = a.replace(tzinfo=t.start.tzinfo)
@@ -1050,7 +1049,7 @@ class Reader_telegramchat(Node_0child, Node_pandas):
 
     def get_most_recent_personal_chats(self) -> Path | None:
         global_filename = None
-        global_last_update = datetime.datetime.min
+        global_last_update = datetime.min
         for filename in self._get_datajsons(self.path_to_data):
             with filename.open(encoding="utf-8") as f:
                 try:
@@ -1132,9 +1131,7 @@ class Reader_openAI_history(Node_0child, Node_pandas):
                     "status": v["message"]["status"],
                     "content": v["message"]["content"],
                     "author": v["message"]["author"]["role"],
-                    "date": datetime.datetime.utcfromtimestamp(
-                        v["message"]["create_time"]
-                    ),
+                    "date": datetime.utcfromtimestamp(v["message"]["create_time"]),
                 }
             )
         return messages
@@ -1150,7 +1147,7 @@ class Reader_openAI_history(Node_0child, Node_pandas):
             to_return = []
             for i in data:
                 # TODO_3: Fix UTC stuff
-                time_creation = datetime.datetime.utcfromtimestamp(i["create_time"])
+                time_creation = datetime.utcfromtimestamp(i["create_time"])
                 if t is not None and time_creation not in t:
                     continue
                 to_return.extend(self._parse_openai_conversation(i))

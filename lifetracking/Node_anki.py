@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import datetime
 import hashlib
 import multiprocessing
 import warnings
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -81,7 +81,7 @@ class Parse_anki_study(Node_pandas, Node_0child):
         # Date parsing
         revisions["timestamp"] = revisions.index / 1e3
         revisions["timestamp"] = revisions["timestamp"].apply(
-            lambda x: datetime.datetime.fromtimestamp(x)
+            lambda x: datetime.fromtimestamp(x)
         )
 
         # Set index
@@ -134,7 +134,7 @@ class Parse_anki_creation(Parse_anki_study):
         # Date parsing
         cards["timestamp"] = cards.index / 1e3
         cards["timestamp"] = cards["timestamp"].apply(
-            lambda x: datetime.datetime.fromtimestamp(x)
+            lambda x: datetime.fromtimestamp(x)
         )
 
         cards["timestamp"] = pd.to_datetime(cards["timestamp"])

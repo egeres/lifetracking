@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import copy
-import datetime
 import hashlib
 import inspect
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 # from bisect import insort  # TODO_2: Python 3.11 because of key=
 from pathlib import Path
@@ -121,12 +120,12 @@ class Segments:
     def __len__(self) -> int:
         return len(self.content)
 
-    def min(self) -> datetime.datetime:
+    def min(self) -> datetime:
         # TODO_3: Refactor, self.content is a pandas dataframe or an index of
         # datetimes instead of a list we have to iterate
         return min(seg.start for seg in self.content)
 
-    def max(self) -> datetime.datetime:
+    def max(self) -> datetime:
         # TODO_3: Refactor, self.content is a pandas dataframe or an index of
         # datetimes instead of a list we have to iterate
         return max(seg.end for seg in self.content)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import datetime
 import hashlib
+from datetime import datetime
 from operator import itemgetter
 
 import pandas as pd
@@ -87,7 +87,7 @@ class Parse_activitywatch(Node_pandas, Node_0child):
         buckets_list = [v for k, v in buckets.items() if k.startswith(name)]
         for item in buckets_list:
             if "last_updated" in item:
-                item["last_updated"] = datetime.datetime.fromisoformat(
+                item["last_updated"] = datetime.fromisoformat(
                     item["last_updated"].replace("Z", "+00:00")
                 )
         buckets_list.sort(key=itemgetter("last_updated"), reverse=True)

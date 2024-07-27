@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import datetime
 import hashlib
 import json
+from datetime import datetime, tzinfo
 from pathlib import Path
 from typing import Any, Callable, Literal
 
@@ -44,9 +44,9 @@ class Reader_dicts(Node_0child, Node_dicts):
     def __init__(
         self,
         path_dir: str | Path,
-        dated_name: Callable[[str], datetime.datetime] | None = None,
+        dated_name: Callable[[str], datetime] | None = None,
         column_date_index: str | Callable | None = None,
-        time_zone: None | datetime.tzinfo = None,
+        time_zone: None | tzinfo = None,
     ) -> None:
         super().__init__()
 
@@ -59,7 +59,7 @@ class Reader_dicts(Node_0child, Node_dicts):
             or isinstance(column_date_index, str)
             or callable(column_date_index)
         )
-        assert time_zone is None or isinstance(time_zone, datetime.tzinfo)
+        assert time_zone is None or isinstance(time_zone, tzinfo)
 
         self.path_dir = path_dir
         self.dated_name = dated_name

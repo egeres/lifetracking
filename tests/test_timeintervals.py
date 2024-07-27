@@ -1,6 +1,5 @@
 import copy
-import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from hypothesis import given, settings
@@ -14,8 +13,8 @@ def s(a: int, b: int) -> Time_interval:
     assert a < b
     """To make syntax smaller"""
     return Time_interval(
-        datetime.datetime(2000, 1, a),
-        datetime.datetime(2000, 1, b),
+        datetime(2000, 1, a),
+        datetime(2000, 1, b),
     )
 
 
@@ -33,7 +32,7 @@ def test_overlaps():
 
 def test_contains():
     # Is IIIIN
-    a = datetime.datetime.now() - timedelta(days=1)
+    a = datetime.now() - timedelta(days=1)
     assert a in Time_interval.last_week()
 
     # Is NOT in... 🥺
@@ -43,17 +42,17 @@ def test_contains():
 
 def test_timeinterval_truncate():
     a = Time_interval(
-        datetime.datetime(2021, 1, 1, 12, 5, 23),
-        datetime.datetime(2021, 1, 1, 13, 4, 3),
+        datetime(2021, 1, 1, 12, 5, 23),
+        datetime(2021, 1, 1, 13, 4, 3),
     )
 
     b = a.truncate(Time_resolution.HOUR)
-    assert b.start == datetime.datetime(2021, 1, 1, 12, 0, 0)
-    assert b.end == datetime.datetime(2021, 1, 1, 13, 59, 59, 999999)
+    assert b.start == datetime(2021, 1, 1, 12, 0, 0)
+    assert b.end == datetime(2021, 1, 1, 13, 59, 59, 999999)
 
     b = a.truncate(Time_resolution.DAY)
-    assert b.start == datetime.datetime(2021, 1, 1, 0, 0, 0)
-    assert b.end == datetime.datetime(2021, 1, 1, 23, 59, 59, 999999)
+    assert b.start == datetime(2021, 1, 1, 0, 0, 0)
+    assert b.end == datetime(2021, 1, 1, 23, 59, 59, 999999)
 
     with pytest.raises(AssertionError):
         b = a.truncate(999)  # type: ignore
@@ -108,7 +107,7 @@ def test_merge():
 
 
 def test_normalize_ends():
-    now = datetime.datetime(2013, 1, 1, 12, 4, 23, 378654)
+    now = datetime(2013, 1, 1, 12, 4, 23, 378654)
     a = Time_interval(
         now,
         now + timedelta(hours=1, minutes=1, seconds=1, microseconds=1, milliseconds=1),
@@ -148,7 +147,7 @@ def test_time_iterator_days():
 @given(st.integers(min_value=0, max_value=10_000))
 @settings(deadline=None)  # To avoid hypothesis.errors.Flaky
 def test_time_iterator_days_procedural(n):
-    now = datetime.datetime(2023, 5, 17)
+    now = datetime(2023, 5, 17)
     a = list(
         Time_interval.last_n_days(n, now).iterate_over_interval(Time_resolution.DAY)
     )

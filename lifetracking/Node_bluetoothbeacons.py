@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import datetime
 import hashlib
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -89,7 +88,7 @@ class Parse_BLE_info(Node_1child, Node_segments):
             # Processing itself
             segments: list[Seg] = []
             in_segment = False
-            start_time: datetime.datetime | None = None
+            start_time: datetime | None = None
             for n, row in df.iterrows():
                 # Value
                 value = row[column_name]

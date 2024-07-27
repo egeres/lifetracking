@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import copy
-import datetime
 import hashlib
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 
 class Seg:
     def __init__(
         self,
-        start: datetime.datetime,
-        end: datetime.datetime,
+        start: datetime,
+        end: datetime,
         value: dict | None = None,
     ):
         assert start <= end
@@ -106,7 +105,7 @@ class Seg:
         temp_start = self.start
         splits = []
         while temp_start < self.end:
-            next_day = datetime.datetime(
+            next_day = datetime(
                 temp_start.year,
                 temp_start.month,
                 temp_start.day,

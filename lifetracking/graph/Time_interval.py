@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import datetime
 import warnings
-from datetime import timedelta
+from datetime import datetime, timedelta, tzinfo
 from enum import Enum, auto
 from typing import Iterable
 
@@ -25,12 +24,12 @@ class Time_interval:
 
     def __init__(
         self,
-        start: datetime.datetime,
-        end: datetime.datetime,
+        start: datetime,
+        end: datetime,
     ):
         assert start <= end
-        self.start: datetime.datetime = start
-        self.end: datetime.datetime = end
+        self.start: datetime = start
+        self.end: datetime = end
 
     def __eq__(self, other: Time_interval) -> bool:
         assert isinstance(other, Time_interval)
@@ -44,10 +43,10 @@ class Time_interval:
         assert isinstance(other, timedelta)
         return Time_interval(self.start - other, self.end - other)
 
-    def __contains__(self, another: datetime.datetime | Time_interval | Seg) -> bool:
-        assert isinstance(another, (datetime.datetime, Time_interval, Seg))
+    def __contains__(self, another: datetime | Time_interval | Seg) -> bool:
+        assert isinstance(another, (datetime, Time_interval, Seg))
 
-        if isinstance(another, datetime.datetime):
+        if isinstance(another, datetime):
             return self.start <= another <= self.end
         if isinstance(another, (Time_interval, Seg)):
             return self.start <= another.start and another.end <= self.end
@@ -88,8 +87,8 @@ class Time_interval:
     @classmethod
     def from_json(cls, data: dict[str, str]) -> Time_interval:
         return Time_interval(
-            start=datetime.datetime.fromisoformat(data["start"]),
-            end=datetime.datetime.fromisoformat(data["end"]),
+            start=datetime.fromisoformat(data["start"]),
+            end=datetime.fromisoformat(data["end"]),
         )
 
     def __repr__(self) -> str:
@@ -98,7 +97,7 @@ class Time_interval:
             f",{self.end.strftime('%Y-%m-%d %H:%M')}>"
         )
 
-    def tz_convert(self, tz: datetime.tzinfo) -> Time_interval:
+    def tz_convert(self, tz: tzinfo) -> Time_interval:
         return Time_interval(self.start.astimezone(tz), self.end.astimezone(tz))
 
     def truncate(self, time_res: Time_resolution) -> Time_interval:
@@ -249,14 +248,14 @@ class Time_interval:
         return self.end - self.start
 
     @staticmethod
-    def last_n_days(n: float, now: datetime.datetime | None = None) -> Time_interval:
+    def last_n_days(n: float, now: datetime | None = None) -> Time_interval:
         if now is None:
-            now = datetime.datetime.now()
+            now = datetime.now()
         return Time_interval(
-            start=(datetime.datetime.now() - timedelta(days=n)).replace(
+            start=(datetime.now() - timedelta(days=n)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             ),
-            end=datetime.datetime.now().replace(
+            end=datetime.now().replace(
                 hour=23, minute=59, second=59, microsecond=999999
             ),
         )
@@ -270,10 +269,10 @@ class Time_interval:
     @staticmethod
     def tomorrow():
         return Time_interval(
-            start=(datetime.datetime.now() + timedelta(days=1)).replace(
+            start=(datetime.now() + timedelta(days=1)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             ),
-            end=(datetime.datetime.now() + timedelta(days=1)).replace(
+            end=(datetime.now() + timedelta(days=1)).replace(
                 hour=23, minute=59, second=59, microsecond=999999
             ),
         )
@@ -281,10 +280,10 @@ class Time_interval:
     @staticmethod
     def yesterday():
         return Time_interval(
-            start=(datetime.datetime.now() - timedelta(days=1)).replace(
+            start=(datetime.now() - timedelta(days=1)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             ),
-            end=(datetime.datetime.now() - timedelta(days=1)).replace(
+            end=(datetime.now() - timedelta(days=1)).replace(
                 hour=23, minute=59, second=59, microsecond=999999
             ),
         )
@@ -311,21 +310,19 @@ class Time_interval:
 
     @staticmethod
     def last_year():
-        n = datetime.datetime.now()
+        n = datetime.now()
         return Time_interval(start=n.replace(year=n.year - 1), end=n).normalize_ends()
 
     @staticmethod
     def last_decade():
-        n = datetime.datetime.now()
+        n = datetime.now()
         return Time_interval(start=n.replace(year=n.year - 10), end=n).normalize_ends()
 
     @staticmethod
     def next_n_days(n: int) -> Time_interval:
         return Time_interval(
-            start=datetime.datetime.now().replace(
-                hour=0, minute=0, second=0, microsecond=0
-            ),
-            end=(datetime.datetime.now() + timedelta(days=n)).replace(
+            start=datetime.now().replace(hour=0, minute=0, second=0, microsecond=0),
+            end=(datetime.now() + timedelta(days=n)).replace(
                 hour=23, minute=59, second=59, microsecond=999999
             ),
         )

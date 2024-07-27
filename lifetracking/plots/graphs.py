@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import copy
-import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -35,7 +34,7 @@ def graph_udate_layout(
     if (
         len(fig.data) > 0
         and len(fig.data[0].x) > 0
-        and isinstance(fig.data[0].x[0], (datetime.datetime, datetime.date))
+        and isinstance(fig.data[0].x[0], (datetime, datetime.date))
     ):
         days_span = (max(fig.data[0].x) - min(fig.data[0].x)).days
     elif t is not None:
@@ -100,7 +99,7 @@ def graph_annotate_today(
     fig_min, fig_max = (0, 1) if minmax is None else (minmax[0], minmax[1])
 
     # Today
-    today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     # TODO_3 (TZ) : At some point, decide upon tzinfo's
     if t.start.tzinfo is not None:
         today = today.astimezone(t.start.tzinfo)
@@ -166,7 +165,7 @@ def graph_annotate_annotations(
         date = i["date"]
         if isinstance(date, str):
             date = parse(date)
-        assert isinstance(date, datetime.datetime)
+        assert isinstance(date, datetime)
         if t.start.tzinfo is not None:
             date = date.astimezone(t.start.tzinfo)
         days_diff = (date - t.start).days
