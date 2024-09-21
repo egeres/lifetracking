@@ -129,10 +129,10 @@ class Reader_geodata(Node_0child, Node_geopandas):
         }
 
         if isinstance(t, Time_interval):
+            s = t.start.replace(hour=0, minute=0, second=0, microsecond=0)
+            e = t.end.replace(hour=23, minute=59, second=59, microsecond=999999)
             date_to_file = {
-                date: file
-                for date, file in date_to_file.items()
-                if t.start <= date <= t.end
+                date: file for date, file in date_to_file.items() if s <= date <= e
             }
 
         to_return = []
