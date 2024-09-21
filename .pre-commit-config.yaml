@@ -8,7 +8,7 @@
 # https://gist.github.com/joshbuchea/6f47e86d2510bce28f8e7f42ae84c716
 
 repos:
-  # Basic ones
+  # 🍑 Basic ones
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
@@ -24,7 +24,7 @@ repos:
         types: [markdown, python]
         files: "\\.(md|py)$"
 
-  # Conventional commits
+  # 🍑 Conventional commits
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v3.4.0
     hooks:
@@ -32,20 +32,15 @@ repos:
         stages: [commit-msg]
         args: [] # Opt: list of Conv Commits types to allow like: ci,fix..
 
-  # Blaaack
-  - repo: https://github.com/psf/black
-    rev: 24.8.0
-    hooks:
-      - id: black
-
-  # Ruff
+  # 🍑 Ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.6
     hooks:
-      - id: ruff
+      - id: ruff-format # Formats code
+      - id: ruff # Lints code
         types_or: [python, pyi, jupyter]
 
-  # Notebooks
+  # 🍑 Notebooks
   - repo: local
     hooks:
       - id: jupyter-nb-clear-output

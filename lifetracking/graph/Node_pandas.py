@@ -289,7 +289,6 @@ class Node_pandas_add(Node_pandas):
         self,
         value: list[pd.DataFrame | PrefectFuture[pd.DataFrame, Sync]],
     ) -> pd.DataFrame:
-
         value = [x for x in value if x is not None and len(x) > 0]
         if len(value) == 0:
             return pd.DataFrame()
@@ -648,7 +647,6 @@ class Reader_pandas(Node_0child, Node_pandas):
         # Load them
         to_return = []
         for filename in files_to_read:
-
             # Filter by date
             if self.dated_name is not None and self._operation_filter_by_date(
                 None, filename, self.dated_name
@@ -711,7 +709,6 @@ class Reader_pandas(Node_0child, Node_pandas):
         # Load them
         to_return = []
         for filename in files_to_read:
-
             # Filter by date
             if self.dated_name is not None and self._operation_filter_by_date(
                 t, filename, self.dated_name
@@ -961,9 +958,7 @@ class Reader_filecreation(Node_0child, Node_pandas):
         return hashlib.md5(
             (
                 # TODO_2: Add hash of fn
-                super()._hashstr()
-                + str(self.path_dir)
-                + str(self.valid_extensions)
+                super()._hashstr() + str(self.path_dir) + str(self.valid_extensions)
             ).encode()
         ).hexdigest()
 
@@ -1019,8 +1014,7 @@ class Reader_telegramchat(Node_0child, Node_pandas):
         return hashlib.md5(
             (
                 # TODO_2: Add hash of fn
-                super()._hashstr()
-                + str(self.path_to_data)
+                super()._hashstr() + str(self.path_to_data)
             ).encode()
         ).hexdigest()
 
@@ -1111,8 +1105,7 @@ class Reader_openAI_history(Node_0child, Node_pandas):
         return hashlib.md5(
             (
                 # TODO_2: Add hash of fn
-                super()._hashstr()
-                + str(self.path_to_data)
+                super()._hashstr() + str(self.path_to_data)
             ).encode()
         ).hexdigest()
 
@@ -1137,7 +1130,6 @@ class Reader_openAI_history(Node_0child, Node_pandas):
         return messages
 
     def _operation(self, t: Time_interval | None = None) -> pd.DataFrame | None:
-
         convs = self.path_dir_tmp / "conversations.json"
         assert convs.exists()
 
@@ -1172,15 +1164,13 @@ class Reader_loguru(Node_0child, Node_pandas):
         return hashlib.md5(
             (
                 # TODO_2: Add hash of fn
-                super()._hashstr()
-                + str(self.path_to_data)
+                super()._hashstr() + str(self.path_to_data)
             ).encode()
         ).hexdigest()
 
     def _operation(
         self, t: Time_interval | Quantity | None = None
     ) -> pd.DataFrame | None:
-
         # Log data looks like:
         # 2022-12-01 11:31:04.001 | INFO     | __main__:<module>:43 - Started!
         # 2022-12-02 19:19:16.715 | INFO     | __main__:<module>:43 - Started!

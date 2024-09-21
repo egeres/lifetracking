@@ -29,13 +29,12 @@ pytest = ">=8.2.0"
 pytest-cov = "^3.0.0"
 pytest-xdist = "^3.3.0"
 pytest-sugar = ">=1.0.0"
-black = ">=24.4.2"
 pre-commit = ">=3.7.1"
 tomlkit = "^0.11.8"
 json5 = "^0.9.11"
 coverage = "^7.2.5"
 hypothesis = "^6.75.3"
-ruff = ">=0.5.5"
+ruff = ">=0.6.6"
 mypy = "^1.10.0"
 
 [build-system]
@@ -67,7 +66,7 @@ select = [
     "TRY",
     "UP",
     "YTT",  #  Misuse of sys https://github.com/asottile-archive/flake8-2020
-    "ISC",  #  flake8-implicit-str-concat
+    # "ISC",  #  flake8-implicit-str-concat
     "PERF",
     # "ARG",
     # "N",

@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 
 
 class Node_segments(Node[Segments]):
-
     sub_type = Segments
 
     def __init__(self) -> None:
@@ -553,8 +552,7 @@ class Node_segmentize_pandas_duration(Node_1child, Node_segments):
     def _hashstr(self) -> str:
         return hashlib.md5(
             (
-                super()._hashstr()
-                + str(self.name_column_duration)
+                super()._hashstr() + str(self.name_column_duration)
                 # TODO: Missing self.segment_metadata
             ).encode()
         ).hexdigest()
@@ -630,8 +628,7 @@ class Node_segmentize_pandas_startend(Node_1child, Node_segments):
     def _hashstr(self) -> str:
         return hashlib.md5(
             (
-                super()._hashstr()
-                + str(self.name_column_end)
+                super()._hashstr() + str(self.name_column_end)
                 # TODO: Missing self.segment_metadata
             ).encode()
         ).hexdigest()

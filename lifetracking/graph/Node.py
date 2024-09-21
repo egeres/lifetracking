@@ -70,17 +70,16 @@ class Node(ABC, Generic[T]):
         return self._children_are_available()
 
     @abstractmethod
-    def _operation(self, t=None) -> T | None:
-        """Main operation of the node"""
-        ...  # pragma: no cover
-
-    @abstractmethod
     def _run_sequential(self, t=None, context=None) -> T | None:
         """Runs the graph sequentially"""
         ...  # pragma: no cover
 
     @abstractmethod
-    def _make_prefect_graph(self, t=None, context=None) -> PrefectFuture[T, Sync]:
+    def _make_prefect_graph(
+        self,
+        t=None,
+        context=None,
+    ) -> PrefectFuture[T | None, Sync]:
         """Parses the graph to prefect"""
         ...  # pragma: no cover
 
@@ -224,7 +223,7 @@ class Node(ABC, Generic[T]):
     @staticmethod
     def _get_value_from_context_or_makegraph(
         node: Node[U], t=None, context: dict[Node, Any] | None = None
-    ) -> PrefectFuture[U, Sync]:
+    ) -> PrefectFuture[U | None, Sync]:
         """This is intended to be used inside _make_prefect_graph"""
         out = None
         if context is not None:
@@ -265,7 +264,6 @@ class Node(ABC, Generic[T]):
         opacity: float | Callable[[T], float] = 1.0,
         hour_offset: float = 0,
     ) -> Node[T]:
-
         assert path_filename.suffix == ".json"
 
         def default_export_method(t: Time_interval | None = None):
@@ -316,6 +314,11 @@ class Node(ABC, Generic[T]):
 
 
 class Node_0child(Node[T]):
+    @abstractmethod
+    def _operation(self, t=None) -> T | None:
+        """Main operation of the node"""
+        ...  # pragma: no cover
+
     def _get_children(self) -> list[Node]:
         return []
 

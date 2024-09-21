@@ -168,7 +168,6 @@ def hash_string(string: str) -> str:
 
 
 def cache_singleargument(dirname: str, rootdir: Path | str | None = None) -> Callable:
-
     if rootdir is None:
         rootdir = Path(tempfile.gettempdir())
     if isinstance(rootdir, str):

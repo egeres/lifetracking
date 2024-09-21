@@ -85,7 +85,6 @@ class CacheData:
         resolution: Time_resolution,
         datatype: str | Any,
     ) -> CacheData:
-
         assert isinstance(folder, Path)
         assert isinstance(hash_node, str)
 
@@ -130,7 +129,6 @@ class CacheData:
         type_of_cache: Cache_type = Cache_type.FULL,
         slices: list[Time_interval] | None = None,
     ) -> None:
-
         assert isinstance(type_of_cache, Cache_type)
         if type_of_cache == Cache_type.SLICE:
             assert isinstance(slices, list)
@@ -186,7 +184,6 @@ class CacheData:
             ),
         }
         for seg in data.content:
-
             if self.dont_save_after_or_eq_resolution_interval:
                 if seg in seg_truncated:
                     continue
@@ -238,7 +235,6 @@ class CacheData:
             json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
 
     def load_cache_all(self) -> Any:
-
         # Load cache descriptor
         f = self.dir_cache / "cache.json"
         if not f.exists():
@@ -258,7 +254,6 @@ class CacheData:
         raise NotImplementedError
 
     def load_cache_slice(self, t: Time_interval) -> Any:
-
         # Load cache descriptor
         f = self.dir_cache / "cache.json"
         if not f.exists():
@@ -345,7 +340,6 @@ class Node_cache(Node[T]):
         context: dict | None = None,
         prefect=False,
     ) -> T | None:
-
         if prefect:
             raise NotImplementedError  # pragma: no cover
 

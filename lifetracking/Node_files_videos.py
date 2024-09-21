@@ -71,7 +71,6 @@ class Reader_videos(Node_segments, Node_0child):
             for file in self.path_dir.iterdir()
             if file.suffix in {".mp4", ".mkv", ".avi", ".mov", ".webm"}
         ):
-
             # I'm confused about which is the "right one", ctime makes more sense?
             # date_creation = datetime.fromtimestamp(filename.stat().st_mtime)
             date_creation = datetime.fromtimestamp(filename.stat().st_ctime)

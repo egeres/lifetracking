@@ -138,7 +138,6 @@ class Reader_geodata(Node_0child, Node_geopandas):
         to_return = []
         rows_so_far = 0
         for _, f in sorted(date_to_file.items(), reverse=True):
-
             if f.suffix == ".csv":
                 total_lines_file = count_lines(f) - 1
                 to_get_from_this_file = total_lines_file

@@ -43,6 +43,5 @@ def test_node_anki_create():
 
 
 def test_node_anki_dir_does_not_exist():
-
     with pytest.raises(AssertionError):
         Parse_anki_creation("/this_anki_folder_does_not_exist")

@@ -250,7 +250,6 @@ def test_node_pddataframe_readjson_0():
 
 
 def test_node_pddataframe_readjson_1():
-
     with pytest.raises(FileNotFoundError):
         Reader_jsons("/This_file_does_not_exist.json", column_date_index="datetime")
 

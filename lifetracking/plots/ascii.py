@@ -79,7 +79,6 @@ def draw_time_segment(
     color: str | None = "#51afcf",
     column_width: int = 5,
 ) -> list[list[str]]:
-
     if isinstance(color, str):
         color = color.strip()
 
@@ -125,7 +124,6 @@ def draw_single(
     color: str | None = "#ff0000",
     column_width: int = 5,
 ) -> list[list[str]]:
-
     assert isinstance(d, datetime)
     assert isinstance(column_width, int), "The column width must be an integer"
     assert column_width % 2 == 1, "The column width needs to be odd"

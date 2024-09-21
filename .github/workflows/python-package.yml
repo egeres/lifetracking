@@ -27,15 +27,11 @@ jobs:
           python -m pip install poetry
           poetry install
 
-      - name: Black ✨
-        run: |
-          poetry run black --check .
+      - name: Formatting ✨
+        run:  poetry run ruff format
 
       - name: Ruff ✨
-        run: |
-          poetry run ruff check .
+        run:  poetry run ruff check
 
       - name: Pytest ✨
-        run: |
-          # I'm not sure about disabling the tests, but it's in for now!
-          poetry run pytest --disable-pytest-warnings
+        run:  poetry run pytest --disable-pytest-warnings
