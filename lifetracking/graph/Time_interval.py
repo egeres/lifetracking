@@ -263,11 +263,11 @@ class Time_interval:
     # The following methods are shortcuts to create time spans of common lengths
 
     @staticmethod
-    def today():
+    def today() -> Time_interval:
         return Time_interval.last_n_days(0)  # next_n_days(0) is also valid!
 
     @staticmethod
-    def tomorrow():
+    def tomorrow() -> Time_interval:
         return Time_interval(
             start=(datetime.now() + timedelta(days=1)).replace(
                 hour=0, minute=0, second=0, microsecond=0
@@ -278,7 +278,7 @@ class Time_interval:
         )
 
     @staticmethod
-    def yesterday():
+    def yesterday() -> Time_interval:
         return Time_interval(
             start=(datetime.now() - timedelta(days=1)).replace(
                 hour=0, minute=0, second=0, microsecond=0
@@ -297,24 +297,24 @@ class Time_interval:
         return Time_interval.last_n_days(7)
 
     @staticmethod
-    def last_month():
+    def last_month() -> Time_interval:
         return Time_interval.last_n_days(30)
 
     @staticmethod
-    def last_trimester():
+    def last_trimester() -> Time_interval:
         return Time_interval.last_n_days(30 * 3 + 1)
 
     @staticmethod
-    def last_semester():
+    def last_semester() -> Time_interval:
         return Time_interval.last_n_days(30 * 6 + 3)
 
     @staticmethod
-    def last_year():
+    def last_year() -> Time_interval:
         n = datetime.now()
         return Time_interval(start=n.replace(year=n.year - 1), end=n).normalize_ends()
 
     @staticmethod
-    def last_decade():
+    def last_decade() -> Time_interval:
         n = datetime.now()
         return Time_interval(start=n.replace(year=n.year - 10), end=n).normalize_ends()
 

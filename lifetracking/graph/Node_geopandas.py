@@ -43,7 +43,7 @@ class Node_geopandas(Node[gpd.GeoDataFrame]):
         path_filename: str,
         color: str | Callable[[pd.Series], str] | None = None,
         opacity: float | Callable[[pd.Series], float] = 1.0,
-    ):
+    ) -> None:
         o = self.run(t)
         assert o is not None
         export_pddataframe_to_lc_single(

@@ -32,7 +32,7 @@ class Node_int(Node[int]):
         color: str | Callable[[int], str] | None = None,
         opacity: float | Callable[[int], float] = 1.0,
         hour_offset: float = 0,
-    ):
+    ) -> None:
         raise NotImplementedError
 
 

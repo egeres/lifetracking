@@ -60,7 +60,7 @@ class Node_pandas(Node[pd.DataFrame]):
         color: str | Callable[[pd.Series], str] | None = None,
         opacity: float | Callable[[pd.Series], float] = 1.0,
         hour_offset: float = 0,
-    ):
+    ) -> None:
         o = self.run(t)
         assert o is not None
         export_pddataframe_to_lc_single(
@@ -434,7 +434,7 @@ class Node_pandas_remove_close(Node_pandas_operation):
         max_time: timedelta,
         column_name: str | None = None,
         keep: str = "first",
-    ):
+    ) -> pd.DataFrame:
         if df.shape[0] == 0:
             return df
 

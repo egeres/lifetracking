@@ -1,4 +1,4 @@
-# ruff: noqa: PERF203
+# ruff: noqa: PERF203 INP001
 
 import sys
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 import json5
 
 
-def main():
+def main() -> None:
     for filename in sys.argv[1:]:
         try:
             with Path(filename).open() as file:

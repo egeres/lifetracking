@@ -15,7 +15,7 @@ from lifetracking.graph.Time_interval import Time_interval
 def graph_udate_layout(
     fig: go.Figure,
     t: Time_interval | None,
-):
+) -> None:
     assert isinstance(fig, go.Figure), "fig is not a plotly Figure!"
     assert isinstance(t, Time_interval) or t is None, "t is not a Time_interval or None"
 
@@ -93,7 +93,7 @@ def graph_annotate_today(
     fig: go.Figure,
     t: Time_interval,
     minmax: tuple[float, float] | None = None,
-):
+) -> None:
     # Min max
     # fig_min, fig_max = (0, 1) if minmax is None else (min(0, minmax[0]), minmax[1])
     fig_min, fig_max = (0, 1) if minmax is None else (minmax[0], minmax[1])
@@ -119,7 +119,7 @@ def graph_annotate_today(
         )
 
 
-def graph_extend_tails(fig: go.Figure, t: Time_interval):
+def graph_extend_tails(fig: go.Figure, t: Time_interval) -> None:
     # Extends the ends of the lines to the edges of the graph
     for i in fig.data:
         if not isinstance(i, plotly.graph_objs._scatter.Scatter):
@@ -152,7 +152,7 @@ def graph_annotate_annotations(
     t: Time_interval,
     annotations: list | None,
     minmax: tuple[float, float] | None = None,
-):
+) -> None:
     assert isinstance(fig, go.Figure)
     if annotations is None:
         return
@@ -205,7 +205,7 @@ def graph_annotate_annotations(
 def graph_annotate_title(
     fig: go.Figure,
     title: str | None,
-):
+) -> go.Figure:
     """Write a lable on the top left corner"""
 
     assert isinstance(fig, go.Figure)

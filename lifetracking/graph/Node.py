@@ -145,7 +145,7 @@ class Node(ABC, Generic[T]):
 
         return to_return
 
-    def print_stats(self):
+    def print_stats(self) -> None:
         """Prints some statistics"""
 
         if self.last_run_info is None:
@@ -175,7 +175,7 @@ class Node(ABC, Generic[T]):
 
             a += f'\t✨ Type    : {self.last_run_info["type"]}\n'
             if self.last_run_info["type"] == "DataFrame":
-                a += f'\t✨ Columns : {", ".join(self.last_run_info["columns"])}'
+                a += f'\t✨ Columns : {", ".join(self.last_run_info["columns"])}\n'
 
             # Print name if defined
             # print timespan input and output
@@ -395,7 +395,7 @@ class Node_generate_None(Node_0child[None]):
         color: str | Callable[[None], str] | None = None,
         opacity: float | Callable[[None], float] = 1.0,
         hour_offset: float = 0,
-    ):
+    ) -> None:
         raise NotImplementedError
 
 

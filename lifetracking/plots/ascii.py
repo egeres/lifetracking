@@ -161,7 +161,7 @@ def draw_now(texts: list[list[str]], column_width: int = 5) -> list[list[str]]:
     return draw_single(texts, datetime.now(), "N", "#ffffff", column_width)
 
 
-def show_text(texts: list[list[str]]):
+def show_text(texts: list[list[str]]) -> None:
     """Prints the 2D list of strings"""
 
     # Older and simpler version without optimization

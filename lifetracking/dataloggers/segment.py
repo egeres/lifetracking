@@ -15,7 +15,7 @@ def write_segment_on_csv(
     end: datetime,
     way_this_info_was_added: str = "manual",
     **kwargs,
-):
+) -> None:
     assert isinstance(path_to_file, Path)
     assert path_to_file.suffix == ".csv"
     assert isinstance(way_this_info_was_added, str)

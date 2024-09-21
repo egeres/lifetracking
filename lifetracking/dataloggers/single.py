@@ -17,7 +17,7 @@ def write_single_on_csv(
     now: datetime | None = None,
     way_this_info_was_added: str = "manual",
     **kwargs,
-):
+) -> None:
     assert isinstance(path_to_file, Path)
     assert isinstance(now, datetime) or now is None
     assert path_to_file.suffix == ".csv"
@@ -41,7 +41,7 @@ def write_single_on_dated_json(
     now: datetime | None = None,
     way_this_info_was_added: str = "manual",
     **kwargs,
-):
+) -> None:
     assert isinstance(path_to_dir, Path)
     assert isinstance(now, datetime) or now is None
     assert path_to_dir.is_dir()

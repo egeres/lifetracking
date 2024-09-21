@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 # itself, how do I want to handle this?
 
 
-def to_day(dt):
+def to_day(dt: datetime) -> datetime:
     return dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
@@ -237,7 +237,7 @@ class CacheData:
         with (self.dir_cache / "cache.json").open("w") as f:
             json.dump(cache_info, f, indent=4, default=str, sort_keys=True)
 
-    def load_cache_all(self):
+    def load_cache_all(self) -> Any:
 
         # Load cache descriptor
         f = self.dir_cache / "cache.json"
@@ -257,7 +257,7 @@ class CacheData:
 
         raise NotImplementedError
 
-    def load_cache_slice(self, t: Time_interval):
+    def load_cache_slice(self, t: Time_interval) -> Any:
 
         # Load cache descriptor
         f = self.dir_cache / "cache.json"
@@ -435,7 +435,7 @@ class Node_cache(Node[T]):
         color: str | Callable[[None], str] | None = None,
         opacity: float | Callable[[None], float] = 1.0,
         hour_offset: float = 0,
-    ):
+    ) -> None:
         return self.n0.export_to_longcalendar(
             t=t,
             path_filename=path_filename,

@@ -63,7 +63,7 @@ class Node_segments(Node[Segments]):
         self,
         time_to_mergue: timedelta,
         custom_rule: None | Callable[[Seg, Seg], bool] = None,
-    ):
+    ) -> Node_segments_merge:
         """Merges Segs that are close to each other in time. So if we set
         `time_to_mergue_s` to be 1 minute, and we have two segments that are 30
         seconds apart, they will be merged."""
@@ -85,7 +85,7 @@ class Node_segments(Node[Segments]):
         tooltip: str | Callable[[Seg], str] | None = None,
         color: str | Callable[[Seg], str] | None = None,
         tooltip_shows_length: bool = False,
-    ):
+    ) -> None:
         if isinstance(path_filename, Path):
             path_filename = str(path_filename)
         if isinstance(t, (float, int)):
@@ -140,7 +140,7 @@ class Node_segments(Node[Segments]):
         )
 
     # TODO_4: Segments: plot_count_by_day
-    def plot_count_by_day(self):
+    def plot_count_by_day(self) -> go.Figure | None:
         raise NotImplementedError
 
 

@@ -31,7 +31,7 @@ class Node_dicts(Node[list[dict]]):
         tooltip: str | Callable[[list[dict]], str] | None = None,
         color: str | Callable[[list[dict]], str] | None = None,
         tooltip_shows_length: bool = False,
-    ):
+    ) -> None:
         msg = "This method is not implemented yet hehe"
         raise NotImplementedError(msg)
 

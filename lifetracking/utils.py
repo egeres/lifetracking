@@ -88,7 +88,7 @@ def export_pddataframe_to_lc_single(
     time_offset: timedelta | None = None,
     color: str | Callable[[pd.Series], str] | None = None,
     opacity: float | Callable[[pd.Series], float] = 1.0,
-):
+) -> None:
     """Long calendar is a custom application of mine that I use to visualize my
     data. No tooltip support is intentional!"""
 
