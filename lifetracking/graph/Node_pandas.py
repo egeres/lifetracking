@@ -928,7 +928,7 @@ class Reader_filecreation(Node_0child, Node_pandas):
     def __init__(
         self,
         path_dir: str | Path,
-        fn: Callable[[Path], pd.Timestamp | Any],
+        fn: Callable[[Path], pd.Timestamp | Any],  # TODO_2: Rename for clarity
         valid_extensions: list[str] | str | None = None,
     ):
         assert callable(fn)

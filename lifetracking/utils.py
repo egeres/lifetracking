@@ -181,6 +181,9 @@ def cache_singleargument(dirname: str, rootdir: Path | str | None = None) -> Cal
 
     def decorator(method: Callable) -> Callable:
         def wrapper(arg: str) -> str:
+            if isinstance(arg, Path):
+                arg = str(arg)
+            assert isinstance(arg, str)
             arg_hash = hash_string(arg)
             if arg_hash in {x.name[:-7] for x in d.glob("*.pickle")}:
                 with (d / f"{arg_hash}.pickle").open("rb") as f:
