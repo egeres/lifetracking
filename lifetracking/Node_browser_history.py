@@ -63,7 +63,12 @@ class Parse_browserhistory(Node_pandas, Node_0child):
             histories = i.fetch_history().histories
             if len(histories) == 0:
                 continue
-            df = pd.DataFrame(histories, columns=["date", "url"])
+
+            column_names = ["date", "url"]
+            if len(histories[0]) == 3:
+                column_names = ["date", "url", "title"]  # Google chrome has this now?
+
+            df = pd.DataFrame(histories, columns=column_names)
             df["date"] = df["date"].dt.tz_localize(None)  # TODO_3: (TZ) Pls, fix this🙄
             if t is not None:
                 df = df[df["date"] >= t.start]
