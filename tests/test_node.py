@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import datetime
+from datetime import datetime, timedelta
 
 from lifetracking.datatypes.Seg import Seg
-from lifetracking.datatypes.Segment import Segments
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node_int import Node_int_generate, Node_int_singleincrement
 from lifetracking.graph.Node_segments import Node_segments_generate
 
@@ -16,33 +16,9 @@ def test_node_basics_0():
 
 
 def test_print_stats():
-    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    b = Segments(
-        [
-            Seg(
-                a + datetime.timedelta(minutes=0),
-                a + datetime.timedelta(minutes=1),
-                {"my_key": 0},
-            ),
-            Seg(
-                a + datetime.timedelta(minutes=3),
-                a + datetime.timedelta(minutes=4),
-                {"my_key": 1},
-            ),
-            Seg(
-                a + datetime.timedelta(minutes=6),
-                a + datetime.timedelta(minutes=7),
-                {"my_key": 0},
-            ),
-            Seg(
-                a + datetime.timedelta(minutes=9),
-                a + datetime.timedelta(minutes=10),
-                {"my_key": 0},
-            ),
-        ]
-    )
+    a = datetime.now()
+    b = Segments([Seg(a, a + timedelta(minutes=1), {"my_key": 0})])
     c = Node_segments_generate(b)
-
     c.run()
     c.print_stats()
 

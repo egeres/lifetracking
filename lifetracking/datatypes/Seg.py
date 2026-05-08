@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import copy
-import datetime
 import hashlib
+from datetime import datetime, timedelta
 from typing import Any
 
 
 class Seg:
     def __init__(
         self,
-        start: datetime.datetime,
-        end: datetime.datetime,
+        start: datetime,
+        end: datetime,
         value: dict | None = None,
     ):
         assert start <= end
@@ -33,6 +33,10 @@ class Seg:
             or (other.end < self.end and other.end > self.start)
         )
 
+    def copy(self) -> Seg:
+        """🤷🏻‍♂️ like, bruh, why do we need to import copy?"""
+        return copy.copy(self)
+
     def __copy__(self):
         return Seg(self.start, self.end, copy.copy(self.value))
 
@@ -40,29 +44,31 @@ class Seg:
         if self.value is None:
             return (
                 f"<{self.start.strftime('%Y-%m-%d %H:%M')}"
-                + f",{self.end.strftime('%Y-%m-%d %H:%M')}>"
+                f",{self.end.strftime('%Y-%m-%d %H:%M')}>"
             )
-        else:
-            return (  # Thank god these line up 😌
-                f"<{self.start.strftime('%Y-%m-%d %H:%M')}"
-                + f",{self.end.strftime('%Y-%m-%d %H:%M')}, {self.value}>"
-            )
+
+        return (  # Thank god these line up 😌
+            f"<{self.start.strftime('%Y-%m-%d %H:%M')}"
+            f",{self.end.strftime('%Y-%m-%d %H:%M')}, {self.value}>"
+        )
 
     def __lt__(self, other: Seg) -> bool:
         return self.start < other.start
 
-    def __add__(self, other: datetime.timedelta) -> Seg:
-        if not isinstance(other, datetime.timedelta):
-            raise TypeError(
+    def __add__(self, other: timedelta) -> Seg:
+        if not isinstance(other, timedelta):
+            msg = (
                 f"unsupported operand type(s) for +: '{type(self)}' and '{type(other)}'"
             )
+            raise TypeError(msg)
         return Seg(self.start + other, self.end + other, self.value)
 
-    def __sub__(self, other: datetime.timedelta) -> Seg:
-        if not isinstance(other, datetime.timedelta):
-            raise TypeError(
-                f"unsupported operand type(s) for +: '{type(self)}' and '{type(other)}'"
+    def __sub__(self, other: timedelta) -> Seg:
+        if not isinstance(other, timedelta):
+            msg = (
+                f"unsupported operand type(s) for -: '{type(self)}' and '{type(other)}'"
             )
+            raise TypeError(msg)
         return Seg(self.start - other, self.end - other, self.value)
 
     def __eq__(self, other: Seg) -> bool:
@@ -75,8 +81,7 @@ class Seg:
         )
 
     def __getitem__(self, key: Any) -> Any:
-        if self.value is None:
-            self.value = {}
+        assert self.value is not None, "Current Seg has no value"
         return self.value[key]
 
     def __setitem__(self, key: Any, value: Any) -> None:
@@ -100,24 +105,27 @@ class Seg:
         temp_start = self.start
         splits = []
         while temp_start < self.end:
-            next_day = datetime.datetime(
+            next_day = datetime(
                 temp_start.year,
                 temp_start.month,
                 temp_start.day,
                 tzinfo=self.end.tzinfo,
-            ) + datetime.timedelta(days=1)
-            remove_seconds = datetime.timedelta(seconds=1)
-            if next_day > self.end:
-                next_day = self.end
-                remove_seconds = datetime.timedelta(seconds=0)
+            ) + timedelta(days=1)
+
             splits.append(
                 Seg(
                     temp_start,
-                    next_day - remove_seconds,
+                    (
+                        self.end
+                        if next_day > self.end
+                        else next_day - timedelta(microseconds=1)
+                    ),
                     self.value,
                 )
             )
+
             temp_start = next_day
+
         return splits
 
     def length_days(self) -> float:
@@ -131,3 +139,6 @@ class Seg:
 
     def length_s(self) -> float:
         return (self.end - self.start).total_seconds()
+
+    def length(self) -> timedelta:
+        return self.end - self.start

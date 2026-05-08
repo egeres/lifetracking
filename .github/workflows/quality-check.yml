@@ -1,0 +1,37 @@
+name: Quality check
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.operating-system }}
+    strategy:
+      fail-fast: false # if one job fails, the other jobs will not be cancelled
+      matrix:
+        operating-system: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.9", "3.10", "3.11"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install poetry
+          poetry install
+
+      - name: Formatting ✨
+        run:  poetry run ruff format
+
+      - name: Ruff ✨
+        run:  poetry run ruff check
+
+      - name: Pytest ✨
+        run:  poetry run pytest --disable-pytest-warnings

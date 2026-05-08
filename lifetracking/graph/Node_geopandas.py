@@ -1,28 +1,35 @@
 from __future__ import annotations
 
-import datetime
 import hashlib
-import os
-from typing import Any, Callable
+from datetime import datetime
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable
 
 import geopandas as gpd
 import pandas as pd
-from fiona.errors import DriverError
-from prefect.futures import PrefectFuture
-from prefect.utilities.asyncutils import Sync
 from rich import print
 from shapely.geometry import Point, Polygon
 
 from lifetracking.graph.Node import Node, Node_0child, Node_1child
+from lifetracking.graph.quantity import Quantity
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import export_pddataframe_to_lc_single, hash_method
+
+if TYPE_CHECKING:
+    from prefect.futures import PrefectFuture
+    from prefect.utilities.asyncutils import Sync
+
+
+def count_lines(file_path: Path) -> int:
+    with file_path.open("r") as file:
+        return sum(1 for _ in file)
 
 
 class Node_geopandas(Node[gpd.GeoDataFrame]):
     def __init__(self) -> None:
         super().__init__()
 
-    def operation(
+    def apply(
         self,
         f: Callable[
             [gpd.GeoDataFrame | PrefectFuture[gpd.GeoDataFrame, Sync]], gpd.GeoDataFrame
@@ -36,7 +43,7 @@ class Node_geopandas(Node[gpd.GeoDataFrame]):
         path_filename: str,
         color: str | Callable[[pd.Series], str] | None = None,
         opacity: float | Callable[[pd.Series], float] = 1.0,
-    ):
+    ) -> None:
         o = self.run(t)
         assert o is not None
         export_pddataframe_to_lc_single(
@@ -76,25 +83,32 @@ class Node_geopandas_operation(Node_1child, Node_geopandas):
     def _operation(
         self,
         n0: gpd.GeoDataFrame | PrefectFuture[gpd.GeoDataFrame, Sync],
-        t: Time_interval | None = None,
+        t: Time_interval | Quantity | None = None,
     ) -> gpd.GeoDataFrame:
-        assert t is None or isinstance(t, Time_interval)
+        assert t is None or isinstance(t, (Time_interval, Quantity))
         return self.fn_operation(n0)
 
 
-class Reader_geojson(Node_0child, Node_geopandas):
+class Reader_geodata(Node_0child, Node_geopandas):
     def __init__(
         self,
-        path_dir: str,
+        path_dir: Path | str,
         column_date_index: str | None = None,
+        file_format: str = ".csv",
     ) -> None:
-        assert isinstance(path_dir, str)
+        """For now this assumes that the files ends with a date like '_20240130'"""
+
+        if isinstance(path_dir, str):
+            path_dir = Path(path_dir)
+        assert isinstance(path_dir, Path)
         assert column_date_index is None or isinstance(column_date_index, str)
-        if not os.path.isdir(path_dir):
-            raise ValueError(f"{path_dir} is not a directory")
+        assert path_dir.exists()
+        assert path_dir.is_dir()
+        assert file_format in [".csv", ".geojson", ".gpx", ".kml"]
         super().__init__()
         self.path_dir = path_dir
         self.column_date_index = column_date_index
+        self.format = file_format
 
     def _hashstr(self) -> str:
         return hashlib.md5(
@@ -102,48 +116,70 @@ class Reader_geojson(Node_0child, Node_geopandas):
         ).hexdigest()
 
     def _available(self) -> bool:
-        return (
-            os.path.isdir(self.path_dir)
-            # TODO_2: Optimize the "len(...)" to see if there is at least one file with
-            # the extension we want by just adding an iterator that fucking stops when
-            # it encounters the corresponding file?
-            and len([i for i in os.listdir(self.path_dir) if i.endswith(".geojson")])
-            > 0
-        )
+        return self.path_dir.is_dir() and any(self.path_dir.glob(f"*{self.format}"))
 
-    def _operation(self, t: Time_interval | None = None) -> gpd.GeoDataFrame:
-        assert t is None or isinstance(t, Time_interval)
-        to_return: list = []
-        for filename in os.listdir(self.path_dir):
-            if filename.endswith(".geojson"):
-                filename_date = datetime.datetime.strptime(
-                    filename.split("_")[-1],
-                    "%Y%m%d.geojson",
-                )
-                if isinstance(t, Time_interval) and t.start.tzinfo is not None:
-                    filename_date = filename_date.replace(tzinfo=t.start.tzinfo)
-                if t is not None and not (t.start <= filename_date <= t.end):
-                    continue
+    def _operation(
+        self, t: Time_interval | Quantity | None = None
+    ) -> gpd.GeoDataFrame | None:
+        assert t is None or isinstance(t, (Time_interval, Quantity))
+
+        date_to_file = {
+            datetime.strptime(i.name.split("_")[-1], f"%Y%m%d{self.format}"): i
+            for i in self.path_dir.glob(f"*{self.format}")
+        }
+
+        if isinstance(t, Time_interval):
+            s = t.start.replace(hour=0, minute=0, second=0, microsecond=0)
+            e = t.end.replace(hour=23, minute=59, second=59, microsecond=999999)
+            date_to_file = {
+                date: file for date, file in date_to_file.items() if s <= date <= e
+            }
+
+        to_return = []
+        rows_so_far = 0
+        for _, f in sorted(date_to_file.items(), reverse=True):
+            if f.suffix == ".csv":
+                total_lines_file = count_lines(f) - 1
+                to_get_from_this_file = total_lines_file
+                if isinstance(t, Quantity):
+                    to_get_from_this_file = min(t.value - rows_so_far, total_lines_file)
                 try:
-                    to_return.append(
-                        gpd.read_file(
-                            os.path.join(
-                                self.path_dir,
-                                filename,
-                            )
-                        )
+                    df = pd.read_csv(
+                        self.path_dir / f,
+                        skiprows=range(1, total_lines_file - to_get_from_this_file + 1),
                     )
-                except DriverError:
-                    print(f"[red]Error reading {filename}")
-        df = pd.concat(to_return, axis=0)
+                except pd.errors.ParserError:
+                    print(f"[red]Error reading {f}")
+                    continue
+                if "lat" not in df.columns or "lon" not in df.columns:
+                    msg = (
+                        "The GeoDataFrame does not have 'lat' and 'lon' "
+                        "columns to create a 'geometry' column"
+                    )
+                    raise ValueError(msg)
+                df["geom"] = df.apply(lambda r: Point(r["lon"], r["lat"]), axis=1)
+                df = gpd.GeoDataFrame(df, geometry="geom")
+                df.set_crs(epsg=4326, inplace=True)
+            else:
+                df = gpd.read_file(self.path_dir / f)
+
+            to_return.append(df)
+            rows_so_far += len(df)
+
+            if isinstance(t, Quantity) and rows_so_far >= t.value:
+                break
+
+        if len(to_return) == 0:
+            return None
+        df = to_return[0] if len(to_return) == 1 else pd.concat(to_return, axis=0)
+
         if self.column_date_index is not None:
-            # Parse to datetime
             df[self.column_date_index] = pd.to_datetime(
-                df[self.column_date_index],
-                format="mixed",
+                df[self.column_date_index], format="mixed"
             )
-            # Set as index
             df = df.set_index(self.column_date_index)
+
+        assert isinstance(df, gpd.GeoDataFrame) or df is None
         return df
 
 
@@ -167,7 +203,8 @@ class Label_geopandas(Node_1child, Node_geopandas):
             coords_points,
             columns=["geometry", "label"],
             geometry=[
-                Point(map(lambda x: float(x.strip()), x.split(",")[::-1]))
+                # Point(map(lambda x: float(x.strip()), x.split(",")[::-1]))
+                Point(float(x.strip()) for x in x.split(",")[::-1])
                 for x, _ in coords_points
             ],
         )
@@ -195,11 +232,16 @@ class Label_geopandas(Node_1child, Node_geopandas):
             ).encode()
         ).hexdigest()
 
-    def _operation(self, n0, t: Time_interval | None = None) -> gpd.GeoDataFrame:
-        assert t is None or isinstance(t, Time_interval)
+    def _operation(
+        self, n0: gpd.GeoDataFrame, t: Time_interval | Quantity | None = None
+    ) -> gpd.GeoDataFrame:
+        assert t is None or isinstance(t, (Time_interval, Quantity))
+        assert isinstance(n0, gpd.GeoDataFrame)
 
         # Ensure the input GeoDataFrame is using the correct CRS
-        n0 = n0.to_crs("EPSG:4326")
+        # n0 = n0.to_crs("EPSG:4326")
+
+        n0 = n0.set_crs("EPSG:4326") if n0.crs is None else n0.to_crs("EPSG:4326")  # type: ignore
 
         def get_label(point):
             # First, check if the point is within any of the provided points
@@ -218,4 +260,51 @@ class Label_geopandas(Node_1child, Node_geopandas):
 
         n0["label"] = n0.apply(get_label, axis=1)
 
+        return n0
+
+
+class Label_geopandas_singlepoint(Node_1child, Node_geopandas):
+    """Adds a column titled 'label' with either "in" or "out" depending on the distance
+    to a single point"""
+
+    def __init__(
+        self,
+        n0: Node_geopandas,
+        coords: tuple[float, float],
+        distance_meters: float = 50,
+    ) -> None:
+        assert isinstance(n0, Node_geopandas)
+        assert isinstance(coords, tuple)
+        assert len(coords) == 2
+        assert isinstance(distance_meters, (int, float))
+
+        super().__init__()
+        self.n0 = n0
+        self.coords = coords
+        self.distance_meters = float(distance_meters)
+
+    @property
+    def child(self) -> Node:
+        return self.n0
+
+    def _hashstr(self) -> str:
+        return hashlib.md5((super()._hashstr() + str(self.coords)).encode()).hexdigest()
+
+    def _operation(
+        self,
+        n0: gpd.GeoDataFrame,
+        t: Time_interval | Quantity | None = None,
+    ) -> gpd.GeoDataFrame:
+        assert t is None or isinstance(t, (Time_interval, Quantity))
+        assert isinstance(n0, gpd.GeoDataFrame)
+
+        n0["label"] = "out"
+        n0 = n0.to_crs(epsg=32631)
+        p = (
+            gpd.GeoSeries([Point(*self.coords)], crs="EPSG:4326")
+            .to_crs(epsg=32631)
+            .iloc[0]
+        )
+        n0["distance"] = n0.geometry.apply(lambda point: point.distance(p))
+        n0.loc[n0["distance"] <= self.distance_meters, "label"] = "in"
         return n0

@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 import copy
-import datetime
 import json
-import os
 import tempfile
-from datetime import timedelta
+from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from lifetracking.datatypes.Seg import Seg
-from lifetracking.datatypes.Segment import Segments
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Time_interval import Time_interval
 
 
@@ -98,30 +97,24 @@ def test_export_to_longcalendar(opacity: float):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         # Ok
-        filename = os.path.join(tmpdirname, "a", "b", "c", "test.json")
+        filename = Path(tmpdirname) / "a" / "b" / "c" / "test.json"
         a.export_to_longcalendar(filename)
         a.export_to_longcalendar(filename, opacity=opacity)
         a.export_to_longcalendar(filename, tooltip=lambda x: "test")
 
         # Failure
-        with pytest.raises(ValueError):
-            filename = os.path.join(
-                tmpdirname, "a_nice_subfolder", "another_sub_folder", "test.csv"
-            )
+        filename = Path(tmpdirname) / "a_nice_subfolder" / "uuh_sub_folder" / "test.csv"
+        with pytest.raises(ValueError, match="path_filename must end with .json"):
             a.export_to_longcalendar(filename, opacity=opacity)
 
 
 def test_export_to_longcalendar_multidays():
-    a = Segments(
-        [
-            Time_interval.last_n_days(1).to_seg(),
-        ]
-    )
+    a = Segments([Time_interval.last_n_days(1).to_seg()])
     with tempfile.TemporaryDirectory() as tmpdirname:
-        filename = os.path.join(tmpdirname, "a", "b", "c", "test.json")
+        filename = Path(tmpdirname) / "a" / "b" / "c" / "test.json"
         a.export_to_longcalendar(filename)
 
-        with open(filename) as f:
+        with filename.open() as f:
             data = json.load(f)
 
             # This is the important part of this test, the thing is, exporting
@@ -131,7 +124,7 @@ def test_export_to_longcalendar_multidays():
 
 
 def test_segments_add():
-    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    a = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     s0 = Segments([Seg(a + timedelta(minutes=0), a + timedelta(minutes=1))])
     s1 = Segments([Seg(a + timedelta(minutes=3), a + timedelta(minutes=5))])
     s2 = s0 + s1
@@ -139,7 +132,7 @@ def test_segments_add():
 
 
 def test_segments_merge_0():
-    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    a = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
         [
             Seg(a + timedelta(minutes=0), a + timedelta(minutes=1)),
@@ -147,7 +140,7 @@ def test_segments_merge_0():
             Seg(a + timedelta(minutes=100), a + timedelta(minutes=105)),
         ]
     )
-    c = Segments.merge(b, 5 * 60)
+    c = Segments.merge(b, timedelta(seconds=5 * 60))
     assert len(c) == 2
     assert c[0].start == b[0].start
     assert c[0].end == b[1].end
@@ -159,7 +152,7 @@ def test_segments_merge_0():
             Seg(a + timedelta(minutes=90), a + timedelta(minutes=105)),
         ]
     )
-    c = Segments.merge(b, 0)
+    c = Segments.merge(b, timedelta(seconds=0))
     assert len(c) == 3
     b["my_key"] = 0
     for i in b:
@@ -167,7 +160,7 @@ def test_segments_merge_0():
 
 
 def test_segments_merge_1():
-    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    a = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
         [
             Seg(a + timedelta(minutes=0), a + timedelta(minutes=1)),
@@ -175,15 +168,15 @@ def test_segments_merge_1():
             Seg(a + timedelta(minutes=8), a + timedelta(minutes=9)),
         ]
     )
-    c = Segments.merge(b, 0.01)
+    c = Segments.merge(b, timedelta(seconds=0.01))
     assert len(c) == 3
 
-    c = Segments.merge(b, 9999)
+    c = Segments.merge(b, timedelta(seconds=9999))
     assert len(c) == 1
 
 
 def test_segments_merge_2():
-    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    a = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
         [
             Seg(a + timedelta(minutes=0), a + timedelta(minutes=8)),
@@ -195,23 +188,23 @@ def test_segments_merge_2():
     # |-------|
     #  |-------|
     #     ||
-    c = Segments.merge(b, 2)
+    c = Segments.merge(b, timedelta(seconds=2))
     assert len(c) == 1
 
 
 def test_segments_merge_empty():
     b = Segments([])
-    c = Segments.merge(b, 5 * 60)
+    c = Segments.merge(b, timedelta(seconds=5 * 60))
     assert len(c) == 0
 
-    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    a = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments([Seg(a + timedelta(minutes=0), a + timedelta(minutes=1))])
-    c = Segments.merge(b, 5 * 60)
+    c = Segments.merge(b, timedelta(seconds=5 * 60))
     assert len(c) == 1
 
 
 def test_segments_merge_with_customrule():
-    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    a = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
         [
             Seg(a + timedelta(minutes=0), a + timedelta(minutes=1), {"my_key": 0}),
@@ -220,7 +213,9 @@ def test_segments_merge_with_customrule():
             Seg(a + timedelta(minutes=9), a + timedelta(minutes=10), {"my_key": 0}),
         ]
     )
-    c = Segments.merge(b, 5 * 60, lambda x, y: x["my_key"] == y["my_key"])
+    c = Segments.merge(
+        b, timedelta(seconds=5 * 60), lambda x, y: x["my_key"] == y["my_key"]
+    )
 
     assert len(c) == 3
     assert c[0]["my_key"] == 0
@@ -229,7 +224,7 @@ def test_segments_merge_with_customrule():
 
 
 def test_segments_remove_if_short():
-    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    a = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     b = Segments(
         [
             Seg(a + timedelta(minutes=0), a + timedelta(minutes=1)),
@@ -238,14 +233,14 @@ def test_segments_remove_if_short():
             Seg(a + timedelta(minutes=0), a + timedelta(minutes=40)),
         ]
     )
-    c = b.remove_if_shorter_than(10 * 60)
+    c = b.remove_if_shorter_than(timedelta(minutes=10))
 
     assert len(c) == 2
 
 
 def test_segments_sub_0():
     # Data prep
-    a = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    a = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     # No overlap removes nothing
     b = Segments([Seg(a + timedelta(minutes=0), a + timedelta(minutes=1))])
@@ -293,7 +288,7 @@ def test_segments_sub_0():
         a + timedelta(minutes=10), a + timedelta(minutes=15)
     )  # Remaining segment
 
-    # TODO: Finish this!
+    # TODO_2: Finish this!
     # a = Node_segments_generate(Segments([Time_interval.last_n_days(5).to_seg()]))
     # b = Node_segments_generate(Segments([Time_interval.last_n_days(1).to_seg()]))
     # c = a - b

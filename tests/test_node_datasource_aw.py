@@ -2,6 +2,7 @@ import hashlib
 import os
 import socket
 
+import pandas as pd
 import pytest
 
 from lifetracking.graph.Time_interval import Time_interval
@@ -26,16 +27,12 @@ def test_node_aw_0():
     print("hash       =", get_computer_name_hash())
 
     # We get the data
-    most_recent_aw_watcher_window = (
-        Parse_activitywatch._get_latest_bucket_that_starts_with_name(
-            "aw-watcher-window"
-        )
-    )
-    a = Parse_activitywatch(most_recent_aw_watcher_window["id"])
+    a = Parse_activitywatch("aw-watcher-window")
     t = Time_interval.last_month()
     o = a.run(t)
     assert o is not None
     assert o.shape[0] > 0
+    assert isinstance(o.index, pd.DatetimeIndex)
     assert t.duration_days > (max(o.index) - min(o.index)).total_seconds() / 86400
 
     prev_shape = o.shape[0]
@@ -44,3 +41,13 @@ def test_node_aw_0():
     assert o is not None
     assert o.shape[0] > 0
     assert o.shape[0] < prev_shape
+
+
+def test_node_aw_1():
+    a = Parse_activitywatch(
+        "thisdoesntexist",
+        url_base="http://www.doesnotexist.com:99",
+    )
+    t = Time_interval.last_month()
+    o = a.run(t)
+    assert o is None

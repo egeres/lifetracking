@@ -1,7 +1,7 @@
-import datetime
-import os
 import tempfile
 import time
+from datetime import datetime, timedelta
+from pathlib import Path
 
 import pandas as pd
 
@@ -68,7 +68,7 @@ def test_cache_singleargument():
         assert 0.9 < t0 < 1.5
         assert 0.9 < t1 < 1.5
 
-        @cache_singleargument(os.path.join(path_dir, "aha"))
+        @cache_singleargument("aha", path_dir)
         def cached_method(x: str):
             time.sleep(1.0)
             return x
@@ -86,13 +86,13 @@ def test_cache_singleargument():
 
 def test_export_pddataframe_to_lc_single():
     # Data setup
-    d = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    d = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     df = pd.DataFrame(
         [
             # A
-            {"time": d + datetime.timedelta(minutes=1), "label": "A"},
-            {"time": d + datetime.timedelta(minutes=2), "label": "A"},
-            {"time": d + datetime.timedelta(minutes=3), "label": "A"},
+            {"time": d + timedelta(minutes=1), "label": "A"},
+            {"time": d + timedelta(minutes=2), "label": "A"},
+            {"time": d + timedelta(minutes=3), "label": "A"},
         ]
     )
     df = df.set_index("time")
@@ -100,7 +100,8 @@ def test_export_pddataframe_to_lc_single():
     with tempfile.TemporaryDirectory() as path_dir:
         export_pddataframe_to_lc_single(
             df,
-            os.path.join(path_dir, "out.json"),
+            Path(path_dir) / "out.json",
+            time_offset=timedelta(minutes=30),
             color="#F00",
             opacity=0.5,
         )

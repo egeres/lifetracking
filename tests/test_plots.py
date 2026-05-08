@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 from lifetracking.datatypes.Seg import Seg
-from lifetracking.datatypes.Segment import Segments
+from lifetracking.datatypes.Segments import Segments
 from lifetracking.graph.Node_pandas import Node_pandas_generate
 from lifetracking.graph.Time_interval import Time_interval
 
@@ -25,6 +25,9 @@ def test_plot_pd_countbyday_0():
 
     # Plot 0
     t = Time_interval.last_n_days(2)
+
+    o = a.run(t)
+    assert o is not None
     fig = a.plot_countbyday(t)
     assert fig is not None
 
@@ -33,7 +36,7 @@ def test_plot_pd_countbyday_0():
     t.start = t.start + timedelta(days=40)
     t.end = t.end + timedelta(days=40)
     fig = a.plot_countbyday(t)
-    assert fig is not None
+    assert fig is None
 
 
 def test_plot_pd_countbyday_1():
@@ -80,11 +83,6 @@ def test_plot_pd_columns_0():
     )
     a = Node_pandas_generate(df, datetime_column="datetime")
     a.name = "🤔"
-    annotations = [
-        {"date": "2001-05-10", "title": "A"},
-        {"date": "2001-05-15", "title": "B"},
-        {"date": "2001-05-20", "title": "C"},
-    ]
 
     # Plot 0
     t = Time_interval.last_n_days(2)
@@ -100,6 +98,11 @@ def test_plot_pd_columns_0():
 
     # Plot 2
     t = Time_interval.last_n_days(2)
+    annotations = [
+        {"date": "2001-05-10", "title": "A"},
+        {"date": "2001-05-15", "title": "B"},
+        {"date": "2001-05-20", "title": "C"},
+    ]
     fig = a.plot_columns(t, "thing", annotations=annotations)
 
 

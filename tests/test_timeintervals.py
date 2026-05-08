@@ -1,6 +1,5 @@
 import copy
-import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from hypothesis import given, settings
@@ -9,36 +8,53 @@ from hypothesis import strategies as st
 from lifetracking.graph.Time_interval import Time_interval, Time_resolution
 
 
+def s(a: int, b: int) -> Time_interval:
+    assert a > 0
+    assert a < b
+    """To make syntax smaller"""
+    return Time_interval(
+        datetime(2000, 1, a),
+        datetime(2000, 1, b),
+    )
+
+
+def test_overlaps():
+    a = s(5, 8)
+    assert not a.overlaps(s(1, 3))
+    assert not a.overlaps(s(1, 5))
+    assert a.overlaps(s(1, 6))
+    assert a.overlaps(s(1, 9))
+    assert a.overlaps(s(5, 8))
+    assert a.overlaps(s(6, 7))
+    assert not a.overlaps(s(8, 9))
+    assert not a.overlaps(s(9, 10))
+
+
 def test_contains():
     # Is IIIIN
-    a = Time_interval.last_week()
-    now = datetime.datetime.now() - timedelta(days=1)
-    assert now in a
+    a = datetime.now() - timedelta(days=1)
+    assert a in Time_interval.last_week()
 
     # Is NOT in... 🥺
-    a = Time_interval.last_week()
-    a += timedelta(days=1000)
-    assert now not in a
-    a = Time_interval.last_week()
-    a -= timedelta(days=1000)
-    assert now not in a
+    assert a not in (Time_interval.last_week() + timedelta(days=1000))
+    assert a not in (Time_interval.last_week() - timedelta(days=1000))
 
 
 def test_timeinterval_truncate():
     a = Time_interval(
-        datetime.datetime(2021, 1, 1, 12, 5, 23),
-        datetime.datetime(2021, 1, 1, 13, 4, 3),
+        datetime(2021, 1, 1, 12, 5, 23),
+        datetime(2021, 1, 1, 13, 4, 3),
     )
 
     b = a.truncate(Time_resolution.HOUR)
-    assert b.start == datetime.datetime(2021, 1, 1, 12, 0, 0)
-    assert b.end == datetime.datetime(2021, 1, 1, 13, 59, 59, 999999)
+    assert b.start == datetime(2021, 1, 1, 12, 0, 0)
+    assert b.end == datetime(2021, 1, 1, 13, 59, 59, 999999)
 
     b = a.truncate(Time_resolution.DAY)
-    assert b.start == datetime.datetime(2021, 1, 1, 0, 0, 0)
-    assert b.end == datetime.datetime(2021, 1, 1, 23, 59, 59, 999999)
+    assert b.start == datetime(2021, 1, 1, 0, 0, 0)
+    assert b.end == datetime(2021, 1, 1, 23, 59, 59, 999999)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(AssertionError):
         b = a.truncate(999)  # type: ignore
 
 
@@ -69,14 +85,32 @@ def test_get_overlap_innerouter():
     assert a.get_overlap_innerouter(g) == ([], [g])
 
 
+def test_get_overlap_innerouter_list_0():
+    intervals = [s(1, 3), s(6, 8), s(10, 14)]
+    overlap, non_overlap = s(5, 12).get_overlap_innerouter_list(intervals)
+    assert overlap == [s(6, 8), s(10, 12)]
+    assert non_overlap == [s(5, 6), s(8, 10)]
+
+
+def test_get_overlap_innerouter_list_1():
+    overlap, non_overlap = s(1, 5).get_overlap_innerouter_list([s(1, 5)])
+    assert overlap == [s(1, 5)]
+    assert non_overlap == []
+
+
+def test_merge():
+    assert Time_interval.merge([]) == []
+    assert Time_interval.merge([s(1, 5), s(4, 8), s(10, 14)]) == [s(1, 8), s(10, 14)]
+    assert Time_interval.merge([s(1, 2), s(4, 8)]) == [s(1, 2), s(4, 8)]
+    assert Time_interval.merge([s(1, 9), s(3, 5)]) == [s(1, 9)]
+    assert Time_interval.merge([s(1, 2), s(2, 3)]) == [s(1, 3)]
+
+
 def test_normalize_ends():
-    now = datetime.datetime(2013, 1, 1, 12, 4, 23, 378654)
+    now = datetime(2013, 1, 1, 12, 4, 23, 378654)
     a = Time_interval(
         now,
-        now
-        + datetime.timedelta(
-            hours=1, minutes=1, seconds=1, microseconds=1, milliseconds=1
-        ),
+        now + timedelta(hours=1, minutes=1, seconds=1, microseconds=1, milliseconds=1),
     )
     a_normalized = copy.copy(a).normalize_ends()
     assert a_normalized.start != a.start
@@ -103,20 +137,17 @@ def test_lastnext_n_something():
 
 
 def test_time_iterator_days():
-    # Day resolution
-    a = list(Time_interval.today().iterate_over_interval())
-    assert len(a) == 1
-    a = list(list(Time_interval.last_n_days(1).iterate_over_interval()))
-    assert len(a) == 2
-    a = list(Time_interval.last_week().iterate_over_interval())
-    assert len(a) == 8
+    # Uses Time_resolution.DAY by default
+    assert len(list(Time_interval.today().iterate_over_interval())) == 1
+    assert len(list(Time_interval.last_n_days(1).iterate_over_interval())) == 2
+    assert len(list(Time_interval.last_week().iterate_over_interval())) == 8
 
 
 # TODO add st.choice for st.sampled_from(Time_resolution)
 @given(st.integers(min_value=0, max_value=10_000))
 @settings(deadline=None)  # To avoid hypothesis.errors.Flaky
 def test_time_iterator_days_procedural(n):
-    now = datetime.datetime(2023, 5, 17)
+    now = datetime(2023, 5, 17)
     a = list(
         Time_interval.last_n_days(n, now).iterate_over_interval(Time_resolution.DAY)
     )
@@ -135,3 +166,16 @@ def test_time_iterator_hour():
         Time_interval.last_n_days(1 * n).iterate_over_interval(Time_resolution.HOUR)
     )
     assert len(a) == 24 + 24 * n  # (48h in 2 days!)
+
+
+def test_all_last_something():
+    """Just to check it doesnt crash"""
+
+    assert (
+        Time_interval.last_day().duration
+        < Time_interval.last_week().duration
+        < Time_interval.last_month().duration
+        < Time_interval.last_semester().duration
+        < Time_interval.last_year().duration
+        < Time_interval.last_decade().duration
+    )
