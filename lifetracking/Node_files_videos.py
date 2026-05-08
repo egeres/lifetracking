@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import ffmpeg
 
@@ -12,6 +13,9 @@ from lifetracking.graph.Node_segments import Node_segments
 from lifetracking.graph.Time_interval import Time_interval
 from lifetracking.utils import cache_singleargument
 
+if TYPE_CHECKING:
+    from typing import Callable
+
 
 class Reader_videos(Node_segments, Node_0child):
     def __init__(
@@ -20,6 +24,7 @@ class Reader_videos(Node_segments, Node_0child):
         # TODO: Add filename_date_pattern or option for os.stat(filename).st_ctime
         # filename_date_pattern=None,
         dir_tmp: None | Path = None,
+        fn_date: Callable[[Path, timedelta | None], datetime] | None = None,
     ) -> None:
         super().__init__()
         if isinstance(path_dir, str):
@@ -39,6 +44,8 @@ class Reader_videos(Node_segments, Node_0child):
             dir_tmp,
         )(self._get_video_length)
 
+        self.fn_date = fn_date
+
     def _hashstr(self) -> str:
         return hashlib.md5(
             (super()._hashstr() + self.path_dir.name).encode()
@@ -47,7 +54,18 @@ class Reader_videos(Node_segments, Node_0child):
     @staticmethod
     def _get_video_length(filename: str) -> timedelta | None:
         """Warning, has cache decorator"""
+
         vid = ffmpeg.probe(filename)
+
+        # 🍑 H264
+        if (
+            len(vid["streams"]) == 2
+            and vid["streams"][0]["codec_name"] == "h264"
+            and vid["streams"][0].get("duration") is not None
+        ):
+            return timedelta(seconds=float(vid["streams"][0]["duration"]))
+
+        # 🍑 Other
         if not (
             len(vid["streams"]) == 2
             and vid["streams"][0].get("tags", {}).get("DURATION") is not None
@@ -71,11 +89,21 @@ class Reader_videos(Node_segments, Node_0child):
             for file in self.path_dir.iterdir()
             if file.suffix in {".mp4", ".mkv", ".avi", ".mov", ".webm"}
         ):
-            # I'm confused about which is the "right one", ctime makes more sense?
-            # date_creation = datetime.fromtimestamp(filename.stat().st_mtime)
-            date_creation = datetime.fromtimestamp(filename.stat().st_ctime)
-            if t is not None and date_creation not in t:
-                continue
+            duration = None
+
+            if self.fn_date is None:
+                # I'm confused about which is the "right one", ctime makes more sense?
+                # date_creation = datetime.fromtimestamp(filename.stat().st_mtime)
+                date_creation = datetime.fromtimestamp(filename.stat().st_ctime)
+                if t is not None and date_creation not in t:
+                    continue
+            else:
+                duration = self._get_video_length(str(filename))
+                if duration is None:
+                    print(f"Error with {filename}: duration is None")
+                    continue
+                date_creation = self.fn_date(filename, duration)
+                p = 0
 
             # Info extraction
             try:

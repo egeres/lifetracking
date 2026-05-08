@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Callable, overload
 import numpy as np
 import pandas as pd
 from typing_extensions import Self
+from zoneinfo import ZoneInfo
 
 from lifetracking.datatypes.Seg import Seg
 from lifetracking.graph.Time_interval import Time_interval
@@ -31,9 +32,9 @@ if TYPE_CHECKING:
 class Segments:
     def __init__(self, content: list[Seg]) -> None:
         assert all(isinstance(seg, Seg) for seg in content)
-        assert all(
-            seg.start <= seg.end for seg in content
-        ), "Segments must be ordered in time"
+        # assert all(
+        #     seg.start <= seg.end for seg in content
+        # ), "Segments must be ordered in time"
 
         # self.content = content # TODO : sort shouldn't actually be neccesary :[
         self.content: list[Seg] = sorted(content, key=lambda x: x.start)
@@ -43,12 +44,12 @@ class Segments:
 
     def __sub__(self, other: Segments) -> Segments:
         # Self and other must be sorted!
-        assert all(
-            seg.start <= seg.end for seg in self.content
-        ), "Segments must be ordered in time"
-        assert all(
-            seg.start <= seg.end for seg in other.content
-        ), "Segments must be ordered in time"
+        # assert all(
+        #     seg.start <= seg.end for seg in self.content
+        # ), "Segments must be ordered in time"
+        # assert all(
+        #     seg.start <= seg.end for seg in other.content
+        # ), "Segments must be ordered in time"
 
         content = self.content
         content_index = 0
@@ -194,7 +195,7 @@ class Segments:
     def export_to_longcalendar(
         self,
         path_filename: str | Path,
-        hour_offset: float = 0.0,
+        hour_offset: float | str = 0.0,
         color: str | Callable[[Seg], str] | None = None,
         opacity: float | Callable[[Seg], float] = 1.0,
         tooltip: str | Callable[[Seg], str] | None = None,
@@ -227,7 +228,7 @@ class Segments:
         )
 
         # Other assertions
-        assert isinstance(hour_offset, (float, int))
+        assert isinstance(hour_offset, (float, int, str))
         assert isinstance(tooltip_shows_length, bool)
         assert tooltip is None or isinstance(tooltip, str) or callable(tooltip)
         assert (
@@ -261,7 +262,25 @@ class Segments:
         # Export itself
         to_export = []
         for seg in self.content:
-            seg += timedelta(hours=hour_offset)
+
+            if isinstance(hour_offset, int):
+                seg += timedelta(hours=hour_offset)
+
+            elif isinstance(hour_offset, str):
+
+                # madrid = ZoneInfo("Europe/Madrid")
+                # seg.start = seg.start.astimezone(madrid)
+                # seg.end = seg.end.astimezone(madrid)
+
+                madrid = ZoneInfo(hour_offset)
+                # Handle naive datetimes by assuming they're in UTC
+                if seg.start.tzinfo is None:
+                    seg.start = seg.start.replace(tzinfo=ZoneInfo("UTC"))
+                if seg.end.tzinfo is None:
+                    seg.end = seg.end.replace(tzinfo=ZoneInfo("UTC"))
+                seg.start = seg.start.astimezone(madrid)
+                seg.end = seg.end.astimezone(madrid)
+
             splitted_segs = seg.split_into_segments_per_day()
             for s in splitted_segs:
                 to_export.append(

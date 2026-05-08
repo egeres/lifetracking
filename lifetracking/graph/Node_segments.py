@@ -91,7 +91,7 @@ class Node_segments(Node[Segments]):
             t = Time_interval.last_n_days(t)
         assert isinstance(t, Time_interval) or t is None
         assert isinstance(path_filename, str)
-        assert isinstance(hour_offset, (float, int))
+        assert isinstance(hour_offset, (float, int, str))
         assert isinstance(opacity, float)
         assert tooltip is None or isinstance(tooltip, str) or callable(tooltip)
         assert color is None or isinstance(color, str) or callable(color)

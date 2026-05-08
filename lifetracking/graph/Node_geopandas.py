@@ -123,10 +123,19 @@ class Reader_geodata(Node_0child, Node_geopandas):
     ) -> gpd.GeoDataFrame | None:
         assert t is None or isinstance(t, (Time_interval, Quantity))
 
-        date_to_file = {
-            datetime.strptime(i.name.split("_")[-1], f"%Y%m%d{self.format}"): i
-            for i in self.path_dir.glob(f"*{self.format}")
-        }
+        # date_to_file = {
+        #     datetime.strptime(i.name.split("_")[-1], f"%Y%m%d{self.format}"): i
+        #     for i in self.path_dir.glob(f"*{self.format}")
+        # }
+        # Ugly fix to account for files that do now adhere to the naming convention
+        date_to_file = {}
+        for i in self.path_dir.glob(f"*{self.format}"):
+            try:
+                date = datetime.strptime(i.name.split("_")[-1], f"%Y%m%d{self.format}")
+                date_to_file[date] = i
+            except ValueError:
+                print(f"[red]Error reading {i}")
+                continue
 
         if isinstance(t, Time_interval):
             s = t.start.replace(hour=0, minute=0, second=0, microsecond=0)
